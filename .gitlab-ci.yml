@@ -1,0 +1,48 @@
+image: docker:stable
+
+services:
+    - docker:stable-dind
+
+variables:
+    DRIVER_VERSION: "396.37"
+    REPOSITORY: "${CI_PROJECT_NAMESPACE}/${CI_PROJECT_NAME}"
+    OS: "ubuntu16.04"
+
+before_script:
+    - docker login -u "${REGISTRY_USER}" -p "${REGISTRY_TOKEN}"
+
+stages:
+    - build
+
+generic:
+    stage: build
+
+    script:
+    - docker build -t "${REPOSITORY}:${DRIVER_VERSION}-${OS}"
+        --build-arg DRIVER_VERSION=${DRIVER_VERSION} --build-arg KERNEL_VERSION=generic .
+    - KERNEL_VERSION=$(docker run --rm --entrypoint='/bin/sh' "${REPOSITORY}:${DRIVER_VERSION}-${OS}"
+        -c "./mkprecompiled -i kernel/precompiled/* | awk '/description/ {print \$2}' | sed 's/-[a-z]\+$'//")
+    - docker tag "${REPOSITORY}:${DRIVER_VERSION}-${OS}" "${REPOSITORY}:${DRIVER_VERSION}-${KERNEL_VERSION}-${OS}"
+    - docker push "${REPOSITORY}"
+
+aws:
+    stage: build
+
+    script:
+    - docker build -t "${REPOSITORY}:${DRIVER_VERSION}-${OS}-${CI_JOB_NAME}"
+        --build-arg DRIVER_VERSION=${DRIVER_VERSION} --build-arg KERNEL_VERSION=aws .
+    - KERNEL_VERSION=$(docker run --rm --entrypoint='/bin/sh' "${REPOSITORY}:${DRIVER_VERSION}-${OS}-${CI_JOB_NAME}"
+        -c "./mkprecompiled -i kernel/precompiled/* | awk '/description/ {print \$2}' | sed 's/-[a-z]\+$'//")
+    - docker tag "${REPOSITORY}:${DRIVER_VERSION}-${OS}-${CI_JOB_NAME}" "${REPOSITORY}:${DRIVER_VERSION}-${KERNEL_VERSION}-${OS}-${CI_JOB_NAME}"
+    - docker push "${REPOSITORY}"
+
+hwe:
+    stage: build
+
+    script:
+    - docker build -t "${REPOSITORY}:${DRIVER_VERSION}-${OS}-${CI_JOB_NAME}"
+        --build-arg DRIVER_VERSION=${DRIVER_VERSION} --build-arg KERNEL_VERSION=generic-hwe-16.04 .
+    - KERNEL_VERSION=$(docker run --rm --entrypoint='/bin/sh' "${REPOSITORY}:${DRIVER_VERSION}-${OS}-${CI_JOB_NAME}"
+        -c "./mkprecompiled -i kernel/precompiled/* | awk '/description/ {print \$2}' | sed 's/-[a-z]\+$'//")
+    - docker tag "${REPOSITORY}:${DRIVER_VERSION}-${OS}-${CI_JOB_NAME}" "${REPOSITORY}:${DRIVER_VERSION}-${KERNEL_VERSION}-${OS}-${CI_JOB_NAME}"
+    - docker push "${REPOSITORY}"
