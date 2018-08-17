@@ -1,0 +1,11 @@
+[base]
+name=CentOS-7 - Base
+baseurl=http://mirror.centos.org/centos/7/os/$basearch/
+gpgcheck=1
+gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-CentOS-7
+
+[updates]
+name=CentOS-7 - Updates
+baseurl=http://mirror.centos.org/centos/7/updates/$basearch/
+gpgcheck=1
+gpgkey=https://www.centos.org/keys/RPM-GPG-KEY-CentOS-7
