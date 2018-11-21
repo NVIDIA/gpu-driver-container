@@ -15,6 +15,28 @@ You will need to add these variables to Gitlab CI variables:
 You can also optionally add the `REPOSITORY` variable if you want to deploy to
 another repository than Docker Hub.
 
+### AWS account
+
+The AWS account only needs permissions to create EC2 instances and new IAMs to
+store its key pairs.
+
+### Generate SSH keys
+
+To ensure the security of the SSH connection, you must generate a host key pair
+and a client key pair which you will store in Gitlab CI variables.
+
+Generate the host key pair (`SSH_HOST_KEY`):
+
+```
+ssh-keygen -o -a 100 -t ed25519 -f ssh_host_ed25519_key
+```
+
+Generate the client key pair (`SSH_PRIVATE_KEY`):
+
+```
+ssh-keygen -t rsa -b 4096 id_rsa
+```
+
 ## Development
 
 You will need jq and terraform installed.
