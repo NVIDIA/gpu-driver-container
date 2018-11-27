@@ -48,7 +48,7 @@ build:
     SSH_HOST_KEY_PUB_PATH: ssh_host_ed25519_key.pub
 
   script:
-    - docker login -u "${REGISTRY_USER}" -p "${REGISTRY_PASSWORD}"
+    - docker login -u "${REGISTRY_USER}" -p "${REGISTRY_TOKEN}"
 
     - eval $(ssh-agent -s)
     - echo "${SSH_PRIVATE_KEY}" | ssh-add - &> /dev/null
