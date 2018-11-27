@@ -9,7 +9,7 @@ export TF_IN_AUTOMATION=yes
 
 DRIVER_VERSION=${DRIVER_VERSION:-396.37}
 FORCE=${FORCE:-}
-REPOSITORY=${REPOSITORY:-nvidia}
+REGISTRY=${REGISTRY:-nvidia}
 SSH_KEY=${SSH_KEY:-${HOME}/.ssh/id_rsa}
 
 log() {
@@ -42,18 +42,18 @@ docker_ssh() {
 }
 
 build() {
-  docker_ssh build -t "${REPOSITORY}:${image_tag_long}" \
+  docker_ssh build -t "${REGISTRY}:${image_tag_long}" \
                    --build-arg KERNEL_VERSION="${kernel_version}" \
                    --build-arg DRIVER_VERSION="${DRIVER_VERSION}" \
                    "https://gitlab.com/nvidia/driver.git#${1}"
 
-  docker_ssh save "${REPOSITORY}:${image_tag_long}" -o "${image_tag_long}.tar"
+  docker_ssh save "${REGISTRY}:${image_tag_long}" -o "${image_tag_long}.tar"
 
   docker load -i "${image_tag_long}.tar"
-  docker tag "${REPOSITORY}:${image_tag_long}" "${REPOSITORY}:${image_tag_short}"
+  docker tag "${REGISTRY}:${image_tag_long}" "${REGISTRY}:${image_tag_short}"
 
-  docker push "${REPOSITORY}:${image_tag_long}"
-  docker push "${REPOSITORY}:${image_tag_short}"
+  docker push "${REGISTRY}:${image_tag_long}"
+  docker push "${REGISTRY}:${image_tag_short}"
 }
 
 cleanup() {
