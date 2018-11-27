@@ -6,14 +6,14 @@ You will need to add these variables to Gitlab CI variables:
 
 * `AWS_ACCESS_KEY_ID`
 * `AWS_SECRET_ACCESS_KEY`
-* `DOCKERHUB_USER`
-* `DOCKERHUB_PASSWORD`
+* `REGISTRY_USER`
+* `REGISTRY_TOKEN`
 * `SSH_PRIVATE_KEY`
 * `SSH_HOST_KEY`
 * `SSH_HOST_KEY_PUB`
 
-You can also optionally add the `REPOSITORY` variable if you want to deploy to
-another repository than Docker Hub.
+You can also optionally add the `REGISTRY` variable if you want to deploy to
+another docker registry than Docker Hub.
 
 ### AWS account
 
