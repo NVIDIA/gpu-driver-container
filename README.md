@@ -5,7 +5,7 @@
 ##### Enable required modules
 ```sh
 sudo modprobe -a loop ipmi_msghandler
-echo -e "loop\nipmi_msghandler" | sudo tee /etc/modules
+echo -e "loop\nipmi_msghandler" | sudo tee /etc/modules-load.d/driver.conf
 ```
 
 #### Add nvidia-runtime
