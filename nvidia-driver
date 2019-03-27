@@ -50,6 +50,11 @@ _install_prerequisites() (
     rm -rf /lib/modules/${KERNEL_VERSION}
     mkdir -p /lib/modules/${KERNEL_VERSION}/proc
 
+    if ! cat /proc/modules | grep ipmi_msghandler > /dev/null; then
+        echo "ipmi_msghandler kernel module missing, please run 'modprobe ipmi_msghandler' and restart driver container" >&2
+        return 1
+    fi
+
     echo "Installing Linux kernel headers..."
     apt-get -qq install --no-install-recommends linux-headers-${KERNEL_VERSION} > /dev/null
 
