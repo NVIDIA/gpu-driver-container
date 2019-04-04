@@ -88,7 +88,12 @@ _kernel_requires_package() {
     echo "Checking NVIDIA driver packages..."
     cd /usr/src/nvidia-${DRIVER_VERSION}/kernel
 
-    if [ "${KERNEL_VERSION}" != "$(uname -r)" ]; then
+    HOST_KERNEL_VERSION=$(uname -r)
+    if [ "${KERNEL_VERSION}" != "${HOST_KERNEL_VERSION}" ]; then
+        if [ "${ALLOW_RECOMPILE}" != "yes" ]; then
+            echo "Kernel version not compatible with the drivers (${HOST_KERNEL_VERSION} != ${KERNEL_VERSION}). Recompiling the driver is disabled."
+            exit 1
+        fi
         proc_mount_arg="--proc-mount-point /lib/modules/${KERNEL_VERSION}/proc"
     fi
     for pkg_name in $(ls -d -1 precompiled/** 2> /dev/null); do
@@ -344,7 +349,7 @@ usage() {
 Usage: $0 COMMAND [ARG...]
 
 Commands:
-  init   [-a | --accept-license]
+  init   [-a | --accept-license] [-n | --nocompile]
   update [-k | --kernel VERSION] [-s | --sign KEYID] [-t | --tag TAG]
 EOF
     exit 1
@@ -355,7 +360,7 @@ if [ $# -eq 0 ]; then
 fi
 command=$1; shift
 case "${command}" in
-    init) options=$(getopt -l accept-license -o a -- "$@") ;;
+    init) options=$(getopt -l accept-license,nocompile -o an -- "$@") ;;
     update) options=$(getopt -l kernel:,sign:,tag: -o k:s:t: -- "$@") ;;
     *) usage ;;
 esac
@@ -365,6 +370,7 @@ fi
 eval set -- "${options}"
 
 ACCEPT_LICENSE=""
+ALLOW_RECOMPILE="yes"
 KERNEL_VERSION=$(uname -r)
 PRIVATE_KEY=""
 PACKAGE_TAG=""
@@ -373,6 +379,7 @@ for opt in ${options}; do
     case "$opt" in
     -a | --accept-license) ACCEPT_LICENSE="yes"; shift 1 ;;
     -k | --kernel) KERNEL_VERSION=$2; shift 2 ;;
+    -n | --nocompile) ALLOW_RECOMPILE="no"; shift 1 ;;
     -s | --sign) PRIVATE_KEY=$2; shift 2 ;;
     -t | --tag) PACKAGE_TAG=$2; shift 2 ;;
     --) shift; break ;;
