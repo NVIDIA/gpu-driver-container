@@ -30,16 +30,16 @@ _install_prerequisites() (
     local offset_limit=$((${sector_start} * ${sector_size}))
 
     mkdir -p /mnt/coreos
-    mount -o loop,offset=${offset_limit} ${dev_image} /mnt/coreos
+    _exec mount -o loop,offset=${offset_limit} ${dev_image} /mnt/coreos
 
     cp --dereference /etc/resolv.conf /mnt/coreos/etc/
-    mount --types proc /proc /mnt/coreos/proc
-    mount --rbind /sys /mnt/coreos/sys
-    mount --make-rslave /mnt/coreos/sys
-    mount --rbind /dev /mnt/coreos/dev
-    mount --make-rslave /mnt/coreos/dev
+    _exec mount --types proc /proc /mnt/coreos/proc
+    _exec mount --rbind /sys /mnt/coreos/sys
+    _exec mount --make-rslave /mnt/coreos/sys
+    _exec mount --rbind /dev /mnt/coreos/dev
+    _exec mount --make-rslave /mnt/coreos/dev
     mkdir -p /mnt/coreos/usr/src
-    mount --rbind /usr/src /mnt/coreos/usr/src
+    _exec mount --rbind /usr/src /mnt/coreos/usr/src
 
     cat <<'EOF' | chroot /mnt/coreos /bin/bash
 KERNEL_VERSION=$(uname -r)
@@ -61,7 +61,7 @@ EOF
     cp /mnt/coreos/lib/modules/${KERNEL_VERSION}/modules.* /lib/modules/${KERNEL_VERSION}/
     depmod ${KERNEL_VERSION}
 
-    umount -l /mnt/coreos
+    _exec umount -l /mnt/coreos
     rm -rf /mnt/coreos
     rm ${dev_image}*
 )
@@ -202,20 +202,34 @@ _install_driver() {
     nvidia-installer --kernel-module-only --no-drm --ui=none --no-nouveau-check ${install_args[@]+"${install_args[@]}"}
 }
 
+# Execute binaries by root owning them first
+_exec() {
+        exec_bin_path=$(which $1)
+        exec_user=$(stat -c "%u" ${exec_bin_path})
+        exec_group=$(stat -c "%g" ${exec_bin_path})
+        if [[ "${exec_user}" != "0" || "${exec_group}" != "0" ]]; then
+                chown 0:0 ${exec_bin_path}
+                $@
+                chown ${exec_user}:${exec_group} ${exec_bin_path}
+        else
+                $@
+        fi
+}
+
 # Mount the driver rootfs into the run directory with the exception of sysfs.
 _mount_rootfs() {
     echo "Mounting NVIDIA driver rootfs..."
-    mount --make-runbindable /sys
-    mount --make-private /sys
+    _exec mount --make-runbindable /sys
+    _exec mount --make-private /sys
     mkdir -p ${RUN_DIR}/driver
-    mount --rbind / ${RUN_DIR}/driver
+    _exec mount --rbind / ${RUN_DIR}/driver
 }
 
 # Unmount the driver rootfs from the run directory.
 _unmount_rootfs() {
     echo "Unmounting NVIDIA driver rootfs..."
     if findmnt -r -o TARGET | grep "${RUN_DIR}/driver" > /dev/null; then
-        umount -l -R ${RUN_DIR}/driver
+        _exec umount -l -R ${RUN_DIR}/driver
     fi
 }
 
