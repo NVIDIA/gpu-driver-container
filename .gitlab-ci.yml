@@ -4,7 +4,7 @@ services:
     - docker:stable-dind
 
 variables:
-    DRIVER_VERSION: "396.37"
+    DRIVER_VERSION: "418.40.04"
     REPOSITORY: "${CI_PROJECT_NAMESPACE}/${CI_PROJECT_NAME}"
     OS: "ubuntu16.04"
 
