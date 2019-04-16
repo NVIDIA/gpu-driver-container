@@ -40,6 +40,13 @@ _resolve_kernel_version() {
     return 0
 }
 
+_preflight_checks() (
+    if ! cat /proc/modules | grep ipmi_msghandler > /dev/null; then
+        echo "ipmi_msghandler kernel module missing, please run 'modprobe ipmi_msghandler' and restart driver container" >&2
+        exit 1
+    fi
+)
+
 # Install the kernel modules header/builtin/order files and generate the kernel version string.
 _install_prerequisites() (
     local tmp_dir=$(mktemp -d)
@@ -49,11 +56,6 @@ _install_prerequisites() (
 
     rm -rf /lib/modules/${KERNEL_VERSION}
     mkdir -p /lib/modules/${KERNEL_VERSION}/proc
-
-    if ! cat /proc/modules | grep ipmi_msghandler > /dev/null; then
-        echo "ipmi_msghandler kernel module missing, please run 'modprobe ipmi_msghandler' and restart driver container" >&2
-        return 1
-    fi
 
     echo "Installing Linux kernel headers..."
     apt-get -qq install --no-install-recommends linux-headers-${KERNEL_VERSION} > /dev/null
@@ -286,6 +288,8 @@ init() {
     _unload_driver || exit 1
     _unmount_rootfs
 
+    _preflight_checks
+
     if _kernel_requires_package; then
         _update_package_cache
         _resolve_kernel_version || exit 1
@@ -325,6 +329,8 @@ update() {
     echo -e "Starting update of NVIDIA driver version ${DRIVER_VERSION} for Linux kernel version ${KERNEL_VERSION}\n"
 
     trap "echo 'Caught signal'; exit 1" HUP INT QUIT PIPE TERM
+
+    _preflight_checks
 
     _update_package_cache
     _resolve_kernel_version || exit 1
