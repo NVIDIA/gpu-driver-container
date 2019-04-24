@@ -1,4 +1,4 @@
-FROM ubuntu:16.04
+FROM ubuntu:18.04
 
 RUN dpkg --add-architecture i386 && \
     apt-get update && apt-get install -y --no-install-recommends \
@@ -11,9 +11,9 @@ RUN dpkg --add-architecture i386 && \
         libelf-dev && \
     rm -rf /var/lib/apt/lists/*
 
-RUN echo "deb [arch=amd64] http://archive.ubuntu.com/ubuntu/ xenial main" > /etc/apt/sources.list && \
-    echo "deb [arch=amd64] http://archive.ubuntu.com/ubuntu/ xenial-updates main" >> /etc/apt/sources.list && \
-    echo "deb [arch=amd64] http://archive.ubuntu.com/ubuntu/ xenial-security main" >> /etc/apt/sources.list && \
+RUN echo "deb [arch=amd64] http://archive.ubuntu.com/ubuntu/ bionic main" > /etc/apt/sources.list && \
+    echo "deb [arch=amd64] http://archive.ubuntu.com/ubuntu/ bionic-updates main" >> /etc/apt/sources.list && \
+    echo "deb [arch=amd64] http://archive.ubuntu.com/ubuntu/ bionic-security main" >> /etc/apt/sources.list && \
     usermod -o -u 0 -g 0 _apt
 
 RUN curl -fsSL -o /usr/local/bin/donkey https://github.com/3XX0/donkey/releases/download/v1.1.0/donkey && \
@@ -59,7 +59,7 @@ ARG PUBLIC_KEY=empty
 COPY ${PUBLIC_KEY} kernel/pubkey.x509
 
 ARG PRIVATE_KEY
-ARG KERNEL_VERSION=generic,generic-hwe-16.04
+ARG KERNEL_VERSION=generic,generic-hwe-18.04
 
 # Compile the kernel modules and generate precompiled packages for use by the nvidia-installer.
 RUN apt-get update && \

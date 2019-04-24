@@ -153,10 +153,17 @@ _create_driver_package() (
 # Load the kernel modules and start persistenced.
 _load_driver() {
     echo "Loading NVIDIA driver kernel modules..."
+
+    if uname -r | grep aws > /dev/null && ! cat /proc/modules | grep i2c_core > /dev/null; then
+      echo "i2c_core kernel module missing with aws kernel, please run 'modprobe i2c_core' and restart driver container"
+      return 1
+    fi
+
     modprobe -a nvidia nvidia-uvm nvidia-modeset
 
     echo "Starting NVIDIA persistence daemon..."
     nvidia-persistenced --persistence-mode
+    return 0
 }
 
 # Stop persistenced and unload the kernel modules if they are currently loaded.
@@ -296,7 +303,7 @@ init() {
     fi
 
     _install_driver
-    _load_driver
+    _load_driver || exit 1
     _mount_rootfs
     _write_kernel_update_hook
 
