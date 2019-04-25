@@ -40,6 +40,7 @@ packages:
 users:
   - name: nvidia
     lock_passwd: True
+    sudo:  ALL=(ALL) NOPASSWD:ALL
     groups:
       - docker
     ssh_authorized_keys: ${file(var.ssh_key_pub)}
