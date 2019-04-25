@@ -66,6 +66,7 @@ resource "aws_instance" "builder" {
   provisioner "remote-exec" {
     inline = [
       "cloud-init status --wait",
+      "sudo modprobe ipmi_msghandler",
     ]
   }
 
