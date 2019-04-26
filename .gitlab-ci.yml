@@ -1,5 +1,5 @@
 variables:
-  DRIVER_VERSION: "396.37"
+  DRIVER_VERSION: "418.40.04"
   GIT_SSL_NO_VERIFY: "true"
 
   DOCKER_HOST: tcp://docker:2375/
