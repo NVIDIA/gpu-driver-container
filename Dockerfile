@@ -1,5 +1,23 @@
 FROM ubuntu:18.04
 
+# We need to fix the gcc version to 7.3 as the current kernel
+# for Ubuntu18.04 is compiled with this version.
+RUN apt update && apt install -y --no-install-recommends \
+        cpp=4:7.3.0-3ubuntu2 \
+        cpp-7=7.3.0-16ubuntu3 \
+        g++=4:7.3.0-3ubuntu2 \
+        g++-7=7.3.0-16ubuntu3 \
+        gcc=4:7.3.0-3ubuntu2 \
+        gcc-7=7.3.0-16ubuntu3 \
+        gcc-7-base=7.3.0-16ubuntu3 \
+        libasan4=7.3.0-16ubuntu3 \
+        libcilkrts5=7.3.0-16ubuntu3 \
+        libgcc-7-dev=7.3.0-16ubuntu3 \
+        libstdc++-7-dev=7.3.0-16ubuntu3 \
+        libubsan0=7.3.0-16ubuntu3 && \
+      apt-mark hold cpp cpp-7 g++ g++-7 gcc gcc-7 gcc-7-base libasan4 \
+        libcilkrts5 libgcc-7-dev libstdc++-7-dev libubsan0
+
 RUN dpkg --add-architecture i386 && \
     apt-get update && apt-get install -y --no-install-recommends \
         apt-utils \
