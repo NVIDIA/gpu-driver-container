@@ -20,7 +20,7 @@ log() {
 }
 
 get_tags() {
-  curl -fsSL 'https://registry.hub.docker.com/v1/repositories/nvidia/driver/tags' \
+  curl -fsSL "https://registry.hub.docker.com/v1/repositories/${REGISTRY}/tags" \
   | jq -r '.[] | .name'
 }
 
