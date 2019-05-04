@@ -9,15 +9,18 @@ export TF_IN_AUTOMATION=yes
 
 DRIVER_VERSION=${DRIVER_VERSION:-418.40.04}
 FORCE=${FORCE:-}
-REGISTRY=${REGISTRY:-nvidia}
+REGISTRY=${REGISTRY:-nvidia/driver}
 SSH_KEY=${SSH_KEY:-${HOME}/.ssh/id_rsa}
+
+UBUNTU_VERSIONS=${UBUNTU_VERSIONS:-"16.04 18.04"}
+CENTOS_VERSIONS=${CENTOS_VERSIONS:-"7"}
 
 log() {
   echo -e "\033[1;32m[+] $*\033[0m"
 }
 
 get_tags() {
-  curl -fsSL 'https://registry.hub.docker.com/v1/repositories/nvidia/driver/tags' \
+  curl -fsSL "https://registry.hub.docker.com/v1/repositories/${REGISTRY}/tags" \
   | jq -r '.[] | .name'
 }
 
@@ -26,15 +29,16 @@ tag_exists() {
 }
 
 latest_ubuntu_kernel() {
-  apt-get update &> /dev/null
-
-  apt-cache show "linux-headers-${1}" 2>> /dev/null \
-    | sed -nE 's/^Version:\s+(([0-9]+\.){2}[0-9]+)[-.]([0-9]+).*/\1-\3/p' \
-    | head -n 1
+  docker run ubuntu:"${1}" /bin/bash -c\
+    "apt update &> /dev/null && apt-cache show linux-headers-${2} 2>> /dev/null \
+      | sed -nE 's/^Version:\s+(([0-9]+\.){2}[0-9]+)[-.]([0-9]+).*/\1-\3/p' \
+      | head -n 1"
 }
 
 latest_centos_kernel() {
-  repoquery kernel-headers | cut -d ':' -f 2
+  docker run centos:"${1}" /bin/bash -c\
+    "yum install -y yum-utils &> /dev/null && repoquery kernel-headers \
+      | cut -d ':' -f 2"
 }
 
 docker_ssh() {
@@ -77,56 +81,65 @@ log 'Add instance to known hosts'
 # shellcheck disable=SC2086
 echo "${public_ip} $(cat ${SSH_HOST_KEY_PUB_PATH})" >> "${HOME}/.ssh/known_hosts"
 
-log 'Detecting versions'
-generic_kernel=$(latest_ubuntu_kernel generic)
-hwe_kernel=$(latest_ubuntu_kernel generic-hwe-16.04)
-aws_kernel=$(ssh "nvidia@${public_ip}" uname -r)
-centos_kernel=$(latest_centos_kernel)
-
-log 'Generating tags'
-generic_tag_long=${DRIVER_VERSION}-${generic_kernel}-ubuntu16.04
-hwe_tag_long=${DRIVER_VERSION}-${hwe_kernel}-ubuntu16.04
-aws_tag_long=${DRIVER_VERSION}-${aws_kernel}-ubuntu16.04
-centos_tag_long=${DRIVER_VERSION}-${centos_kernel}-centos7
-
+log 'Get tags'
 tags=$(get_tags)
 
-if [[ -n ${FORCE} ]] || ! tag_exists "${generic_tag_long}" "${tags}"; then
-  log 'Building generic image'
+for version in ${UBUNTU_VERSIONS}; do
+  log "Detecting versions for Ubuntu ${version}"
+  generic_kernel=$(latest_ubuntu_kernel "${version}" generic)
+  hwe_kernel=$(latest_ubuntu_kernel "${version}" "generic-hwe-${version}")
+  aws_kernel=$(latest_ubuntu_kernel "${version}" aws)
 
-  kernel_version=${generic_kernel}
-  image_tag_long=${generic_tag_long}
-  image_tag_short=${DRIVER_VERSION}-ubuntu16.04
+  log "Generating tags for Ubuntu ${version}"
+  generic_tag_long=${DRIVER_VERSION}-${generic_kernel}-ubuntu${version}
+  hwe_tag_long=${DRIVER_VERSION}-${hwe_kernel}-ubuntu${version}-hwe
+  aws_tag_long=${DRIVER_VERSION}-${aws_kernel}-ubuntu${version}-aws
 
-  build ubuntu16.04
-fi
+  if [[ -n ${FORCE} ]] || ! tag_exists "${generic_tag_long}" "${tags}"; then
+    log 'Building generic image'
 
-if [[ -n ${FORCE} ]] || ! tag_exists "${hwe_tag_long}" "${tags}"; then
-  log 'Building HWE image'
+    kernel_version=${generic_kernel}
+    image_tag_long=${generic_tag_long}
+    image_tag_short=${DRIVER_VERSION}-ubuntu${version}
 
-  kernel_version=${hwe_kernel}
-  image_tag_long=${hwe_tag_long}
-  image_tag_short=${DRIVER_VERSION}-ubuntu16.04-hwe
+    build "ubuntu${version}"
+  fi
 
-  build ubuntu16.04
-fi
+  if [[ -n ${FORCE} ]] || ! tag_exists "${hwe_tag_long}" "${tags}"; then
+    log 'Building HWE image'
 
-if [[ -n ${FORCE} ]] || ! tag_exists "${aws_tag_long}" "${tags}"; then
-  log 'Building AWS image'
+    kernel_version=${hwe_kernel}
+    image_tag_long=${hwe_tag_long}
+    image_tag_short=${DRIVER_VERSION}-ubuntu${version}-hwe
 
-  kernel_version=${aws_kernel}
-  image_tag_long=${aws_tag_long}
-  image_tag_short=${DRIVER_VERSION}-ubuntu16.04-aws
+    build "ubuntu${version}"
+  fi
 
-  build ubuntu16.04
-fi
+  if [[ -n ${FORCE} ]] || ! tag_exists "${aws_tag_long}" "${tags}"; then
+    log 'Building AWS image'
 
-if [[ -n ${FORCE} ]] || ! tag_exists "${centos_tag_long}" "${tags}"; then
-  log 'Building CentOS image'
+    kernel_version=${aws_kernel}-aws
+    image_tag_long=${aws_tag_long}
+    image_tag_short=${DRIVER_VERSION}-ubuntu${version}-aws
 
-  kernel_version=${centos_kernel}
-  image_tag_long=${centos_tag_long}
-  image_tag_short=${DRIVER_VERSION}-centos7
+    build "ubuntu${version}"
+  fi
+done
 
-  build centos7
-fi
+for version in ${CENTOS_VERSIONS}; do
+  log "Detecting versions for Centos ${version}"
+  centos_kernel=$(latest_centos_kernel "${version}")
+
+  log "Generating tags for Centos ${version}"
+  centos_tag_long=${DRIVER_VERSION}-${centos_kernel}-centos${version}
+
+  if [[ -n ${FORCE} ]] || ! tag_exists "${centos_tag_long}" "${tags}"; then
+    log "Building CentOS image version ${version}"
+
+    kernel_version=${centos_kernel}
+    image_tag_long=${centos_tag_long}
+    image_tag_short=${DRIVER_VERSION}-centos${version}
+
+    build "centos${version}"
+  fi
+done
