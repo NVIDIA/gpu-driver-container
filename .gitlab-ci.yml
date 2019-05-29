@@ -14,9 +14,6 @@ stages:
   - docker-images
   - build
 
-before_script:
-  - docker login -u "${CI_REGISTRY_USER}" -p "${CI_REGISTRY_PASSWORD}" "${CI_REGISTRY}"
-
 shellcheck:
   stage: syntax-check
   image:
@@ -30,11 +27,13 @@ shellcheck:
     - schedules
 
 builder:
+  before_script:
+    - docker login -u "${CI_REGISTRY_USER}" -p "${CI_REGISTRY_PASSWORD}" "${CI_REGISTRY}"
   stage: docker-images
   image: docker:stable
   script:
     - docker pull ${CI_REGISTRY_IMAGE}/builder || true
-    - docker build --pull -t ${CI_REGISTRY_IMAGE}/builder .
+    - docker build --pull -t ${CI_REGISTRY_IMAGE}/builder ci/
     - docker push ${CI_REGISTRY_IMAGE}/builder
   except:
     - schedules
@@ -46,7 +45,6 @@ build:
 
     SSH_HOST_KEY_PATH: ssh_host_ed25519_key
     SSH_HOST_KEY_PUB_PATH: ssh_host_ed25519_key.pub
-
   script:
     - docker login -u "${REGISTRY_USER}" -p "${REGISTRY_TOKEN}"
 
@@ -61,8 +59,9 @@ build:
 
     - terraform init -input=false
     - ./ci/run.sh
-
   after_script:
     - rm -rf ${HOME}/.ssh
     - rm -rf ${SSH_HOST_KEY_PATH}
     - rm -rf ${SSH_HOST_KEY_PUB_PATH}
+  only:
+    - master
