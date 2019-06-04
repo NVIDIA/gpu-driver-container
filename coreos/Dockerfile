@@ -1,3 +1,11 @@
+# Build nvidia-container-runtime binary
+FROM golang:1.11.2 as build-runtime
+
+WORKDIR /go/src/nvidia-container-runtime
+COPY nvidia-container-runtime .
+RUN go install -v nvidia-container-runtime
+
+# Build driver image
 FROM ubuntu:16.04
 
 RUN dpkg --add-architecture i386 && \
@@ -61,7 +69,8 @@ RUN cd /tmp && \
 
 # Install and configure nvidia-container-runtime
 ENV NVIDIA_VISIBLE_DEVICES void
-COPY nvidia-container-runtime /usr/bin
+
+COPY --from=build-runtime /go/bin/nvidia-container-runtime /usr/bin/nvidia-container-runtime
 
 RUN curl -s -L https://nvidia.github.io/nvidia-container-runtime/gpgkey | apt-key add - && \
     distribution=$(. /etc/os-release;echo $ID$VERSION_ID) && \
