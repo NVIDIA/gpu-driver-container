@@ -2,7 +2,9 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
+	"log"
 	"os"
 	"os/exec"
 	"syscall"
@@ -10,16 +12,40 @@ import (
 	"github.com/opencontainers/runtime-spec/specs-go"
 )
 
-func execRunc() {
-	runcPath, err := exec.LookPath("runc")
-	if err != nil {
-		os.Exit(1)
+type config struct {
+	bundleDirPath string
+	cmd           string
+}
+
+func getConfig() (*config, error) {
+	cfg := &config{}
+
+	for i, param := range os.Args {
+		if param == "--bundle" || param == "-b" {
+			if len(os.Args) < i + 2 {
+				return nil, fmt.Errorf("bundle option needs an argument")
+			}
+			cfg.bundleDirPath = os.Args[i + 1]
+		} else if param == "create" {
+			cfg.cmd = param
+		}
 	}
 
-	err = syscall.Exec(runcPath, append([]string{runcPath}, os.Args[1:]...), os.Environ())
+	return cfg, nil
+}
+
+func exitOnError(err error, msg string) {
 	if err != nil {
-		os.Exit(1)
+		log.Fatalf("ERROR: %s: %s: %v\n", os.Args[0], msg, err)
 	}
+}
+
+func execRunc() {
+	runcPath, err := exec.LookPath("runc")
+	exitOnError(err, "find runc path")
+
+	err = syscall.Exec(runcPath, append([]string{runcPath}, os.Args[1:]...), os.Environ())
+	exitOnError(err, "exec runc binary")
 }
 
 func addNVIDIAHook(spec *specs.Spec) error {
@@ -43,64 +69,40 @@ func addNVIDIAHook(spec *specs.Spec) error {
 	return nil
 }
 
-
 func main() {
-	index := 0
-	create := false
+	cfg, err := getConfig()
+	exitOnError(err, "fail to get config")
 
-	for i, param := range os.Args {
-		if param == "--bundle" || param == "-b" {
-			if len(os.Args) < i + 2 {
-				os.Exit(1)
-			}
-			index = i + 1
-		} else if param == "create" {
-			create = true
-		}
-	}
-
-	if !create {
+	if cfg.cmd != "create" {
 		execRunc()
+		log.Fatalf("ERROR: %s: fail to execute runc binary\n", os.Args[0])
 	}
 
-	if index == 0 {
-		os.Exit(1)
+	if cfg.bundleDirPath == "" {
+		cfg.bundleDirPath, err = os.Getwd()
+		exitOnError(err, "get working directory")
 	}
 
-	jsonFile, err := os.OpenFile(os.Args[index] + "/config.json", os.O_RDWR, 0644)
-	if err != nil {
-		os.Exit(1)
-	}
+	jsonFile, err := os.OpenFile(cfg.bundleDirPath + "/config.json", os.O_RDWR, 0644)
+	exitOnError(err, "open OCI spec file")
+
+	defer jsonFile.Close()
 
 	jsonContent, err := ioutil.ReadAll(jsonFile)
-	if err != nil {
-		os.Exit(1)
-	}
+	exitOnError(err, "read OCI spec file")
 
 	var spec specs.Spec
 	err = json.Unmarshal(jsonContent, &spec)
-	if err != nil {
-		os.Exit(1)
-	}
+	exitOnError(err, "unmarshal OCI spec file")
 
-	if err = addNVIDIAHook(&spec); err != nil {
-		os.Exit(1)
-	}
+	err = addNVIDIAHook(&spec)
+	exitOnError(err, "inject NVIDIA hook")
 
 	jsonOutput, err := json.Marshal(spec)
-	if err != nil {
-		os.Exit(1)
-	}
+	exitOnError(err, "marchal OCI spec file")
 
 	_, err = jsonFile.WriteAt(jsonOutput, 0)
-	if err != nil {
-		os.Exit(1)
-	}
-
-	err = jsonFile.Close()
-	if err != nil {
-		os.Exit(1)
-	}
+	exitOnError(err, "write OCI spec file")
 
 	execRunc()
 }
