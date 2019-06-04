@@ -9,7 +9,6 @@ COREOS_RELEASE_CHANNEL="stable"
 COREOS_RELEASES_URL="https://coreos.com/releases/releases-${COREOS_RELEASE_CHANNEL}.json"
 COREOS_SOFTWARE_VERSIONS="$(curl -Ls ${COREOS_RELEASES_URL} | jq -r 'keys_unsorted[0] as $k | .[$k] | "\(.major_software.kernel[0]) \(.major_software.docker[0])"')"
 KERNEL_VERSION="$(echo ${COREOS_SOFTWARE_VERSIONS} | awk '{ print $1 }')-${OS}"
-#COREOS_DOCKER_VERSION="$(echo ${COREOS_SOFTWARE_VERSIONS} | awk '{ print $2 }')"
 
 docker build -t "install-${CI_PROJECT_NAME}:${DRIVER_VERSION}" --build-arg DRIVER_VERSION=${DRIVER_VERSION} .
 
