@@ -1,3 +1,11 @@
+# Build nvidia-container-runtime binary
+FROM golang:1.11.2 as build-runtime
+
+WORKDIR /go/src/nvidia-container-runtime
+COPY nvidia-container-runtime .
+RUN go install -v nvidia-container-runtime
+
+# Build driver image
 FROM ubuntu:16.04
 
 RUN dpkg --add-architecture i386 && \
@@ -60,14 +68,15 @@ RUN cd /tmp && \
     rm -rf /tmp/*
 
 # Install and configure nvidia-container-runtime
-ARG DOCKER_VERSION
 ENV NVIDIA_VISIBLE_DEVICES void
+
+COPY --from=build-runtime /go/bin/nvidia-container-runtime /usr/bin/nvidia-container-runtime
 
 RUN curl -s -L https://nvidia.github.io/nvidia-container-runtime/gpgkey | apt-key add - && \
     distribution=$(. /etc/os-release;echo $ID$VERSION_ID) && \
     curl -s -L https://nvidia.github.io/nvidia-container-runtime/$distribution/nvidia-container-runtime.list | tee /etc/apt/sources.list.d/nvidia-container-runtime.list && \
     apt-get update && \
-    apt-get install -y nvidia-container-runtime=2.0.0+docker$DOCKER_VERSION-1 && \
+    apt-get install -y nvidia-container-runtime-hook && \
     cd /usr && ln -s lib/x86_64-linux-gnu lib64 && cd - && \
     sed -i 's/^#root/root/; s;@/sbin/ldconfig.real;@/run/nvidia/driver/sbin/ldconfig.real;' /etc/nvidia-container-runtime/config.toml
 
