@@ -7,7 +7,7 @@ set -o xtrace
 
 export TF_IN_AUTOMATION=yes
 
-DRIVER_VERSION=${DRIVER_VERSION:-418.40.04}
+DRIVER_VERSION=${DRIVER_VERSION:-418.67}
 FORCE=${FORCE:-}
 REGISTRY=${REGISTRY:-nvidia/driver}
 SSH_KEY=${SSH_KEY:-${HOME}/.ssh/id_rsa}
@@ -46,10 +46,12 @@ docker_ssh() {
 }
 
 build() {
+  public_ip=${public_ip_ubuntu16_04}
+
   docker_ssh build -t "${REGISTRY}:${image_tag_long}" \
                    --build-arg KERNEL_VERSION="${kernel_version}" \
                    --build-arg DRIVER_VERSION="${DRIVER_VERSION}" \
-                   "https://gitlab.com/nvidia/driver.git#:${1}"
+                   "https://gitlab.com/nvidia/driver/tree/master/${1}"
 
   docker_ssh save "${REGISTRY}:${image_tag_long}" -o "${image_tag_long}.tar"
 
@@ -75,15 +77,19 @@ EOF
 
 log 'Creating AWS resources'
 terraform apply -auto-approve
-public_ip=$(terraform output public_ip)
+public_ip_ubuntu16_04=$(terraform output public_ip_ubuntu16_04)
+public_ip_coreos=$(terraform output public_ip_coreos)
 
 log 'Add instance to known hosts'
 # shellcheck disable=SC2086
-echo "${public_ip} $(cat ${SSH_HOST_KEY_PUB_PATH})" >> "${HOME}/.ssh/known_hosts"
+echo "${public_ip_ubuntu16_04} $(cat ${SSH_HOST_KEY_PUB_PATH})" >> "${HOME}/.ssh/known_hosts"
+echo "${public_ip_coreos} $(cat ${SSH_HOST_KEY_PUB_PATH})" >> "${HOME}/.ssh/known_hosts"
 
 log 'Get tags'
 tags=$(get_tags)
 
+
+# Resolving Ubuntu versions
 for version in ${UBUNTU_VERSIONS}; do
   log "Detecting versions for Ubuntu ${version}"
   generic_kernel=$(latest_ubuntu_kernel "${version}" generic)
@@ -126,6 +132,7 @@ for version in ${UBUNTU_VERSIONS}; do
   fi
 done
 
+# Resolving Centos versions
 for version in ${CENTOS_VERSIONS}; do
   log "Detecting versions for Centos ${version}"
   centos_kernel=$(latest_centos_kernel "${version}")
@@ -143,3 +150,16 @@ for version in ${CENTOS_VERSIONS}; do
     build "centos${version}"
   fi
 done
+
+# Resolving CoreOS version
+coreos_kernel=$(ssh "nvidia@${public_ip_coreos}" uname -r)
+coreos_tag_long=${DRIVER_VERSION}-${coreos_kernel}-coreos
+if [[ -n ${FORCE} ]] || ! tag_exists "${coreos_tag_long}" "${tags}"; then
+    log 'Building CoreOS image'
+    ssh "nvidia@${public_ip_coreos}" "/home/nvidia/build.sh ${DRIVER_VERSION} ${REGISTRY}"
+    scp "nvidia@${public_ip_coreos}:/home/nvidia/${coreos_tag_long}.tar" .
+
+    docker load -i "${coreos_tag_long}.tar"
+    docker tag "${coreos_tag_long}" "${REGISTRY}:${coreos_tag_long}" 
+    docker push "${REGISTRY}:${coreos_tag_long}"
+fi
