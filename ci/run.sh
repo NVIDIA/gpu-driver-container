@@ -83,6 +83,7 @@ public_ip_coreos=$(terraform output public_ip_coreos)
 log 'Add instance to known hosts'
 # shellcheck disable=SC2086
 echo "${public_ip_ubuntu16_04} $(cat ${SSH_HOST_KEY_PUB_PATH})" >> "${HOME}/.ssh/known_hosts"
+# shellcheck disable=SC2086
 echo "${public_ip_coreos} $(cat ${SSH_HOST_KEY_PUB_PATH})" >> "${HOME}/.ssh/known_hosts"
 
 log 'Get tags'
@@ -156,7 +157,7 @@ coreos_kernel=$(ssh "nvidia@${public_ip_coreos}" uname -r)
 coreos_tag_long=${DRIVER_VERSION}-${coreos_kernel}-coreos
 if [[ -n ${FORCE} ]] || ! tag_exists "${coreos_tag_long}" "${tags}"; then
     log 'Building CoreOS image'
-    ssh "nvidia@${public_ip_coreos}" "/home/nvidia/build.sh ${DRIVER_VERSION} ${REGISTRY}"
+    ssh "nvidia@${public_ip_coreos}" /home/nvidia/build.sh "${DRIVER_VERSION}" "${REGISTRY}"
     scp "nvidia@${public_ip_coreos}:/home/nvidia/${coreos_tag_long}.tar" .
 
     docker load -i "${coreos_tag_long}.tar"
