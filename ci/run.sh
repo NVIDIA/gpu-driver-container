@@ -51,7 +51,7 @@ build() {
   docker_ssh build -t "${REGISTRY}:${image_tag_long}" \
                    --build-arg KERNEL_VERSION="${kernel_version}" \
                    --build-arg DRIVER_VERSION="${DRIVER_VERSION}" \
-                   "https://gitlab.com/nvidia/driver/tree/master/${1}"
+                   "https://gitlab.com/nvidia/driver.git#master:${1}"
 
   docker_ssh save "${REGISTRY}:${image_tag_long}" -o "${image_tag_long}.tar"
 
