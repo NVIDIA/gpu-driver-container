@@ -12,7 +12,7 @@ REGISTRY=${2}
 kernel_version=$(uname -r)
 
 docker build -t "install-driver:${DRIVER_VERSION}" \
-             --build-arg DRIVER_VERSION="${DRIVER_VERSION}" "https://gitlab.com/nvidia/driver/tree/master/coreos"
+             --build-arg DRIVER_VERSION="${DRIVER_VERSION}" "https://gitlab.com/nvidia/driver.git#master:coreos"
 
 docker run --privileged --name "compile_driver-${DRIVER_VERSION}" "install-driver:${DRIVER_VERSION}" \
 	     update --kernel ${kernel_version}

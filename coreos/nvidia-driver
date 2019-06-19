@@ -1,4 +1,4 @@
-#! /bin/bash
+! /bin/bash
 # Copyright (c) 2018, NVIDIA CORPORATION. All rights reserved.
 
 set -eu
@@ -21,8 +21,9 @@ _install_prerequisites() (
     # Get the OS release for given kernel version
     local kernel=$(echo ${KERNEL_VERSION} | cut -d "-" -f1)
     local os_release=$(curl -Ls ${COREOS_ALL_RELEASES} | jq -r --arg kernel_ver "${kernel}" 'to_entries[] | select (.value.major_software.kernel[0] == $kernel_ver) | .key')
+    local latest_release=$(echo ${os_release} | awk '{ print $1 }')
     local dev_image="coreos_developer_container.bin"
-    local dev_image_url="https://${COREOS_RELEASE_CHANNEL}.release.core-os.net/${COREOS_RELEASE_BOARD}/${os_release}/${dev_image}.bz2"
+    local dev_image_url="https://${COREOS_RELEASE_CHANNEL}.release.core-os.net/${COREOS_RELEASE_BOARD}/${latest_release}/${dev_image}.bz2"
 
     curl -Ls "${dev_image_url}" | bzip2 -dq > "${dev_image}"
     local sector_size=$(fdisk -l ${dev_image} | grep "^Sector size" | awk '{ print $4 }')
@@ -30,7 +31,14 @@ _install_prerequisites() (
     local offset_limit=$((${sector_start} * ${sector_size}))
 
     mkdir -p /mnt/coreos
-    _exec mount -o loop,offset=${offset_limit} ${dev_image} /mnt/coreos
+    local loop_dev="/dev/loop0"
+    _exec mount -o loop=${loop_dev},offset=${offset_limit} ${dev_image} /mnt/coreos
+
+    # add more space to the device
+    local mount_path=$(losetup --list --noheadings -O BACK-FILE ${loop_dev})
+    dd if=/dev/zero bs=1MiB of=${mount_path} conv=notrunc oflag=append count=3000
+    losetup -c ${loop_dev}
+    resize2fs ${loop_dev}
 
     cp --dereference /etc/resolv.conf /mnt/coreos/etc/
     _exec mount --types proc /proc /mnt/coreos/proc
