@@ -163,6 +163,5 @@ if [[ -n ${FORCE} ]] || ! tag_exists "${coreos_tag_long}" "${tags}"; then
     scp "nvidia@${public_ip_coreos}:/home/nvidia/${coreos_tag_long}.tar" .
 
     docker load -i "${coreos_tag_long}.tar"
-    docker tag "${coreos_tag_long}" "${REGISTRY}:${coreos_tag_long}" 
     docker push "${REGISTRY}:${coreos_tag_long}"
 fi
