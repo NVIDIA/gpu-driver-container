@@ -152,6 +152,10 @@ resource "aws_instance" "coreos_builder" {
       "chmod +x ~/build.sh"
     ]
   }
+  root_block_device {
+    volume_size = 40
+  }
+
   user_data = "${data.ignition_config.coreos_ignition_config.rendered}"
 }
 
