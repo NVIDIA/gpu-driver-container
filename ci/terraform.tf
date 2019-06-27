@@ -18,7 +18,7 @@ data "aws_ami" "ubuntu16_04" {
   }
 }
 
-data "template_cloudinit_config" "user_data" {
+data "template_cloudinit_config" "ubuntu16_04" {
   gzip          = false
   base64_encode = false
 
@@ -54,7 +54,7 @@ EOF
   }
 }
 
-resource "aws_instance" "builder" {
+resource "aws_instance" "ubuntu16_04" {
   ami           = "${data.aws_ami.ubuntu16_04.id}"
   instance_type = "c4.4xlarge"
 
@@ -71,9 +71,94 @@ resource "aws_instance" "builder" {
     ]
   }
 
-  user_data = "${data.template_cloudinit_config.user_data.rendered}"
+  user_data = "${data.template_cloudinit_config.ubuntu16_04.rendered}"
 }
 
-output "public_ip" {
-  value = "${aws_instance.builder.public_ip}"
+output "public_ip_ubuntu16_04" {
+  value = "${aws_instance.ubuntu16_04.public_ip}"
+}
+
+# Launch the latest CoreOS instance
+data "aws_ami" "coreos" {
+  most_recent = true
+
+  owners = ["679593333241"]
+
+  filter {
+    name = "name"
+    values = ["CoreOS-stable-*"]
+  }
+}
+
+data "ignition_user" "nvidia" {
+  name = "nvidia"
+  ssh_authorized_keys = ["${file(var.ssh_key_pub)}"]
+  primary_group = "docker"
+  groups = ["sudo"]
+}
+
+data "ignition_file" "sshd_keys" {
+    filesystem = "root"
+    path = "/etc/ssh/ssh_host_ed25519_key"
+    mode = 384
+    content {
+        content = "${file(var.ssh_host_key)}"
+	mime = "text/plain"
+    }
+}
+
+data "ignition_file" "sshd_config" {
+    filesystem = "root"
+    path = "/etc/ssh/sshd_config"
+    mode = 384
+    content {
+      content = <<EOF
+HostKey /etc/ssh/ssh_host_ed25519_key
+UsePrivilegeSeparation sandbox
+UseDNS no
+
+PermitRootLogin no
+AllowUsers nvidia
+AuthenticationMethods publickey
+EOF
+      mime = "text/plain"
+     }
+}
+
+data "ignition_config" "coreos_ignition_config" {
+  users = ["${data.ignition_user.nvidia.id}"]
+  files = ["${data.ignition_file.sshd_keys.id}", "${data.ignition_file.sshd_config.id}"]
+}
+
+resource "aws_instance" "coreos_builder" {
+  ami           = "${data.aws_ami.coreos.id}"
+  instance_type = "c4.4xlarge"
+
+  connection {
+    user = "nvidia"
+    agent = true
+    host_key = "${file(var.ssh_host_key_pub)}"
+  }
+
+  provisioner "file" {
+    source = "./coreos/build.sh"
+    destination = "~/build.sh"
+  }
+  provisioner "remote-exec" {
+    inline = [
+      "sudo systemctl stop update-engine",
+      "sudo systemctl stop locksmithd",
+      "sudo modprobe -a loop ipmi_msghandler",
+      "chmod +x ~/build.sh"
+    ]
+  }
+  root_block_device {
+    volume_size = 40
+  }
+
+  user_data = "${data.ignition_config.coreos_ignition_config.rendered}"
+}
+
+output "public_ip_coreos" {
+  value = "${aws_instance.coreos_builder.public_ip}"
 }
