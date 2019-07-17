@@ -54,11 +54,12 @@ build:
     - chmod 700 ${HOME}/.ssh
     - ssh-add -L > ${HOME}/.ssh/id_rsa.pub
 
+    - cd ./ci
     - echo "${SSH_HOST_KEY}" > "${SSH_HOST_KEY_PATH}"
     - echo "${SSH_HOST_KEY_PUB}" > "${SSH_HOST_KEY_PUB_PATH}"
 
     - terraform init -input=false
-    - ./ci/run.sh
+    - ./run.sh
   after_script:
     - rm -rf ${HOME}/.ssh
     - rm -rf ${SSH_HOST_KEY_PATH}
