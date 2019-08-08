@@ -1,38 +1,13 @@
-FROM ubuntu:18.04
+FROM centos:7
 
-# We need to fix the gcc version to 7.3 as the current kernel
-# for Ubuntu18.04 is compiled with this version.
-RUN apt update && apt install -y --no-install-recommends \
-        cpp=4:7.3.0-3ubuntu2 \
-        cpp-7=7.3.0-16ubuntu3 \
-        g++=4:7.3.0-3ubuntu2 \
-        g++-7=7.3.0-16ubuntu3 \
-        gcc=4:7.3.0-3ubuntu2 \
-        gcc-7=7.3.0-16ubuntu3 \
-        gcc-7-base=7.3.0-16ubuntu3 \
-        libasan4=7.3.0-16ubuntu3 \
-        libcilkrts5=7.3.0-16ubuntu3 \
-        libgcc-7-dev=7.3.0-16ubuntu3 \
-        libstdc++-7-dev=7.3.0-16ubuntu3 \
-        libubsan0=7.3.0-16ubuntu3 && \
-      apt-mark hold cpp cpp-7 g++ g++-7 gcc gcc-7 gcc-7-base libasan4 \
-        libcilkrts5 libgcc-7-dev libstdc++-7-dev libubsan0
-
-RUN dpkg --add-architecture i386 && \
-    apt-get update && apt-get install -y --no-install-recommends \
-        apt-utils \
-        build-essential \
+RUN yum install -y \
         ca-certificates \
         curl \
-        kmod \
-        libc6:i386 \
-        libelf-dev && \
-    rm -rf /var/lib/apt/lists/*
-
-RUN echo "deb [arch=amd64] http://archive.ubuntu.com/ubuntu/ bionic main" > /etc/apt/sources.list && \
-    echo "deb [arch=amd64] http://archive.ubuntu.com/ubuntu/ bionic-updates main" >> /etc/apt/sources.list && \
-    echo "deb [arch=amd64] http://archive.ubuntu.com/ubuntu/ bionic-security main" >> /etc/apt/sources.list && \
-    usermod -o -u 0 -g 0 _apt
+        gcc \
+        glibc.i686 \
+        make \
+        kmod && \
+    rm -rf /var/cache/yum/*
 
 RUN curl -fsSL -o /usr/local/bin/donkey https://github.com/3XX0/donkey/releases/download/v1.1.0/donkey && \
     curl -fsSL -o /usr/local/bin/extract-vmlinux https://raw.githubusercontent.com/torvalds/linux/master/scripts/extract-vmlinux && \
@@ -77,13 +52,13 @@ ARG PUBLIC_KEY=empty
 COPY ${PUBLIC_KEY} kernel/pubkey.x509
 
 ARG PRIVATE_KEY
-ARG KERNEL_VERSION=generic,generic-hwe-18.04
+ARG KERNEL_VERSION=latest
 
 # Compile the kernel modules and generate precompiled packages for use by the nvidia-installer.
-RUN apt-get update && \
+RUN yum makecache -y && \
     for version in $(echo $KERNEL_VERSION | tr ',' ' '); do \
         nvidia-driver update -k $version -t builtin ${PRIVATE_KEY:+"-s ${PRIVATE_KEY}"}; \
     done && \
-    rm -rf /var/lib/apt/lists/*
+    rm -rf /var/cache/yum/*
 
 ENTRYPOINT ["nvidia-driver", "init"]
