@@ -1,23 +1,5 @@
 FROM ubuntu:18.04
 
-# We need to fix the gcc version to 7.3 as the current kernel
-# for Ubuntu18.04 is compiled with this version.
-RUN apt update && apt install -y --no-install-recommends \
-        cpp \
-        cpp-7 \
-        g++ \
-        g++-7 \
-        gcc \
-        gcc-7 \
-        gcc-7-base \
-        libasan4 \
-        libcilkrts5 \
-        libgcc-7-dev \
-        libstdc++-7-dev \
-        libubsan0 && \
-      apt-mark hold cpp cpp-7 g++ g++-7 gcc gcc-7 gcc-7-base libasan4 \
-        libcilkrts5 libgcc-7-dev libstdc++-7-dev libubsan0
-
 RUN dpkg --add-architecture i386 && \
     apt-get update && apt-get install -y --no-install-recommends \
         apt-utils \
@@ -40,12 +22,13 @@ RUN curl -fsSL -o /usr/local/bin/donkey https://github.com/3XX0/donkey/releases/
 
 #ARG BASE_URL=http://us.download.nvidia.com/XFree86/Linux-x86_64
 ARG BASE_URL=https://us.download.nvidia.com/tesla
-ARG DRIVER_VERSION=418.40.04
+ARG DRIVER_VERSION=418.87.01
+ARG SHORT_DRIVER_VERSION=418.87
 ENV DRIVER_VERSION=$DRIVER_VERSION
 
 # Install the userspace components and copy the kernel module sources.
 RUN cd /tmp && \
-    curl -fSsl -O $BASE_URL/$DRIVER_VERSION/NVIDIA-Linux-x86_64-$DRIVER_VERSION.run && \
+    curl -fSsl -O $BASE_URL/$SHORT_DRIVER_VERSION/NVIDIA-Linux-x86_64-$DRIVER_VERSION.run && \
     sh NVIDIA-Linux-x86_64-$DRIVER_VERSION.run -x && \
     cd NVIDIA-Linux-x86_64-$DRIVER_VERSION* && \
     ./nvidia-installer --silent \
