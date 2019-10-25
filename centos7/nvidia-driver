@@ -80,11 +80,13 @@ _kernel_requires_package() {
     echo "Checking NVIDIA driver packages..."
     cd /usr/src/nvidia-${DRIVER_VERSION}/kernel
 
-    if [ "${KERNEL_VERSION}" != "$(uname -r)" ]; then
-        proc_mount_arg="--proc-mount-point /lib/modules/${KERNEL_VERSION}/proc"
-    fi
+    # When the kernel version is latest on host, this check fails and lead to recompilation, even when precompiled modules exist.
+    #if [ "${KERNEL_VERSION}" != "$(uname -r)" ]; then
+    proc_mount_arg="--proc-mount-point /lib/modules/${KERNEL_VERSION}/proc"
+    #fi
     for pkg_name in $(ls -d -1 precompiled/** 2> /dev/null); do
-        if ! ../mkprecompiled --match ${pkg_name} ${proc_mount_arg} > /dev/null; then
+	is_match=$(../mkprecompiled --match ${pkg_name} ${proc_mount_arg})
+        if [ "${is_match}" == "kernel interface matches." ]; then
             echo "Found NVIDIA driver package ${pkg_name##*/}"
             return 1
         fi
@@ -212,6 +214,10 @@ _install_driver() {
         install_args+=("--accept-license")
     fi
     nvidia-installer --kernel-module-only --no-drm --ui=none --no-nouveau-check ${install_args[@]+"${install_args[@]}"}
+    # May need to add no-cc-check for Rhel, otherwise it complains about cc missing in path
+    # /proc/version and lib/modules/KERNEL_VERSION/proc are different, by default installer looks at /proc/ so, added the proc-mount-point
+    # TODO: remove the -a flag. its not needed. in the new driver version, license-acceptance is implicit
+    #nvidia-installer --kernel-module-only --no-drm --ui=none --no-nouveau-check --no-cc-version-check --proc-mount-point /lib/modules/${KERNEL_VERSION}/proc ${install_args[@]+"${install_args[@]}"}
 }
 
 # Mount the driver rootfs into the run directory with the exception of sysfs.
