@@ -14,6 +14,7 @@ SSH_KEY=${SSH_KEY:-${HOME}/.ssh/id_rsa}
 
 UBUNTU_VERSIONS=${UBUNTU_VERSIONS:-"16.04 18.04"}
 CENTOS_VERSIONS=${CENTOS_VERSIONS:-"7"}
+RHEL_VERSIONS=${RHEL_VERSIONS:-"8"}
 
 log() {
   echo -e "\033[1;32m[+] $*\033[0m"
@@ -41,6 +42,12 @@ latest_centos_kernel() {
       | cut -d ':' -f 2"
 }
 
+latest_rhel_kernel() {
+  docker run centos:"${1}" /bin/bash -c\
+    "yum install -y yum-utils &> /dev/null && repoquery kernel-headers \
+      | cut -d ':' -f 2"
+}
+
 docker_ssh() {
   docker -H "ssh://nvidia@${public_ip}" "${@}"
 }
@@ -48,10 +55,11 @@ docker_ssh() {
 build() {
   public_ip=${public_ip_ubuntu16_04}
 
+  # Note: This pulls the 
   docker_ssh build -t "${REGISTRY}:${image_tag_long}" \
                    --build-arg KERNEL_VERSION="${kernel_version}" \
                    --build-arg DRIVER_VERSION="${DRIVER_VERSION}" \
-                   "https://gitlab.com/nvidia/driver.git#master:${1}"
+                   "https://gitlab.com/nvidia/container-images/driver.git#master:${1}"
 
   docker_ssh save "${REGISTRY}:${image_tag_long}" -o "${image_tag_long}.tar"
 
@@ -149,6 +157,25 @@ for version in ${CENTOS_VERSIONS}; do
     image_tag_short=${DRIVER_VERSION}-centos${version}
 
     build "centos${version}"
+  fi
+done
+
+# Resolving Centos versions
+for version in ${RHEL_VERSIONS}; do
+  log "Detecting versions for RHEL ${version}"
+  rhel_kernel=$(latest_rhel_kernel "${version}")
+
+  log "Generating tags for RHEL ${version}"
+  rhel_tag_long=${DRIVER_VERSION}-${rhel_kernel}-rhel${version}
+
+  if [[ -n ${FORCE} ]] || ! tag_exists "${rhel_tag_long}" "${tags}"; then
+    log "Building CentOS image version ${version}"
+
+    kernel_version=${rhel_kernel}
+    image_tag_long=${rhel_tag_long}
+    image_tag_short=${DRIVER_VERSION}-rhel${version}
+
+    build "rhel${version}"
   fi
 done
 
