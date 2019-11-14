@@ -44,8 +44,8 @@ latest_centos_kernel() {
 
 latest_rhel_kernel() {
   docker run centos:"${1}" /bin/bash -c\
-    "yum install -y yum-utils &> /dev/null && repoquery kernel-headers \
-      | cut -d ':' -f 2"
+    "dnf repoquery --latest-limit 1 kernel-headers \
+      | cut -d ':' -f 2 | head -n 1"
 }
 
 docker_ssh() {
