@@ -1,4 +1,4 @@
-#! /bin/bash
+#! /bin/bash -x
 # Copyright (c) 2018, NVIDIA CORPORATION. All rights reserved.
 
 set -eu
@@ -24,7 +24,7 @@ _cleanup_package_cache() {
 
 # Resolve the kernel version to the form major.minor.patch-revision.
 _resolve_kernel_version() {
-    local version=$(yum -q list available --show-duplicates kernel-headers |
+    local version=$(yum -q list available --show-duplicates kernel-headers | grep -v ubi-7 |
       awk -v arch=$(uname -m) 'NR>1 {print $2"."arch}' | tac | grep -E -m1 "^${KERNEL_VERSION/latest/.*}")
 
     echo "Resolving Linux kernel version..."
@@ -52,7 +52,7 @@ _install_prerequisites() (
     ln -s /usr/src/kernels/${KERNEL_VERSION} /lib/modules/${KERNEL_VERSION}/build
 
     echo "Installing Linux kernel module files..."
-    curl -fsSL $(repoquery --location kernel-${KERNEL_VERSION}) | rpm2cpio | cpio -idm --quiet
+    curl -fsSL $(repoquery -q --location kernel-${KERNEL_VERSION}) | rpm2cpio | cpio -idm --quiet
     mv lib/modules/${KERNEL_VERSION}/modules.* /lib/modules/${KERNEL_VERSION}
     depmod ${KERNEL_VERSION}
 
@@ -67,10 +67,11 @@ _install_prerequisites() (
 
 # Cleanup the prerequisites installed above.
 _remove_prerequisites() {
-    if [ "${PACKAGE_TAG:-}" != "builtin" ]; then
-        yum -q -y remove kernel-headers-${KERNEL_VERSION} kernel-devel-${KERNEL_VERSION} > /dev/null
+    true
+    #if [ "${PACKAGE_TAG:-}" != "builtin" ]; then
+        # yum -q -y remove kernel-headers-${KERNEL_VERSION} kernel-devel-${KERNEL_VERSION} > /dev/null
         # TODO remove module files not matching an existing driver package.
-    fi
+    #fi
 }
 
 # Check if the kernel version requires a new precompiled driver packages.
@@ -85,7 +86,7 @@ _kernel_requires_package() {
     proc_mount_arg="--proc-mount-point /lib/modules/${KERNEL_VERSION}/proc"
     #fi
     for pkg_name in $(ls -d -1 precompiled/** 2> /dev/null); do
-	is_match=$(../mkprecompiled --match ${pkg_name} ${proc_mount_arg})
+        is_match=$(../mkprecompiled --match ${pkg_name} ${proc_mount_arg})
         if [ "${is_match}" == "kernel interface matches." ]; then
             echo "Found NVIDIA driver package ${pkg_name##*/}"
             return 1
@@ -105,7 +106,7 @@ _create_driver_package() (
 
     echo "Compiling NVIDIA driver kernel modules..."
     cd /usr/src/nvidia-${DRIVER_VERSION}/kernel
-    make -s -j SYSSRC=/lib/modules/${KERNEL_VERSION}/build nv-linux.o nv-modeset-linux.o > /dev/null
+    IGNORE_CC_MISMATCH=1 make -s -j SYSSRC=/lib/modules/${KERNEL_VERSION}/build nv-linux.o nv-modeset-linux.o > /dev/null
 
     echo "Relinking NVIDIA driver kernel modules..."
     rm -f nvidia.ko nvidia-modeset.ko
@@ -213,7 +214,7 @@ _install_driver() {
     if [ "${ACCEPT_LICENSE}" = "yes" ]; then
         install_args+=("--accept-license")
     fi
-    nvidia-installer --kernel-module-only --no-drm --ui=none --no-nouveau-check ${install_args[@]+"${install_args[@]}"}
+    IGNORE_CC_MISMATCH=1 nvidia-installer --kernel-module-only --no-drm --ui=none --no-nouveau-check ${install_args[@]+"${install_args[@]}"}
     # May need to add no-cc-check for Rhel, otherwise it complains about cc missing in path
     # /proc/version and lib/modules/KERNEL_VERSION/proc are different, by default installer looks at /proc/ so, added the proc-mount-point
     # TODO: remove the -a flag. its not needed. in the new driver version, license-acceptance is implicit
