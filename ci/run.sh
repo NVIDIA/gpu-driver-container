@@ -69,10 +69,10 @@ build() {
   docker push "${REGISTRY}:${image_tag_long}"
   docker push "${REGISTRY}:${image_tag_short}"
 
-  docker_ssh container prune -a
+  docker_ssh container prune
   docker_ssh image prune -a
 
-  docker container prune -a
+  docker container prune
   docker image prune -a
 }
 
