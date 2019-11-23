@@ -43,9 +43,7 @@ RUN cd /tmp && \
                        --x-prefix=/tmp/null \
                        --x-module-path=/tmp/null \
                        --x-library-path=/tmp/null \
-                       --x-sysconfig-path=/tmp/null \
-                       --no-glvnd-egl-client \
-                       --no-glvnd-glx-client && \
+                       --x-sysconfig-path=/tmp/null && \
     mkdir -p /usr/src/nvidia-$DRIVER_VERSION && \
     mv LICENSE mkprecompiled kernel /usr/src/nvidia-$DRIVER_VERSION && \
     sed '9,${/^\(kernel\|LICENSE\)/!d}' .manifest > /usr/src/nvidia-$DRIVER_VERSION/.manifest && \
