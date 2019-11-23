@@ -30,20 +30,20 @@ tag_exists() {
 }
 
 latest_ubuntu_kernel() {
-  docker run ubuntu:"${1}" /bin/bash -c\
+  docker run --rm ubuntu:"${1}" /bin/bash -c\
     "apt update &> /dev/null && apt-cache show linux-headers-${2} 2>> /dev/null \
       | sed -nE 's/^Version:\s+(([0-9]+\.){2}[0-9]+)[-.]([0-9]+).*/\1-\3/p' \
       | head -n 1"
 }
 
 latest_centos_kernel() {
-  docker run centos:"${1}" /bin/bash -c\
+  docker run --rm centos:"${1}" /bin/bash -c\
     "yum install -y yum-utils &> /dev/null && repoquery kernel-headers \
       | cut -d ':' -f 2"
 }
 
 latest_rhel_kernel() {
-  docker run centos:"${1}" /bin/bash -c\
+  docker run --rm centos:"${1}" /bin/bash -c\
     "dnf repoquery --latest-limit 1 kernel-headers \
       | cut -d ':' -f 2 | head -n 1"
 }
@@ -68,6 +68,12 @@ build() {
 
   docker push "${REGISTRY}:${image_tag_long}"
   docker push "${REGISTRY}:${image_tag_short}"
+
+  docker_ssh container prune -a
+  docker_ssh image prune -a
+
+  docker container prune -a
+  docker image prune -a
 }
 
 cleanup() {
