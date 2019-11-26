@@ -43,9 +43,17 @@ latest_centos_kernel() {
 }
 
 latest_rhel_kernel() {
-  docker run --rm centos:"${1}" /bin/bash -c\
-    "dnf repoquery --latest-limit 1 kernel-headers \
-      | cut -d ':' -f 2 | head -n 1"
+  if [[ "${1}" -eq 7 ]]; then
+    docker run --rm centos:"${1}" /bin/bash -c\
+      "yum install -y yum-utils &> /dev/null && repoquery kernel-headers \
+        | cut -d ':' -f 2"
+  elif [[ "${1}" -eq 8 ]]; then
+    docker run --rm centos:"${1}" /bin/bash -c\
+      "dnf repoquery -q --latest-limit 1 kernel-headers \
+        | cut -d ':' -f 2 | head -n 1"
+  else
+    exit 1
+  fi
 }
 
 docker_ssh() {
