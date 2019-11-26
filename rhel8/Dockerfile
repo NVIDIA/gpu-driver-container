@@ -1,8 +1,15 @@
 FROM registry.access.redhat.com/ubi8:latest
 
+COPY nvidia-driver /usr/local/bin
+COPY CentOS-Base.repo /etc/yum.repos.d/CentOS-Base.repo
+COPY RPM-GPG-KEY-centosofficial /etc/pki/rpm-gpg/RPM-GPG-KEY-centosofficial
+
+RUN rm -rf /var/lib/rpm && rpm --rebuilddb
+
 RUN yum install -y \
         ca-certificates \
         curl \
+        elfutils-libelf-devel \
         gcc \
         glibc.i686 \
         make \
@@ -43,10 +50,6 @@ RUN cd /tmp && \
     sed '9,${/^\(kernel\|LICENSE\)/!d}' .manifest > /usr/src/nvidia-$DRIVER_VERSION/.manifest && \
     rm -rf /tmp/*
 
-COPY nvidia-driver /usr/local/bin
-COPY CentOS-Base.repo /etc/yum.repos.d/CentOS-Base.repo
-COPY RPM-GPG-KEY-centosofficial /etc/pki/rpm-gpg/RPM-GPG-KEY-centosofficial
-
 WORKDIR /usr/src/nvidia-$DRIVER_VERSION
 
 ARG PUBLIC_KEY=empty
@@ -56,7 +59,7 @@ ARG PRIVATE_KEY
 ARG KERNEL_VERSION=latest
 
 # Compile the kernel modules and generate precompiled packages for use by the nvidia-installer.
-RUN yum makecache -y && yum install -y elfutils-libelf-devel && \
+RUN yum makecache -y && \
     for version in $(echo $KERNEL_VERSION | tr ',' ' '); do \
         nvidia-driver update -k $version -t builtin ${PRIVATE_KEY:+"-s ${PRIVATE_KEY}"}; \
     done && \

@@ -63,6 +63,17 @@ _install_prerequisites() (
         return 1
     fi
     mv version /lib/modules/${KERNEL_VERSION}/proc
+
+    # Parse gcc version
+    # gcc_version is expected to match x.y.z
+    # current_gcc is expected to match 'gcc-x.y.z-rel.el8.x86_64
+    local gcc_version=$(cat /lib/modules/${KERNEL_VERSION}/proc/version | grep -Eo "gcc version ([0-9\.]+)" | grep -Eo "([0-9\.]+)")
+    local current_gcc=$(rpm -qa gcc)
+    echo "kernel requires gcc version: 'gcc-${gcc_version}', current gcc version is '${current_gcc}'"
+
+    if [[ "gcc-${gcc_version}" != "${current_gcc}"* ]]; then
+        yum install -q -y "gcc-${gcc_version}"
+    fi
 )
 
 # Cleanup the prerequisites installed above.
@@ -106,7 +117,7 @@ _create_driver_package() (
 
     echo "Compiling NVIDIA driver kernel modules..."
     cd /usr/src/nvidia-${DRIVER_VERSION}/kernel
-    IGNORE_CC_MISMATCH=1 make -s -j SYSSRC=/lib/modules/${KERNEL_VERSION}/build nv-linux.o nv-modeset-linux.o > /dev/null
+    make -s -j SYSSRC=/lib/modules/${KERNEL_VERSION}/build nv-linux.o nv-modeset-linux.o > /dev/null
 
     echo "Relinking NVIDIA driver kernel modules..."
     rm -f nvidia.ko nvidia-modeset.ko
