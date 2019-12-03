@@ -178,12 +178,8 @@ image_tag_short=${DRIVER_VERSION}-rhel7
 build "rhel7"
 
 image_tag_long=${DRIVER_VERSION}-rhel8
-image_tag_short=${DRIVER_VERSION}-rhel8
-build "rhel8"
-
-image_tag_long=${DRIVER_VERSION}-rhcos
 image_tag_short=${DRIVER_VERSION}-rhcos
-build "rhcos"
+build "rhel8"
 
 # Resolving CoreOS version
 coreos_kernel=$(ssh "nvidia@${public_ip_coreos}" uname -r)
