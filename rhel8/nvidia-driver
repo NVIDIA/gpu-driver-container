@@ -24,7 +24,7 @@ _cleanup_package_cache() {
 
 # Resolve the kernel version to the form major.minor.patch-revision.
 _resolve_kernel_version() {
-    local version=$(yum -q list available --showduplicates kernel-headers | grep -v ubi-8-baseos |
+    local version=$(yum -q list available --showduplicates kernel-headers |
       awk -v arch=$(uname -m) 'NR>1 {print $2"."arch}' | tac | grep -E -m1 "^${KERNEL_VERSION/latest/.*}")
 
     echo "Resolving Linux kernel version..."
@@ -44,17 +44,24 @@ _install_prerequisites() (
     trap "rm -rf ${tmp_dir}" EXIT
     cd ${tmp_dir}
 
+    dnf install -q -y elfutils-libelf-devel
+
     rm -rf /lib/modules/${KERNEL_VERSION}
     mkdir -p /lib/modules/${KERNEL_VERSION}/proc
 
     echo "Installing Linux kernel headers..."
-    yum -q -y install kernel-headers-${KERNEL_VERSION} kernel-devel-${KERNEL_VERSION} > /dev/null
+    dnf -q -y install kernel-headers-${KERNEL_VERSION} kernel-devel-${KERNEL_VERSION} > /dev/null
     ln -s /usr/src/kernels/${KERNEL_VERSION} /lib/modules/${KERNEL_VERSION}/build
 
     echo "Installing Linux kernel module files..."
-    curl -fsSL $(dnf repoquery -q --location kernel-core-${KERNEL_VERSION}) | rpm2cpio | cpio -idm --quiet
+    dnf install -y -q kernel-core-${KERNEL_VERSION} --setopt=install_weak_deps=False --best --downloadonly --downloaddir=$(pwd)
+    cat ./kernel-core-*.rpm | rpm2cpio | cpio -idm --quiet
+    rm ./kernel-core-*.rpm
+
     mv lib/modules/${KERNEL_VERSION}/modules.* /lib/modules/${KERNEL_VERSION}
+    mv lib/modules/${KERNEL_VERSION}/kernel /lib/modules/${KERNEL_VERSION}
     depmod ${KERNEL_VERSION}
+    modprobe ipmi_msghandler
 
     echo "Generating Linux kernel version string..."
     extract-vmlinux ./lib/modules/${KERNEL_VERSION}/vmlinuz | strings | grep -E '^Linux version' | sed 's/^\(.*\)\s\+(.*)$/\1/' > version
@@ -90,6 +97,8 @@ _kernel_requires_package() {
     local proc_mount_arg=""
 
     echo "Checking NVIDIA driver packages..."
+
+    [[ ! -d /usr/src/nvidia-${DRIVER_VERSION}/kernel ]] && return 0
     cd /usr/src/nvidia-${DRIVER_VERSION}/kernel
 
     # When the kernel version is latest on host, this check fails and lead to recompilation, even when precompiled modules exist.
