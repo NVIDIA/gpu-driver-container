@@ -24,7 +24,7 @@ _cleanup_package_cache() {
 
 # Resolve the kernel version to the form major.minor.patch-revision.
 _resolve_kernel_version() {
-    local version=$(yum -q list available --show-duplicates kernel-headers | grep -v ubi-7 |
+    local version=$(yum -q list available --show-duplicates kernel-headers |
       awk -v arch=$(uname -m) 'NR>1 {print $2"."arch}' | tac | grep -E -m1 "^${KERNEL_VERSION/latest/.*}")
 
     echo "Resolving Linux kernel version..."
@@ -52,9 +52,14 @@ _install_prerequisites() (
     ln -s /usr/src/kernels/${KERNEL_VERSION} /lib/modules/${KERNEL_VERSION}/build
 
     echo "Installing Linux kernel module files..."
-    curl -fsSL $(repoquery -q --location kernel-${KERNEL_VERSION}) | rpm2cpio | cpio -idm --quiet
+    dnf install -y -q kernel-${KERNEL_VERSION} --setopt=install_weak_deps=False --best --downloadonly --downloaddir=$(pwd)
+    cat ./kernel*.rpm | rpm2cpio | cpio -idm --quiet
+    rm ./*.rpm
+
     mv lib/modules/${KERNEL_VERSION}/modules.* /lib/modules/${KERNEL_VERSION}
+    mv lib/modules/${KERNEL_VERSION}/kernel /lib/modules/${KERNEL_VERSION}
     depmod ${KERNEL_VERSION}
+    modprobe ipmi_msghandler
 
     echo "Generating Linux kernel version string..."
     extract-vmlinux boot/vmlinuz-${KERNEL_VERSION} | strings | grep -E '^Linux version' | sed 's/^\(.*\)\s\+(.*)$/\1/' > version
@@ -63,6 +68,17 @@ _install_prerequisites() (
         return 1
     fi
     mv version /lib/modules/${KERNEL_VERSION}/proc
+
+    # Parse gcc version
+    # gcc_version is expected to match x.y.z
+    # current_gcc is expected to match 'gcc-x.y.z-rel.el8.x86_64
+    local gcc_version=$(cat /lib/modules/${KERNEL_VERSION}/proc/version | grep -Eo "gcc version ([0-9\.]+)" | grep -Eo "([0-9\.]+)")
+    local current_gcc=$(rpm -qa gcc)
+    echo "kernel requires gcc version: 'gcc-${gcc_version}', current gcc version is '${current_gcc}'"
+
+    if [[ "gcc-${gcc_version}" != "${current_gcc}"* ]]; then
+        yum install -q -y "gcc-${gcc_version}"
+    fi
 )
 
 # Cleanup the prerequisites installed above.
@@ -78,6 +94,7 @@ _remove_prerequisites() {
 _kernel_requires_package() {
     local proc_mount_arg=""
 
+    [[ ! -d /usr/src/nvidia-${DRIVER_VERSION}/kernel ]] && return 0
     echo "Checking NVIDIA driver packages..."
     cd /usr/src/nvidia-${DRIVER_VERSION}/kernel
 
