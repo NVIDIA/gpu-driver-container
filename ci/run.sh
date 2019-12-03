@@ -172,6 +172,7 @@ for version in ${CENTOS_VERSIONS}; do
   fi
 done
 
+kernel_version=""
 image_tag_long=${DRIVER_VERSION}-rhel7
 image_tag_short=${DRIVER_VERSION}-rhel7
 build "rhel7"
