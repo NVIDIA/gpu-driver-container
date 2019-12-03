@@ -56,7 +56,7 @@ _install_prerequisites() (
     echo "Installing Linux kernel module files..."
     dnf install -y -q kernel-core-${KERNEL_VERSION} --setopt=install_weak_deps=False --best --downloadonly --downloaddir=$(pwd)
     cat ./kernel-core-*.rpm | rpm2cpio | cpio -idm --quiet
-    rm ./kernel-core-*.rpm
+    rm ./*.rpm
 
     mv lib/modules/${KERNEL_VERSION}/modules.* /lib/modules/${KERNEL_VERSION}
     mv lib/modules/${KERNEL_VERSION}/kernel /lib/modules/${KERNEL_VERSION}
