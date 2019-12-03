@@ -14,7 +14,6 @@ SSH_KEY=${SSH_KEY:-${HOME}/.ssh/id_rsa}
 
 UBUNTU_VERSIONS=${UBUNTU_VERSIONS:-"16.04 18.04"}
 CENTOS_VERSIONS=${CENTOS_VERSIONS:-"7"}
-RHEL_VERSIONS=${RHEL_VERSIONS:-"7 8"}
 
 log() {
   echo -e "\033[1;32m[+] $*\033[0m"
@@ -63,7 +62,6 @@ docker_ssh() {
 build() {
   public_ip=${public_ip_ubuntu16_04}
 
-  # Note: This pulls the 
   docker_ssh build -t "${REGISTRY}:${image_tag_long}" \
                    --build-arg KERNEL_VERSION="${kernel_version}" \
                    --build-arg DRIVER_VERSION="${DRIVER_VERSION}" \
@@ -174,24 +172,17 @@ for version in ${CENTOS_VERSIONS}; do
   fi
 done
 
-# Resolving Centos versions
-for version in ${RHEL_VERSIONS}; do
-  log "Detecting versions for RHEL ${version}"
-  rhel_kernel=$(latest_rhel_kernel "${version}")
+image_tag_long=${DRIVER_VERSION}-rhel7
+image_tag_short=${DRIVER_VERSION}-rhel7
+build "rhel7"
 
-  log "Generating tags for RHEL ${version}"
-  rhel_tag_long=${DRIVER_VERSION}-${rhel_kernel}-rhel${version}
+image_tag_long=${DRIVER_VERSION}-rhel8
+image_tag_short=${DRIVER_VERSION}-rhel8
+build "rhel8"
 
-  if [[ -n ${FORCE} ]] || ! tag_exists "${rhel_tag_long}" "${tags}"; then
-    log "Building CentOS image version ${version}"
-
-    kernel_version=${rhel_kernel}
-    image_tag_long=${rhel_tag_long}
-    image_tag_short=${DRIVER_VERSION}-rhel${version}
-
-    build "rhel${version}"
-  fi
-done
+image_tag_long=${DRIVER_VERSION}-rhcos
+image_tag_short=${DRIVER_VERSION}-rhcos
+build "rhcos"
 
 # Resolving CoreOS version
 coreos_kernel=$(ssh "nvidia@${public_ip_coreos}" uname -r)
