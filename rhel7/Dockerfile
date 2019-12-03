@@ -1,9 +1,5 @@
 FROM registry.access.redhat.com/ubi7:latest
 
-COPY nvidia-driver /usr/local/bin
-COPY CentOS-Base.repo /etc/yum.repos.d/CentOS-Base.repo
-COPY RPM-GPG-KEY-CentOS-7 /etc/pki/rpm-gpg/RPM-GPG-KEY-CentOS-7
-
 RUN yum install -y \
         ca-certificates \
         curl \
@@ -48,6 +44,8 @@ RUN cd /tmp && \
     sed '9,${/^\(kernel\|LICENSE\)/!d}' .manifest > /usr/src/nvidia-$DRIVER_VERSION/.manifest && \
     rm -rf /tmp/*
 
+COPY nvidia-driver /usr/local/bin
+
 WORKDIR /usr/src/nvidia-$DRIVER_VERSION
 
 ARG PUBLIC_KEY=empty
@@ -55,12 +53,5 @@ COPY ${PUBLIC_KEY} kernel/pubkey.x509
 
 ARG PRIVATE_KEY
 ARG KERNEL_VERSION=latest
-
-# Compile the kernel modules and generate precompiled packages for use by the nvidia-installer.
-RUN yum makecache -y && \
-    for version in $(echo $KERNEL_VERSION | tr ',' ' '); do \
-        nvidia-driver update -k $version -t builtin ${PRIVATE_KEY:+"-s ${PRIVATE_KEY}"}; \
-    done && \
-    rm -rf /var/cache/yum/*
 
 ENTRYPOINT ["nvidia-driver", "init"]
