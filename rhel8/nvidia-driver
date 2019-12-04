@@ -101,7 +101,7 @@ _kernel_requires_package() {
 
     # When the kernel version is latest on host, this check fails and lead to recompilation, even when precompiled modules exist.
     #if [ "${KERNEL_VERSION}" != "$(uname -r)" ]; then
-    proc_mount_arg="--proc-mount-point /lib/modules/${KERNEL_VERSION}/proc"
+    proc_mount_arg="--proc-mount-point /proc"
     #fi
     for pkg_name in $(ls -d -1 precompiled/** 2> /dev/null); do
         is_match=$(../mkprecompiled --match ${pkg_name} ${proc_mount_arg})
