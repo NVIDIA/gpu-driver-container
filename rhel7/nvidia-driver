@@ -57,7 +57,6 @@ _install_prerequisites() (
     rm ./*.rpm
 
     mv lib/modules/${KERNEL_VERSION}/modules.* /lib/modules/${KERNEL_VERSION}
-    mv lib/modules/${KERNEL_VERSION}/kernel /lib/modules/${KERNEL_VERSION}
     depmod ${KERNEL_VERSION}
 
     echo "Generating Linux kernel version string..."
@@ -344,6 +343,12 @@ update() {
 
     trap "echo 'Caught signal'; exit 1" HUP INT QUIT PIPE TERM
 
+    UNREGISTERED='This system is not registered to Red Hat Subscription Management.'
+    if yum install -y elfutils-libelf-devel | grep "${UNREGISTERED}"; then
+        echo "RHEL containers needs to run on a registered RHEL host"
+        exit 1
+    fi
+
     _update_package_cache
     _resolve_kernel_version || exit 1
     _install_prerequisites
@@ -352,6 +357,13 @@ update() {
     fi
     _remove_prerequisites
     _cleanup_package_cache
+
+    # Ensure all non public UBI packages are removed
+    yum remove -y elfutils-libelf-devel gcc kernel*
+    yum remove -y $(yum list -q installed | tr -s ' ' | grep -v '@anaconda/7.7' | grep -v 'Installed' | cut -d ' ' -f 1)
+
+    # Ensure binaries extracted are removed
+    rm -rf /lib/modules/${KERNEL_VERSION}
 
     echo "Done"
     exit 0
