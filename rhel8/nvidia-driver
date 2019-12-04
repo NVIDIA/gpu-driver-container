@@ -364,7 +364,7 @@ update() {
 
     # Ensure all non public UBI packages are removed
     yum remove -y elfutils-libelf-devel gcc kernel*
-    yum remove -y $(yum list -q installed | tr -s ' ' | grep -v '@System' | grep -v 'Installed' | cut -d ' ' -f 1)
+    rpm -e --nodeps $(yum list -q installed | tr -s ' ' | grep -v '@System' | grep -v 'Installed' | cut -d ' ' -f 1)
 
     # Ensure binaries extracted are removed
     rm -rf /lib/modules/${KERNEL_VERSION}
