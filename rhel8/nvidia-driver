@@ -307,12 +307,8 @@ init() {
     _unmount_rootfs
 
     if _kernel_requires_package; then
-        _update_package_cache
-        _resolve_kernel_version || exit 1
-        _install_prerequisites
-        _create_driver_package
-        _remove_prerequisites
-        _cleanup_package_cache
+        echo "RHEL containers cannot compile at runtime."
+        exit 1
     fi
 
     _install_driver
