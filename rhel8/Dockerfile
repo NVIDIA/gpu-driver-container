@@ -54,7 +54,7 @@ ARG PRIVATE_KEY
 ARG KERNEL_VERSION=latest
 
 # Compile the kernel modules and generate precompiled packages for use by the nvidia-installer.
-RUN apt-get update && \
+RUN yum makecache -y && \
     for version in $(echo $KERNEL_VERSION | tr ',' ' '); do \
         nvidia-driver update -k $version -t builtin ${PRIVATE_KEY:+"-s ${PRIVATE_KEY}"}; \
     done && \
