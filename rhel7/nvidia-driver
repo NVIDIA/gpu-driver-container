@@ -385,7 +385,7 @@ if [ $# -eq 0 ]; then
 fi
 command=$1; shift
 case "${command}" in
-    init) options=$(getopt -l accept-license -o a -- "$@") ;;
+    init) options=$(getopt -l accept-license,modules-mount-path: -o am: -- "$@") ;;
     update) options=$(getopt -l kernel:,sign:,tag: -o k:s:t: -- "$@") ;;
     *) usage ;;
 esac
