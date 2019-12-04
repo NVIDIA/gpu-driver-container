@@ -52,7 +52,7 @@ _install_prerequisites() (
     ln -s /usr/src/kernels/${KERNEL_VERSION} /lib/modules/${KERNEL_VERSION}/build
 
     echo "Installing Linux kernel module files..."
-    dnf install -y -q kernel-${KERNEL_VERSION} --setopt=install_weak_deps=False --best --downloadonly --downloaddir=$(pwd)
+    yum install -y -q kernel-${KERNEL_VERSION} --downloadonly --downloaddir=$(pwd)
     cat ./kernel*.rpm | rpm2cpio | cpio -idm --quiet
     rm ./*.rpm
 
