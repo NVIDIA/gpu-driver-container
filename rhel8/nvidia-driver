@@ -311,6 +311,11 @@ init() {
         exit 1
     fi
 
+    if [[ -z "${MODULES_MOUNT_PATH}" ]]; then
+        touch "/lib/modules/"
+        mount --bind "${MODULES_MOUNT_PATH}" "/lib/modules/"
+    fi
+
     _install_driver
     _load_driver
     _mount_rootfs
@@ -384,6 +389,7 @@ ACCEPT_LICENSE=""
 KERNEL_VERSION=$(uname -r)
 PRIVATE_KEY=""
 PACKAGE_TAG=""
+MODULES_MOUNT_PATH=""
 
 for opt in ${options}; do
     case "$opt" in
@@ -391,6 +397,7 @@ for opt in ${options}; do
     -k | --kernel) KERNEL_VERSION=$2; shift 2 ;;
     -s | --sign) PRIVATE_KEY=$2; shift 2 ;;
     -t | --tag) PACKAGE_TAG=$2; shift 2 ;;
+    -m | --modules-mount-path) MODULES_MOUNT_PATH=$2; shift 2 ;;
     --) shift; break ;;
     esac
 done
