@@ -64,5 +64,3 @@ build:
     - rm -rf ${HOME}/.ssh
     - rm -rf ${SSH_HOST_KEY_PATH}
     - rm -rf ${SSH_HOST_KEY_PUB_PATH}
-  only:
-    - master
