@@ -59,7 +59,9 @@ _install_prerequisites() (
     rm ./*.rpm
 
     mv lib/modules/${KERNEL_VERSION}/modules.* /lib/modules/${KERNEL_VERSION}
+    mv lib/modules/${KERNEL_VERSION}/kernel /lib/modules/${KERNEL_VERSION}
     depmod ${KERNEL_VERSION}
+    modprobe ipmi_msghandler
 
     echo "Generating Linux kernel version string..."
     extract-vmlinux ./lib/modules/${KERNEL_VERSION}/vmlinuz | strings | grep -E '^Linux version' | sed 's/^\(.*\)\s\+(.*)$/\1/' > version
@@ -101,7 +103,7 @@ _kernel_requires_package() {
 
     # When the kernel version is latest on host, this check fails and lead to recompilation, even when precompiled modules exist.
     #if [ "${KERNEL_VERSION}" != "$(uname -r)" ]; then
-    proc_mount_arg="--proc-mount-point /proc"
+    proc_mount_arg="--proc-mount-point /lib/modules/${KERNEL_VERSION}/proc"
     #fi
     for pkg_name in $(ls -d -1 precompiled/** 2> /dev/null); do
         is_match=$(../mkprecompiled --match ${pkg_name} ${proc_mount_arg})
@@ -232,9 +234,7 @@ _install_driver() {
     if [ "${ACCEPT_LICENSE}" = "yes" ]; then
         install_args+=("--accept-license")
     fi
-
-    modprobe ipmi_msghandler
-    nvidia-installer --kernel-module-only --no-drm --ui=none --no-nouveau-check ${install_args[@]+"${install_args[@]}"}
+    IGNORE_CC_MISMATCH=1 nvidia-installer --kernel-module-only --no-drm --ui=none --no-nouveau-check ${install_args[@]+"${install_args[@]}"}
     # May need to add no-cc-check for Rhel, otherwise it complains about cc missing in path
     # /proc/version and lib/modules/KERNEL_VERSION/proc are different, by default installer looks at /proc/ so, added the proc-mount-point
     # TODO: remove the -a flag. its not needed. in the new driver version, license-acceptance is implicit
@@ -306,13 +306,12 @@ init() {
     _unmount_rootfs
 
     if _kernel_requires_package; then
-        echo "RHEL containers cannot compile at runtime."
-        exit 1
-    fi
-
-    if [[ -z "${MODULES_MOUNT_PATH}" ]]; then
-        touch "/lib/modules/"
-        mount --bind "${MODULES_MOUNT_PATH}" "/lib/modules/"
+        _update_package_cache
+        _resolve_kernel_version || exit 1
+        _install_prerequisites
+        _create_driver_package
+        _remove_prerequisites
+        _cleanup_package_cache
     fi
 
     _install_driver
@@ -346,13 +345,6 @@ update() {
 
     trap "echo 'Caught signal'; exit 1" HUP INT QUIT PIPE TERM
 
-    UNREGISTERED='This system is not registered to Red Hat Subscription Management.'
-    if yum install -y elfutils-libelf-devel | grep "${UNREGISTERED}"; then
-        echo "RHEL containers needs to run on a registered RHEL host"
-        exit 1
-    fi
-
-
     _update_package_cache
     _resolve_kernel_version || exit 1
     _install_prerequisites
@@ -361,13 +353,6 @@ update() {
     fi
     _remove_prerequisites
     _cleanup_package_cache
-
-    # Ensure all non public UBI packages are removed
-    yum remove -y elfutils-libelf-devel gcc kernel*
-    rpm -e --nodeps $(yum list -q installed | tr -s ' ' | grep -v '@System' | grep -v 'Installed' | cut -d ' ' -f 1)
-
-    # Ensure binaries extracted are removed
-    rm -rf /lib/modules/${KERNEL_VERSION}
 
     echo "Done"
     exit 0
@@ -389,7 +374,7 @@ if [ $# -eq 0 ]; then
 fi
 command=$1; shift
 case "${command}" in
-    init) options=$(getopt -l accept-license,modules-mount-path: -o am: -- "$@") ;;
+    init) options=$(getopt -l accept-license -o a -- "$@") ;;
     update) options=$(getopt -l kernel:,sign:,tag: -o k:s:t: -- "$@") ;;
     *) usage ;;
 esac
@@ -402,7 +387,6 @@ ACCEPT_LICENSE=""
 KERNEL_VERSION=$(uname -r)
 PRIVATE_KEY=""
 PACKAGE_TAG=""
-MODULES_MOUNT_PATH=""
 
 for opt in ${options}; do
     case "$opt" in
@@ -410,7 +394,6 @@ for opt in ${options}; do
     -k | --kernel) KERNEL_VERSION=$2; shift 2 ;;
     -s | --sign) PRIVATE_KEY=$2; shift 2 ;;
     -t | --tag) PACKAGE_TAG=$2; shift 2 ;;
-    -m | --modules-mount-path) MODULES_MOUNT_PATH=$2; shift 2 ;;
     --) shift; break ;;
     esac
 done
