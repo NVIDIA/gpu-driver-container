@@ -3,6 +3,14 @@ provider "aws" {
   region = "us-east-1"
 }
 
+provider "ignition" {
+  version = "~> 1.1"
+}
+
+provider "template" {
+  version = "~> 2.1"
+}
+
 variable "ssh_key_pub" {}
 variable "ssh_host_key" {}
 variable "ssh_host_key_pub" {}
