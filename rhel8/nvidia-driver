@@ -44,7 +44,7 @@ _install_prerequisites() (
     trap "rm -rf ${tmp_dir}" EXIT
     cd ${tmp_dir}
 
-    dnf install -q -y elfutils-libelf-devel
+    dnf install -q -y elfutils-libelf.x86_64
 
     rm -rf /lib/modules/${KERNEL_VERSION}
     mkdir -p /lib/modules/${KERNEL_VERSION}/proc
