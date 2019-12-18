@@ -4,7 +4,7 @@ provider "aws" {
 }
 
 provider "ignition" {
-  version = "~> 1.1"
+  version = "1.1.0"
 }
 
 provider "template" {
