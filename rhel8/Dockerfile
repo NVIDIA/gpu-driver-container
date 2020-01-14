@@ -19,6 +19,7 @@ ARG BASE_URL=https://us.download.nvidia.com/tesla
 ARG DRIVER_VERSION=440.33.01
 ENV DRIVER_VERSION=$DRIVER_VERSION
 
+RUN ln -s /sbin/ldconfig /sbin/ldconfig.real
 # Install the userspace components and copy the kernel module sources.
 RUN cd /tmp && \
     curl -fSsl -O $BASE_URL/$DRIVER_VERSION/NVIDIA-Linux-x86_64-$DRIVER_VERSION.run && \
