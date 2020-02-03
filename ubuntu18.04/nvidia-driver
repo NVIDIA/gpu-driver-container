@@ -50,11 +50,6 @@ _install_prerequisites() (
     rm -rf /lib/modules/${KERNEL_VERSION}
     mkdir -p /lib/modules/${KERNEL_VERSION}/proc
 
-    if ! cat /proc/modules | grep ipmi_msghandler > /dev/null; then
-        echo "ipmi_msghandler kernel module missing, please run 'modprobe ipmi_msghandler' and restart driver container" >&2
-        return 1
-    fi
-
     echo "Installing Linux kernel headers..."
     apt-get -qq install --no-install-recommends linux-headers-${KERNEL_VERSION} > /dev/null
 
@@ -62,6 +57,7 @@ _install_prerequisites() (
     apt-get -qq download linux-image-${KERNEL_VERSION} && dpkg -x linux-image*.deb .
     { apt-get -qq download linux-modules-${KERNEL_VERSION} && dpkg -x linux-modules*.deb . || true; } 2> /dev/null
     mv lib/modules/${KERNEL_VERSION}/modules.* /lib/modules/${KERNEL_VERSION}
+    mv lib/modules/${KERNEL_VERSION}/kernel /lib/modules/${KERNEL_VERSION}
     depmod ${KERNEL_VERSION}
 
     echo "Generating Linux kernel version string..."
@@ -152,13 +148,10 @@ _create_driver_package() (
 
 # Load the kernel modules and start persistenced.
 _load_driver() {
+    echo "Loading ipmi and i2c_core kernel modules..."
+    modprobe -a i2c_core ipmi_msghandler
+
     echo "Loading NVIDIA driver kernel modules..."
-
-    if uname -r | grep aws > /dev/null && ! cat /proc/modules | grep i2c_core > /dev/null; then
-      echo "i2c_core kernel module missing with aws kernel, please run 'modprobe i2c_core' and restart driver container"
-      return 1
-    fi
-
     modprobe -a nvidia nvidia-uvm nvidia-modeset
 
     echo "Starting NVIDIA persistence daemon..."
