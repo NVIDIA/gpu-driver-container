@@ -59,7 +59,6 @@ _install_prerequisites() (
     mv lib/modules/${KERNEL_VERSION}/modules.* /lib/modules/${KERNEL_VERSION}
     mv lib/modules/${KERNEL_VERSION}/kernel /lib/modules/${KERNEL_VERSION}
     depmod ${KERNEL_VERSION}
-    modprobe ipmi_msghandler
 
     echo "Generating Linux kernel version string..."
     extract-vmlinux boot/vmlinuz-${KERNEL_VERSION} | strings | grep -E '^Linux version' | sed 's/^\(.*\)\s\+(.*)$/\1/' > version
@@ -164,6 +163,9 @@ _create_driver_package() (
 
 # Load the kernel modules and start persistenced.
 _load_driver() {
+    echo "Loading IPMI kernel module..."
+    modprobe ipmi_msghandler
+
     echo "Loading NVIDIA driver kernel modules..."
     modprobe -a nvidia nvidia-uvm nvidia-modeset
 
