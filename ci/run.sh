@@ -178,8 +178,15 @@ image_tag_short=${DRIVER_VERSION}-rhel7
 build "rhel7"
 
 image_tag_long=${DRIVER_VERSION}-rhel8
-image_tag_short=${DRIVER_VERSION}-rhcos4.2
+image_tag_short=${DRIVER_VERSION}-rhcos4.1
 build "rhel8"
+
+# Add rhcos tags
+docker pull "${REGISTRY}:${DRIVER_VERSION}-rhel8"
+docker tag "${REGISTRY}:${DRIVER_VERSION}-rhel8" "${REGISTRY}:${DRIVER_VERSION}-rhcos4.2"
+docker tag "${REGISTRY}:${DRIVER_VERSION}-rhel8" "${REGISTRY}:${DRIVER_VERSION}-rhcos4.3"
+docker push "${REGISTRY}:${DRIVER_VERSION}-rhcos4.2"
+docker push "${REGISTRY}:${DRIVER_VERSION}-rhcos4.3"
 
 # Resolving CoreOS version
 coreos_kernel=$(ssh "nvidia@${public_ip_coreos}" uname -r)
