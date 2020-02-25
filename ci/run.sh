@@ -201,7 +201,7 @@ coreos_tag_long=${CONTAINER_VERSION}-${coreos_kernel}-coreos
 if [[ -n ${FORCE} ]] || ! tag_exists "${coreos_tag_long}" "${tags}"; then
     log 'Building CoreOS image'
     # shellcheck disable=SC2029
-    ssh "nvidia@${public_ip_coreos}" /home/nvidia/build.sh "${CONTAINER_VERSION}" "${REGISTRY}"
+    ssh "nvidia@${public_ip_coreos}" /home/nvidia/build.sh "${DRIVER_VERSION}" "${CONTAINER_VERSION}" "${REGISTRY}"
     # shellcheck disable=SC2029
     scp "nvidia@${public_ip_coreos}:/home/nvidia/${coreos_tag_long}.tar" .
 
