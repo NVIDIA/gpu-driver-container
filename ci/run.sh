@@ -8,6 +8,7 @@ set -o xtrace
 export TF_IN_AUTOMATION=yes
 
 DRIVER_VERSION=${DRIVER_VERSION:-418.87.01}
+CONTAINER_VERSION=${DRIVER_VERSION}-${CI_COMMIT_TAG:-1.0.0-custom}
 FORCE=${FORCE:-}
 REGISTRY=${REGISTRY:-nvidia/driver}
 SSH_KEY=${SSH_KEY:-${HOME}/.ssh/id_rsa}
@@ -118,16 +119,16 @@ for version in ${UBUNTU_VERSIONS}; do
   aws_kernel=$(latest_ubuntu_kernel "${version}" aws)
 
   log "Generating tags for Ubuntu ${version}"
-  generic_tag_long=${DRIVER_VERSION}-${generic_kernel}-ubuntu${version}
-  hwe_tag_long=${DRIVER_VERSION}-${hwe_kernel}-ubuntu${version}-hwe
-  aws_tag_long=${DRIVER_VERSION}-${aws_kernel}-ubuntu${version}-aws
+  generic_tag_long=${CONTAINER_VERSION}-${generic_kernel}-ubuntu${version}
+  hwe_tag_long=${CONTAINER_VERSION}-${hwe_kernel}-ubuntu${version}-hwe
+  aws_tag_long=${CONTAINER_VERSION}-${aws_kernel}-ubuntu${version}-aws
 
   if [[ -n ${FORCE} ]] || ! tag_exists "${generic_tag_long}" "${tags}"; then
     log 'Building generic image'
 
     kernel_version=${generic_kernel}
     image_tag_long=${generic_tag_long}
-    image_tag_short=${DRIVER_VERSION}-ubuntu${version}
+    image_tag_short=${CONTAINER_VERSION}-ubuntu${version}
 
     build "ubuntu${version}"
   fi
@@ -137,7 +138,7 @@ for version in ${UBUNTU_VERSIONS}; do
 
     kernel_version=${hwe_kernel}
     image_tag_long=${hwe_tag_long}
-    image_tag_short=${DRIVER_VERSION}-ubuntu${version}-hwe
+    image_tag_short=${CONTAINER_VERSION}-ubuntu${version}-hwe
 
     build "ubuntu${version}"
   fi
@@ -147,7 +148,7 @@ for version in ${UBUNTU_VERSIONS}; do
 
     kernel_version=${aws_kernel}-aws
     image_tag_long=${aws_tag_long}
-    image_tag_short=${DRIVER_VERSION}-ubuntu${version}-aws
+    image_tag_short=${CONTAINER_VERSION}-ubuntu${version}-aws
 
     build "ubuntu${version}"
   fi
@@ -159,42 +160,42 @@ for version in ${CENTOS_VERSIONS}; do
   centos_kernel=$(latest_centos_kernel "${version}")
 
   log "Generating tags for Centos ${version}"
-  centos_tag_long=${DRIVER_VERSION}-${centos_kernel}-centos${version}
+  centos_tag_long=${CONTAINER_VERSION}-${centos_kernel}-centos${version}
 
   if [[ -n ${FORCE} ]] || ! tag_exists "${centos_tag_long}" "${tags}"; then
     log "Building CentOS image version ${version}"
 
     kernel_version=${centos_kernel}
     image_tag_long=${centos_tag_long}
-    image_tag_short=${DRIVER_VERSION}-centos${version}
+    image_tag_short=${CONTAINER_VERSION}-centos${version}
 
     build "centos${version}"
   fi
 done
 
 kernel_version=""
-image_tag_long=${DRIVER_VERSION}-rhel7
-image_tag_short=${DRIVER_VERSION}-rhel7
+image_tag_long=${CONTAINER_VERSION}-rhel7
+image_tag_short=${CONTAINER_VERSION}-rhel7
 build "rhel7"
 
-image_tag_long=${DRIVER_VERSION}-rhel8
-image_tag_short=${DRIVER_VERSION}-rhcos4.1
+image_tag_long=${CONTAINER_VERSION}-rhel8
+image_tag_short=${CONTAINER_VERSION}-rhcos4.1
 build "rhel8"
 
 # Add rhcos tags
-docker pull "${REGISTRY}:${DRIVER_VERSION}-rhel8"
-docker tag "${REGISTRY}:${DRIVER_VERSION}-rhel8" "${REGISTRY}:${DRIVER_VERSION}-rhcos4.2"
-docker tag "${REGISTRY}:${DRIVER_VERSION}-rhel8" "${REGISTRY}:${DRIVER_VERSION}-rhcos4.3"
-docker push "${REGISTRY}:${DRIVER_VERSION}-rhcos4.2"
-docker push "${REGISTRY}:${DRIVER_VERSION}-rhcos4.3"
+docker pull "${REGISTRY}:${CONTAINER_VERSION}-rhel8"
+docker tag "${REGISTRY}:${CONTAINER_VERSION}-rhel8" "${REGISTRY}:${CONTAINER_VERSION}-rhcos4.2"
+docker tag "${REGISTRY}:${CONTAINER_VERSION}-rhel8" "${REGISTRY}:${CONTAINER_VERSION}-rhcos4.3"
+docker push "${REGISTRY}:${CONTAINER_VERSION}-rhcos4.2"
+docker push "${REGISTRY}:${CONTAINER_VERSION}-rhcos4.3"
 
 # Resolving CoreOS version
 coreos_kernel=$(ssh "nvidia@${public_ip_coreos}" uname -r)
-coreos_tag_long=${DRIVER_VERSION}-${coreos_kernel}-coreos
+coreos_tag_long=${CONTAINER_VERSION}-${coreos_kernel}-coreos
 if [[ -n ${FORCE} ]] || ! tag_exists "${coreos_tag_long}" "${tags}"; then
     log 'Building CoreOS image'
     # shellcheck disable=SC2029
-    ssh "nvidia@${public_ip_coreos}" /home/nvidia/build.sh "${DRIVER_VERSION}" "${REGISTRY}"
+    ssh "nvidia@${public_ip_coreos}" /home/nvidia/build.sh "${CONTAINER_VERSION}" "${REGISTRY}"
     # shellcheck disable=SC2029
     scp "nvidia@${public_ip_coreos}:/home/nvidia/${coreos_tag_long}.tar" .
 
