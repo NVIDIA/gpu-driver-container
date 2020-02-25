@@ -6,7 +6,8 @@ set -o pipefail
 set -o xtrace
 
 DRIVER_VERSION=${1}
-REGISTRY=${2}
+CONTAINER_VERSION=${2}
+REGISTRY=${3}
 
 # Get the kernel version
 kernel_version=$(uname -r)
@@ -18,6 +19,6 @@ docker run --privileged --name "compile_driver-${DRIVER_VERSION}" "install-drive
 	     update --kernel ${kernel_version}
 
 docker commit -m "Compile Linux kernel modules version ${kernel_version} for NVIDIA driver version ${DRIVER_VERSION}" \
-	     --change='ENTRYPOINT ["nvidia-driver", "init"]' "compile_driver-${DRIVER_VERSION}" "${REGISTRY}:${DRIVER_VERSION}-${kernel_version}-coreos"
+	     --change='ENTRYPOINT ["nvidia-driver", "init"]' "compile_driver-${DRIVER_VERSION}" "${REGISTRY}:${CONTAINER_VERSION}-${kernel_version}-coreos"
 
-docker save "${REGISTRY}:${DRIVER_VERSION}-${kernel_version}-coreos" -o "${DRIVER_VERSION}-${kernel_version}-coreos.tar"
+docker save "${REGISTRY}:${CONTAINER_VERSION}-${kernel_version}-coreos" -o "${CONTAINER_VERSION}-${kernel_version}-coreos.tar"
