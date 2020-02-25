@@ -81,6 +81,8 @@ build() {
 
   docker container prune
   docker image prune -a
+
+  rm -f "${image_tag_long}.tar"
 }
 
 cleanup() {
@@ -188,6 +190,10 @@ docker tag "${REGISTRY}:${CONTAINER_VERSION}-rhel8" "${REGISTRY}:${CONTAINER_VER
 docker tag "${REGISTRY}:${CONTAINER_VERSION}-rhel8" "${REGISTRY}:${CONTAINER_VERSION}-rhcos4.3"
 docker push "${REGISTRY}:${CONTAINER_VERSION}-rhcos4.2"
 docker push "${REGISTRY}:${CONTAINER_VERSION}-rhcos4.3"
+
+docker container prune
+docker image prune -a
+
 
 # Resolving CoreOS version
 coreos_kernel=$(ssh "nvidia@${public_ip_coreos}" uname -r)
