@@ -7,14 +7,26 @@ set -o xtrace
 
 export TF_IN_AUTOMATION=yes
 
-DRIVER_VERSION=${DRIVER_VERSION:-418.87.01}
-CONTAINER_VERSION=${DRIVER_VERSION}-${CI_COMMIT_TAG:-1.0.0-custom}
+DRIVER_VERSION=${DRIVER_VERSION}
+CONTAINER_VERSION=${DRIVER_VERSION}-${CI_COMMIT_TAG}
+
 FORCE=${FORCE:-}
 REGISTRY=${REGISTRY:-nvidia/driver}
 SSH_KEY=${SSH_KEY:-${HOME}/.ssh/id_rsa}
 
 UBUNTU_VERSIONS=${UBUNTU_VERSIONS:-"16.04 18.04"}
 CENTOS_VERSIONS=${CENTOS_VERSIONS:-"7"}
+
+mk_long_version() {
+  local -r linux_version="${1}" platform="${2}"
+  echo "${DRIVER_VERSION}-${CI_COMMIT_TAG}-${linux_version}-${platform}"
+}
+
+mk_short_version() {
+  local -r linux_version="${1}" platform="${2}"
+  echo "${DRIVER_VERSION}-${platform}"
+}
+
 
 log() {
   echo -e "\033[1;32m[+] $*\033[0m"
@@ -61,20 +73,23 @@ docker_ssh() {
 }
 
 build() {
+  local -r platform="${1}" long_version="${2}" short_version="${3}" kernel_version="${4}"
+  log "Building image: $*"
+
   public_ip=${public_ip_ubuntu16_04}
 
-  docker_ssh build -t "${REGISTRY}:${image_tag_long}" \
+  docker_ssh build -t "${REGISTRY}:${long_version}" \
                    --build-arg KERNEL_VERSION="${kernel_version}" \
                    --build-arg DRIVER_VERSION="${DRIVER_VERSION}" \
-                   "https://gitlab.com/nvidia/container-images/driver.git#master:${1}"
+                   "https://gitlab.com/nvidia/container-images/driver.git#master:${platform}"
 
-  docker_ssh save "${REGISTRY}:${image_tag_long}" -o "${image_tag_long}.tar"
+  docker_ssh save "${REGISTRY}:${long_version}" -o "${long_version}.tar"
 
-  docker load -i "${image_tag_long}.tar"
-  docker tag "${REGISTRY}:${image_tag_long}" "${REGISTRY}:${image_tag_short}"
+  docker load -i "${long_version}.tar"
+  docker tag "${REGISTRY}:${long_version}" "${REGISTRY}:${short_version}"
 
-  docker push "${REGISTRY}:${image_tag_long}"
-  docker push "${REGISTRY}:${image_tag_short}"
+  docker push "${REGISTRY}:${long_version}"
+  docker push "${REGISTRY}:${short_version}"
 
   docker_ssh container prune
   docker_ssh image prune -a
@@ -82,7 +97,7 @@ build() {
   docker container prune
   docker image prune -a
 
-  rm -f "${image_tag_long}.tar"
+  rm -f "${long_version}.tar"
 }
 
 cleanup() {
@@ -115,81 +130,56 @@ tags=$(get_tags)
 
 # Resolving Ubuntu versions
 for version in ${UBUNTU_VERSIONS}; do
-  log "Detecting versions for Ubuntu ${version}"
-  generic_kernel=$(latest_ubuntu_kernel "${version}" generic)
-  hwe_kernel=$(latest_ubuntu_kernel "${version}" "generic-hwe-${version}")
-  aws_kernel=$(latest_ubuntu_kernel "${version}" aws)
-
   log "Generating tags for Ubuntu ${version}"
-  generic_tag_long=${CONTAINER_VERSION}-${generic_kernel}-ubuntu${version}
-  hwe_tag_long=${CONTAINER_VERSION}-${hwe_kernel}-ubuntu${version}-hwe
-  aws_tag_long=${CONTAINER_VERSION}-${aws_kernel}-ubuntu${version}-aws
+
+  generic_kernel=$(latest_ubuntu_kernel "${version}" generic)
+  generic_tag_long="$(mk_long_version "${generic_kernel}" "ubuntu${version}")"
 
   if [[ -n ${FORCE} ]] || ! tag_exists "${generic_tag_long}" "${tags}"; then
-    log 'Building generic image'
-
-    kernel_version=${generic_kernel}
-    image_tag_long=${generic_tag_long}
-    image_tag_short=${CONTAINER_VERSION}-ubuntu${version}
-
-    build "ubuntu${version}"
+    generic_tag_short="$(mk_short_version "ubuntu${version}")"
+    build "ubuntu${version}" "${generic_tag_long}" "${generic_tag_short}" "${generic_kernel}"
   fi
+
+  hwe_kernel=$(latest_ubuntu_kernel "${version}" "generic-hwe-${version}")
+  hwe_tag_long="$(mk_long_version "${hwe_kernel}" "ubuntu${version}-hwe")"
 
   if [[ -n ${FORCE} ]] || ! tag_exists "${hwe_tag_long}" "${tags}"; then
-    log 'Building HWE image'
-
-    kernel_version=${hwe_kernel}
-    image_tag_long=${hwe_tag_long}
-    image_tag_short=${CONTAINER_VERSION}-ubuntu${version}-hwe
-
-    build "ubuntu${version}"
+    hwe_tag_short="$(mk_short_version "ubuntu${version}-hwe")"
+    build "ubuntu${version}" "${hwe_tag_long}" "${hwe_tag_short}" "${hwe_kernel}"
   fi
 
+  aws_kernel=$(latest_ubuntu_kernel "${version}" aws)
+  aws_tag_long="$(mk_long_version "${aws_kernel}" "ubuntu${version}-aws")"
+
   if [[ -n ${FORCE} ]] || ! tag_exists "${aws_tag_long}" "${tags}"; then
-    log 'Building AWS image'
-
-    kernel_version=${aws_kernel}-aws
-    image_tag_long=${aws_tag_long}
-    image_tag_short=${CONTAINER_VERSION}-ubuntu${version}-aws
-
-    build "ubuntu${version}"
+    aws_tag_short="$(mk_short_version "ubuntu${version}-aws")"
+    build "ubuntu${version}" "${aws_tag_long}" "${aws_tag_short}" "${aws_kernel}"
   fi
 done
 
 # Resolving Centos versions
 for version in ${CENTOS_VERSIONS}; do
-  log "Detecting versions for Centos ${version}"
-  centos_kernel=$(latest_centos_kernel "${version}")
-
   log "Generating tags for Centos ${version}"
-  centos_tag_long=${CONTAINER_VERSION}-${centos_kernel}-centos${version}
+
+  centos_kernel=$(latest_centos_kernel "${version}")
+  centos_tag_long="$(mk_long_version "${centos_kernel}" "centos${version}")"
 
   if [[ -n ${FORCE} ]] || ! tag_exists "${centos_tag_long}" "${tags}"; then
-    log "Building CentOS image version ${version}"
-
-    kernel_version=${centos_kernel}
-    image_tag_long=${centos_tag_long}
-    image_tag_short=${CONTAINER_VERSION}-centos${version}
-
-    build "centos${version}"
+    centos_tag_short="$(mk_short_version "centos${version}")"
+    build "centos${version}" "${centos_tag_long}" "${centos_tag_short}" "${centos_kernel}"
   fi
 done
 
-kernel_version=""
-image_tag_long=${CONTAINER_VERSION}-rhel7
-image_tag_short=${CONTAINER_VERSION}-rhel7
-build "rhel7"
-
-image_tag_long=${CONTAINER_VERSION}-rhel8
-image_tag_short=${CONTAINER_VERSION}-rhcos4.1
-build "rhel8"
+build "rhel7" "${CONTAINER_VERSION}-rhel7" "${CONTAINER_VERSION}-rhel7" ""
+build "rhel8" "${CONTAINER_VERSION}-rhel8" "${CONTAINER_VERSION}-rhel8" ""
 
 # Add rhcos tags
 docker pull "${REGISTRY}:${CONTAINER_VERSION}-rhel8"
-docker tag "${REGISTRY}:${CONTAINER_VERSION}-rhel8" "${REGISTRY}:${CONTAINER_VERSION}-rhcos4.2"
-docker tag "${REGISTRY}:${CONTAINER_VERSION}-rhel8" "${REGISTRY}:${CONTAINER_VERSION}-rhcos4.3"
-docker push "${REGISTRY}:${CONTAINER_VERSION}-rhcos4.2"
-docker push "${REGISTRY}:${CONTAINER_VERSION}-rhcos4.3"
+
+for tag in "4.1" "4.2" "4.3"; do
+	docker tag "${REGISTRY}:${CONTAINER_VERSION}-rhel8" "${REGISTRY}:${CONTAINER_VERSION}-rhcos${tag}"
+	docker push "${REGISTRY}:${CONTAINER_VERSION}-rhcos${tag}"
+done
 
 docker container prune
 docker image prune -a
