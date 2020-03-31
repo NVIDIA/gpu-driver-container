@@ -137,7 +137,7 @@ for version in ${UBUNTU_VERSIONS}; do
 
   if [[ -n ${FORCE} ]] || ! tag_exists "${generic_tag_long}" "${tags}"; then
     generic_tag_short="$(mk_short_version "ubuntu${version}")"
-    build "ubuntu${version}" "${generic_tag_long}" "${generic_tag_short}" "${generic_kernel}"
+    build "ubuntu${version}" "${generic_tag_long}" "${generic_tag_short}" "${generic_kernel}-generic"
   fi
 
   hwe_kernel=$(latest_ubuntu_kernel "${version}" "generic-hwe-${version}")
@@ -145,7 +145,7 @@ for version in ${UBUNTU_VERSIONS}; do
 
   if [[ -n ${FORCE} ]] || ! tag_exists "${hwe_tag_long}" "${tags}"; then
     hwe_tag_short="$(mk_short_version "ubuntu${version}-hwe")"
-    build "ubuntu${version}" "${hwe_tag_long}" "${hwe_tag_short}" "${hwe_kernel}"
+    build "ubuntu${version}" "${hwe_tag_long}" "${hwe_tag_short}" "${hwe_kernel}-hwe"
   fi
 
   aws_kernel=$(latest_ubuntu_kernel "${version}" aws)
@@ -153,7 +153,7 @@ for version in ${UBUNTU_VERSIONS}; do
 
   if [[ -n ${FORCE} ]] || ! tag_exists "${aws_tag_long}" "${tags}"; then
     aws_tag_short="$(mk_short_version "ubuntu${version}-aws")"
-    build "ubuntu${version}" "${aws_tag_long}" "${aws_tag_short}" "${aws_kernel}"
+    build "ubuntu${version}" "${aws_tag_long}" "${aws_tag_short}" "${aws_kernel}-aws"
   fi
 done
 
