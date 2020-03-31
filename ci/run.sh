@@ -23,7 +23,7 @@ mk_long_version() {
 }
 
 mk_short_version() {
-  local -r linux_version="${1}" platform="${2}"
+  local -r platform="${1}"
   echo "${DRIVER_VERSION}-${platform}"
 }
 
