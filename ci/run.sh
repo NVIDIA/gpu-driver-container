@@ -144,8 +144,11 @@ for version in ${UBUNTU_VERSIONS}; do
   hwe_tag_long="$(mk_long_version "${hwe_kernel}" "ubuntu${version}-hwe")"
 
   if [[ -n ${FORCE} ]] || ! tag_exists "${hwe_tag_long}" "${tags}"; then
+    # HWE kernel seems to have the same kernel headers as the generic one
+    # See the package description for reference:
+    # https://packages.ubuntu.com/bionic-updates/linux-headers-generic-hwe-18.04
     hwe_tag_short="$(mk_short_version "ubuntu${version}-hwe")"
-    build "ubuntu${version}" "${hwe_tag_long}" "${hwe_tag_short}" "${hwe_kernel}-hwe"
+    build "ubuntu${version}" "${hwe_tag_long}" "${hwe_tag_short}" "${hwe_kernel}-generic"
   fi
 
   aws_kernel=$(latest_ubuntu_kernel "${version}" aws)
