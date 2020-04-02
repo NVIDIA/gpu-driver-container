@@ -179,7 +179,7 @@ build "rhel8" "${CONTAINER_VERSION}-rhel8" "${CONTAINER_VERSION}-rhel8" ""
 # Add rhcos tags
 docker pull "${REGISTRY}:${CONTAINER_VERSION}-rhel8"
 
-for tag in "4.1" "4.2" "4.3"; do
+for tag in "4.1" "4.2" "4.3" "4.4"; do
 	docker tag "${REGISTRY}:${CONTAINER_VERSION}-rhel8" "${REGISTRY}:${CONTAINER_VERSION}-rhcos${tag}"
 	docker push "${REGISTRY}:${CONTAINER_VERSION}-rhcos${tag}"
 done
