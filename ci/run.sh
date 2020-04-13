@@ -181,7 +181,7 @@ docker pull "${REGISTRY}:${CONTAINER_VERSION}-rhel8"
 
 for tag in "4.1" "4.2" "4.3" "4.4"; do
 	docker tag "${REGISTRY}:${CONTAINER_VERSION}-rhel8" "${REGISTRY}:${DRIVER_VERSION}-rhcos${tag}"
-	docker push "${REGISTRY}:${DRIVER}-rhcos${tag}"
+	docker push "${REGISTRY}:${DRIVER_VERSION}-rhcos${tag}"
 done
 
 docker container prune
