@@ -54,4 +54,15 @@ COPY ${PUBLIC_KEY} kernel/pubkey.x509
 ARG PRIVATE_KEY
 ARG KERNEL_VERSION=latest
 
+LABEL io.k8s.display-name="NVIDIA Driver Container"
+LABEL name="NVIDIA Driver Container"
+LABEL vendor="NVIDIA"
+LABEL version="${DRIVER_VERSION}"
+LABEL release="${KERNEL_VERSION}"
+LABEL summary="Provision the NVIDIA driver through containers"
+LABEL description="See summary"
+
+COPY ./LICENSE /licenses/LICENSE
+COPY ./DRIVER-LICENSE /licenses/DRIVER-LICENSE
+
 ENTRYPOINT ["nvidia-driver", "init"]
