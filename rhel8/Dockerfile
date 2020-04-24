@@ -58,7 +58,7 @@ LABEL io.k8s.display-name="NVIDIA Driver Container"
 LABEL name="NVIDIA Driver Container"
 LABEL vendor="NVIDIA"
 LABEL version="${DRIVER_VERSION}"
-LABEL release="${KERNEL_VERSION}"
+LABEL release="N/A"
 LABEL summary="Provision the NVIDIA driver through containers"
 LABEL description="See summary"
 
