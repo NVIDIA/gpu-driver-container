@@ -62,7 +62,7 @@ LABEL release="${KERNEL_VERSION}"
 LABEL summary="Provision the NVIDIA driver through containers"
 LABEL description="See summary"
 
-COPY ./LICENSE /licenses/LICENSE
-COPY ./DRIVER-LICENSE /licenses/DRIVER-LICENSE
+COPY LICENSE /licenses/LICENSE
+COPY DRIVER-LICENSE /licenses/DRIVER-LICENSE
 
 ENTRYPOINT ["nvidia-driver", "init"]
