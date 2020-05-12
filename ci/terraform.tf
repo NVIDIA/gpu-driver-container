@@ -1,6 +1,6 @@
 provider "aws" {
 	version = "~> 1.33"
-	region = "us-east-1"
+	region = "us-west-2"
 }
 
 provider "ignition" {
@@ -71,6 +71,12 @@ resource "aws_instance" "ubuntu16_04" {
 		project = "${var.project_name}"
 		environment = "cicd"
 	}
+
+	root_block_device {
+		volume_size = 40
+	}
+
+	security_groups = ["default", "allow_ssh"]
 
 	connection {
 		user = "nvidia"
@@ -157,6 +163,12 @@ resource "aws_instance" "coreos_builder" {
 		environment = "cicd"
 	}
 
+	root_block_device {
+		volume_size = 40
+	}
+
+	security_groups = ["default", "allow_ssh"]
+
 	connection {
 		user = "nvidia"
 		agent = true
@@ -175,10 +187,6 @@ resource "aws_instance" "coreos_builder" {
 		"sudo modprobe -a loop ipmi_msghandler",
 		"chmod +x ~/build.sh"
 		]
-	}
-
-	root_block_device {
-		volume_size = 40
 	}
 
 	user_data = "${data.ignition_config.coreos_ignition_config.rendered}"
