@@ -1,19 +1,18 @@
 provider "aws" {
-	version = "~> 1.33"
 	region = "us-west-2"
 }
 
 provider "ignition" {
-	version = "1.1.0"
 }
 
 provider "template" {
-	version = "~> 2.1"
 }
 
 variable "ssh_key_pub" {}
 variable "ssh_host_key" {}
 variable "ssh_host_key_pub" {}
+variable "project_name" {}
+variable "ci_pipeline_id" {}
 
 data "aws_ami" "ubuntu16_04" {
 	most_recent = true
@@ -62,13 +61,13 @@ ssh_keys:
 }
 
 resource "aws_instance" "ubuntu16_04" {
-	ami           = "${data.aws_ami.ubuntu16_04.id}"
+	ami           = data.aws_ami.ubuntu16_04.id
 	instance_type = "c4.4xlarge"
 
 	tags = {
 		Name = "${var.project_name}-${var.ci_pipeline_id}-ubuntu16_04"
 		product = "cloud-native"
-		project = "${var.project_name}"
+		project = var.project_name
 		environment = "cicd"
 	}
 
@@ -134,7 +133,6 @@ data "ignition_file" "sshd_config" {
 	mode = 384
 
 	content {
-		mime = "text/plain"
 		content = <<EOF
 HostKey /etc/ssh/ssh_host_ed25519_key
 UsePrivilegeSeparation sandbox
@@ -144,6 +142,7 @@ PermitRootLogin no
 AllowUsers nvidia
 AuthenticationMethods publickey
 EOF
+		mime = "text/plain"
 	}
 }
 
@@ -153,13 +152,13 @@ data "ignition_config" "coreos_ignition_config" {
 }
 
 resource "aws_instance" "coreos_builder" {
-	ami           = "${data.aws_ami.coreos.id}"
+	ami           = data.aws_ami.coreos.id
 	instance_type = "c4.4xlarge"
 
 	tags = {
 		Name = "${var.project_name}-${var.ci_pipeline_id}-coreos"
 		product = "cloud-native"
-		project = "${var.project_name}"
+		project = var.project_name
 		environment = "cicd"
 	}
 
