@@ -65,6 +65,13 @@ resource "aws_instance" "ubuntu16_04" {
 	ami           = "${data.aws_ami.ubuntu16_04.id}"
 	instance_type = "c4.4xlarge"
 
+	tags = {
+		Name = "${var.project_name}-${var.ci_pipeline_id}-ubuntu16_04"
+		product = "cloud-native"
+		project = "${var.project_name}"
+		environment = "cicd"
+	}
+
 	connection {
 		user = "nvidia"
 		agent = true
@@ -142,6 +149,13 @@ data "ignition_config" "coreos_ignition_config" {
 resource "aws_instance" "coreos_builder" {
 	ami           = "${data.aws_ami.coreos.id}"
 	instance_type = "c4.4xlarge"
+
+	tags = {
+		Name = "${var.project_name}-${var.ci_pipeline_id}-coreos"
+		product = "cloud-native"
+		project = "${var.project_name}"
+		environment = "cicd"
+	}
 
 	connection {
 		user = "nvidia"
