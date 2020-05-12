@@ -26,7 +26,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/* \
     && pip install --upgrade pip
 
-ENV TF_VERSION=0.11.10
+ENV TF_VERSION=0.12.18
 RUN curl -fsSL https://releases.hashicorp.com/terraform/${TF_VERSION}/terraform_${TF_VERSION}_linux_amd64.zip -o terraform.zip \
   && unzip terraform.zip \
   && mv terraform /usr/local/bin/terraform \

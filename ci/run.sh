@@ -111,6 +111,8 @@ cat << EOF > terraform.tfvars
 ssh_key_pub = "${SSH_KEY}.pub"
 ssh_host_key = "${SSH_HOST_KEY_PATH}"
 ssh_host_key_pub = "${SSH_HOST_KEY_PUB_PATH}"
+project_name = "driver"
+ci_pipeline_id = "${CI_PIPELINE_ID}"
 EOF
 
 log 'Creating AWS resources'
