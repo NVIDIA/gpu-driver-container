@@ -14,6 +14,13 @@ variable "ssh_host_key_pub" {}
 variable "project_name" {}
 variable "ci_pipeline_id" {}
 
+data "ignition_user" "nvidia" {
+	name = "nvidia"
+	ssh_authorized_keys = ["${file(var.ssh_key_pub)}"]
+	primary_group = "docker"
+	groups = ["sudo"]
+}
+
 data "aws_ami" "ubuntu16_04" {
 	most_recent = true
 
@@ -57,6 +64,7 @@ ssh_keys:
   ed25519_private: |
     ${indent(4, file(var.ssh_host_key))}
   ed25519_public: "${file(var.ssh_host_key_pub)}"
+EOF
 	}
 }
 
@@ -79,8 +87,9 @@ resource "aws_instance" "ubuntu16_04" {
 
 	connection {
 		user = "nvidia"
+		host = self.public_ip
 		agent = true
-		host_key = "${file(var.ssh_host_key_pub)}"
+		host_key = file(var.ssh_host_key_pub)
 	}
 
 	provisioner "remote-exec" {
@@ -90,11 +99,11 @@ resource "aws_instance" "ubuntu16_04" {
 		]
 	}
 
-	user_data = "${data.template_cloudinit_config.ubuntu16_04.rendered}"
+	user_data = data.template_cloudinit_config.ubuntu16_04.rendered
 }
 
 output "public_ip_ubuntu16_04" {
-	value = "${aws_instance.ubuntu16_04.public_ip}"
+	value = aws_instance.ubuntu16_04.public_ip
 }
 
 # Launch the latest CoreOS instance
@@ -109,11 +118,11 @@ data "aws_ami" "coreos" {
 	}
 }
 
-data "ignition_user" "nvidia" {
-	name = "nvidia"
-	ssh_authorized_keys = ["${file(var.ssh_key_pub)}"]
-	primary_group = "docker"
-	groups = ["sudo"]
+data "ignition_config" "coreos_ignition_config" {
+	users = [
+		data.ignition_user.nvidia.id
+	]
+	files = [data.ignition_file.sshd_keys.id, data.ignition_file.sshd_config.id]
 }
 
 data "ignition_file" "sshd_keys" {
@@ -122,7 +131,7 @@ data "ignition_file" "sshd_keys" {
 	mode = 384
 
 	content {
-		content = "${file(var.ssh_host_key)}"
+		content = file(var.ssh_host_key)
 		mime = "text/plain"
 	}
 }
@@ -133,6 +142,7 @@ data "ignition_file" "sshd_config" {
 	mode = 384
 
 	content {
+		mime = "text/plain"
 		content = <<EOF
 HostKey /etc/ssh/ssh_host_ed25519_key
 UsePrivilegeSeparation sandbox
@@ -142,13 +152,7 @@ PermitRootLogin no
 AllowUsers nvidia
 AuthenticationMethods publickey
 EOF
-		mime = "text/plain"
 	}
-}
-
-data "ignition_config" "coreos_ignition_config" {
-	users = ["${data.ignition_user.nvidia.id}"]
-	files = ["${data.ignition_file.sshd_keys.id}", "${data.ignition_file.sshd_config.id}"]
 }
 
 resource "aws_instance" "coreos_builder" {
@@ -170,8 +174,9 @@ resource "aws_instance" "coreos_builder" {
 
 	connection {
 		user = "nvidia"
+		host = self.public_ip
 		agent = true
-		host_key = "${file(var.ssh_host_key_pub)}"
+		host_key = file(var.ssh_host_key_pub)
 	}
 
 	provisioner "file" {
@@ -188,7 +193,7 @@ resource "aws_instance" "coreos_builder" {
 		]
 	}
 
-	user_data = "${data.ignition_config.coreos_ignition_config.rendered}"
+	user_data = data.ignition_config.coreos_ignition_config.rendered
 }
 
 output "public_ip_coreos" {
