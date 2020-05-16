@@ -14,13 +14,6 @@ variable "ssh_host_key_pub" {}
 variable "project_name" {}
 variable "ci_pipeline_id" {}
 
-data "ignition_user" "nvidia" {
-	name = "nvidia"
-	ssh_authorized_keys = ["${file(var.ssh_key_pub)}"]
-	primary_group = "docker"
-	groups = ["sudo"]
-}
-
 data "aws_ami" "ubuntu16_04" {
 	most_recent = true
 
@@ -33,8 +26,8 @@ data "aws_ami" "ubuntu16_04" {
 }
 
 data "template_cloudinit_config" "ubuntu16_04" {
-	gzip          = false
-	base64_encode = false
+	gzip          = true
+	base64_encode = true
 
 	part {
 		content_type = "text/cloud-config"
@@ -118,11 +111,11 @@ data "aws_ami" "coreos" {
 	}
 }
 
-data "ignition_config" "coreos_ignition_config" {
-	users = [
-		data.ignition_user.nvidia.id
-	]
-	files = [data.ignition_file.sshd_keys.id, data.ignition_file.sshd_config.id]
+data "ignition_user" "nvidia" {
+	name = "nvidia"
+	ssh_authorized_keys = [file(var.ssh_key_pub)]
+	primary_group = "docker"
+	groups = ["sudo"]
 }
 
 data "ignition_file" "sshd_keys" {
@@ -153,6 +146,11 @@ AllowUsers nvidia
 AuthenticationMethods publickey
 EOF
 	}
+}
+
+data "ignition_config" "coreos_ignition_config" {
+	users = [data.ignition_user.nvidia.id]
+	files = [data.ignition_file.sshd_keys.id, data.ignition_file.sshd_config.id]
 }
 
 resource "aws_instance" "coreos_builder" {
