@@ -3,14 +3,13 @@ provider "aws" {
 }
 
 provider "ignition" {
+  version = "1.1.0"
 }
 
 provider "template" {
 }
 
 variable "ssh_key_pub" {}
-variable "ssh_host_key" {}
-variable "ssh_host_key_pub" {}
 variable "project_name" {}
 variable "ci_pipeline_id" {}
 
@@ -51,12 +50,6 @@ users:
     groups:
       - docker
     ssh_authorized_keys: ${file(var.ssh_key_pub)}
-
-ssh_deletekeys: true
-ssh_keys:
-  ed25519_private: |
-    ${indent(4, file(var.ssh_host_key))}
-  ed25519_public: "${file(var.ssh_host_key_pub)}"
 EOF
 	}
 }
@@ -82,7 +75,6 @@ resource "aws_instance" "ubuntu16_04" {
 		user = "nvidia"
 		host = self.public_ip
 		agent = true
-		host_key = file(var.ssh_host_key_pub)
 	}
 
 	provisioner "remote-exec" {
@@ -118,39 +110,8 @@ data "ignition_user" "nvidia" {
 	groups = ["sudo"]
 }
 
-data "ignition_file" "sshd_keys" {
-	filesystem = "root"
-	path = "/etc/ssh/ssh_host_ed25519_key"
-	mode = 384
-
-	content {
-		content = file(var.ssh_host_key)
-		mime = "text/plain"
-	}
-}
-
-data "ignition_file" "sshd_config" {
-	filesystem = "root"
-	path = "/etc/ssh/sshd_config"
-	mode = 384
-
-	content {
-		mime = "text/plain"
-		content = <<EOF
-HostKey /etc/ssh/ssh_host_ed25519_key
-UsePrivilegeSeparation sandbox
-UseDNS no
-
-PermitRootLogin no
-AllowUsers nvidia
-AuthenticationMethods publickey
-EOF
-	}
-}
-
 data "ignition_config" "coreos_ignition_config" {
 	users = [data.ignition_user.nvidia.id]
-	files = [data.ignition_file.sshd_keys.id, data.ignition_file.sshd_config.id]
 }
 
 resource "aws_instance" "coreos_builder" {
@@ -174,7 +135,6 @@ resource "aws_instance" "coreos_builder" {
 		user = "nvidia"
 		host = self.public_ip
 		agent = true
-		host_key = file(var.ssh_host_key_pub)
 	}
 
 	provisioner "file" {
