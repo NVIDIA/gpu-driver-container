@@ -109,8 +109,6 @@ trap cleanup EXIT
 
 cat << EOF > terraform.tfvars
 ssh_key_pub = "${SSH_KEY}.pub"
-ssh_host_key = "${SSH_HOST_KEY_PATH}"
-ssh_host_key_pub = "${SSH_HOST_KEY_PUB_PATH}"
 project_name = "driver"
 ci_pipeline_id = "${CI_PIPELINE_ID}"
 EOF
@@ -122,9 +120,8 @@ public_ip_coreos=$(terraform output public_ip_coreos)
 
 log 'Add instance to known hosts'
 # shellcheck disable=SC2086
-echo "${public_ip_ubuntu16_04} $(cat ${SSH_HOST_KEY_PUB_PATH})" >> "${HOME}/.ssh/known_hosts"
-# shellcheck disable=SC2086
-echo "${public_ip_coreos} $(cat ${SSH_HOST_KEY_PUB_PATH})" >> "${HOME}/.ssh/known_hosts"
+ssh-keyscan -H "${public_ip_ubuntu16_04}" >> "${HOME}/.ssh/known_hosts"
+ssh-keyscan -H "${public_ip_coreos}" >> "${HOME}/.ssh/known_hosts"
 
 log 'Get tags'
 tags=$(get_tags)
