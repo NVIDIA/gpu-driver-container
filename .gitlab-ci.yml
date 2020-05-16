@@ -55,9 +55,6 @@ build:
     - ssh-add -L > ${HOME}/.ssh/id_rsa.pub
 
     - cd ./ci
-    - echo "${SSH_HOST_KEY}" > "${SSH_HOST_KEY_PATH}"
-    - echo "${SSH_HOST_KEY_PUB}" > "${SSH_HOST_KEY_PUB_PATH}"
-
     - terraform init -input=false
     - export CI_COMMIT_TAG="$(git describe --abbrev=0 --tags)"
     - ./run.sh
