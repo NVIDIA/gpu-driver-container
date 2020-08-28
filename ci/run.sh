@@ -107,6 +107,12 @@ cleanup() {
 
 trap cleanup EXIT
 
+log "DRIVER VERSION: ${DRIVER_VERSION}"
+log "CONTAINER VERSION: ${CONTAINER_VERSION}"
+log "REGISTRY: ${REGISTRY}"
+log "FORCE: ${FORCE}"
+log "CI_PIPELINE_ID: ${CI_PIPELINE_ID}"
+
 cat << EOF > terraform.tfvars
 ssh_key_pub = "${SSH_KEY}.pub"
 project_name = "driver"
@@ -123,8 +129,8 @@ log 'Add instance to known hosts'
 ssh-keyscan -H "${public_ip_ubuntu16_04}" >> "${HOME}/.ssh/known_hosts"
 ssh-keyscan -H "${public_ip_coreos}" >> "${HOME}/.ssh/known_hosts"
 
-log 'Get tags'
-tags=$(get_tags)
+#log 'Get tags'
+#tags=$(get_tags)
 
 
 # Resolving Ubuntu versions
