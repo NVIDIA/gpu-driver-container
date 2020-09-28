@@ -33,6 +33,7 @@ variables:
   TF_VERSION: "0.12.18"
 
 stages:
+  - syntax-check
   - build
   - test
   - scan
@@ -101,6 +102,18 @@ stages:
 .release_action: &release_action
   - make IMAGE="${RELEASE_REGISTRY_IMAGE}" VERSION="${DRIVER_VERSION}" all
   - make IMAGE="${RELEASE_REGISTRY_IMAGE}" VERSION="${DRIVER_VERSION}" push
+
+shellcheck:
+  stage: syntax-check
+  image:
+    name: koalaman/shellcheck-alpine
+  services: []
+  before_script: []
+  script:
+    - shellcheck --version
+    - shellcheck --external-sources ci/run.sh
+  except:
+    - schedules
 
 build:
   stage: build
