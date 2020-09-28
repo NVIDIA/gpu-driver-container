@@ -85,10 +85,10 @@ _install_prerequisites() (
 # Cleanup the prerequisites installed above.
 _remove_prerequisites() {
     true
-    #if [ "${PACKAGE_TAG:-}" != "builtin" ]; then
-        # yum -q -y remove kernel-headers-${KERNEL_VERSION} kernel-devel-${KERNEL_VERSION} > /dev/null
+    if [ "${PACKAGE_TAG:-}" != "builtin" ]; then
+        yum -q -y remove kernel-headers-${KERNEL_VERSION} kernel-devel-${KERNEL_VERSION} > /dev/null
         # TODO remove module files not matching an existing driver package.
-    #fi
+    fi
 }
 
 # Check if the kernel version requires a new precompiled driver packages.
