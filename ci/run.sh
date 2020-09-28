@@ -129,8 +129,8 @@ log 'Add instance to known hosts'
 ssh-keyscan -H "${public_ip_ubuntu16_04}" >> "${HOME}/.ssh/known_hosts"
 ssh-keyscan -H "${public_ip_coreos}" >> "${HOME}/.ssh/known_hosts"
 
-#log 'Get tags'
-#tags=$(get_tags)
+log 'Get tags'
+tags=$(get_tags)
 
 
 # Resolving Ubuntu versions
