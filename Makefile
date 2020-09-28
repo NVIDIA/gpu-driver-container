@@ -11,7 +11,7 @@ export VERSION ?= "440.64.00"
 all: build
 
 build:
-	IMAGE="$(IMAGE)" VRESION="$(VERSION)" ./ci/build.sh
+	IMAGE="$(IMAGE)" VERSION="$(VERSION)" ./ci/build.sh
 
 push:
 	true
