@@ -59,8 +59,8 @@ build:
     - export CI_COMMIT_TAG="$(git describe --abbrev=0 --tags)"
     - ./run.sh
   after_script:
-    - rm -rf ${HOME}/.ssh
-    - rm -rf ${SSH_HOST_KEY_PATH}
-    - rm -rf ${SSH_HOST_KEY_PUB_PATH}
+    - rm -rf ${HOME}/.ssh || "true"
+    - rm -rf ${SSH_HOST_KEY_PATH} || "true"
+    - rm -rf ${SSH_HOST_KEY_PUB_PATH} || "true"
   only:
     - master
