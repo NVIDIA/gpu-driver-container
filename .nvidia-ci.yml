@@ -95,7 +95,7 @@ stages:
     for tag in $tags;
     do
       docker tag $tag $(basename $tag);
-      python3 contamer.py -ls --fail-on-non-os $(basename $tag) || true;
+      python3 contamer.py -ls --fail-on-non-os --suppress-vulns CVE-2020-14352 CVE-2020-15888 -- $(basename $tag);
     done
 
 .release_action: &release_action
