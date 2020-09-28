@@ -11,7 +11,12 @@ DRIVER_VERSION=${DRIVER_VERSION}
 CONTAINER_VERSION=${DRIVER_VERSION}-${CI_COMMIT_TAG}
 
 FORCE=${FORCE:-}
-REGISTRY=${REGISTRY:-nvidia/driver}
+if [ -z "$REGISTRY" ]; then
+  REGISTRY=nvidia/driver
+  REGISTRY_API_GETTAGS="https://registry.hub.docker.com/v1/repositories/${REGISTRY}/tags"
+else
+  REGISTRY_API_GETTAGS="${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/registry/repositories?tags=true"
+fi
 SSH_KEY=${SSH_KEY:-${HOME}/.ssh/id_rsa}
 
 UBUNTU_VERSIONS=${UBUNTU_VERSIONS:-"16.04 18.04 20.04"}
@@ -27,13 +32,12 @@ mk_short_version() {
   echo "${DRIVER_VERSION}-${platform}"
 }
 
-
 log() {
   echo -e "\033[1;32m[+] $*\033[0m"
 }
 
 get_tags() {
-  curl -fsSL "https://registry.hub.docker.com/v1/repositories/${REGISTRY}/tags" \
+  curl -fsSL --header "${API_TOKEN:-PRIVATE-TOKEN: ${API_TOKEN}}" "${REGISTRY_API_GETTAGS}" \
   | jq -r '.[] | .name'
 }
 
