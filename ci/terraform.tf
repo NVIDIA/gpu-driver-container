@@ -24,6 +24,29 @@ data "aws_ami" "ubuntu16_04" {
 	}
 }
 
+resource "random_id" "server" {
+  byte_length = 8
+}
+
+resource "aws_security_group" "allow_ssh" {
+  name        = "allow_ssh-${random_id.server.dec}"
+  description = "Allow ssh connections on port 22"
+
+  ingress {
+    from_port   = 22
+    to_port     = 22
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+}
+
 data "template_cloudinit_config" "ubuntu16_04" {
 	gzip          = true
 	base64_encode = true
@@ -69,7 +92,7 @@ resource "aws_instance" "ubuntu16_04" {
 		volume_size = 40
 	}
 
-	security_groups = ["default", "allow_ssh"]
+	security_groups = ["default", "${aws_security_group.allow_ssh.name}"]
 
 	connection {
 		user = "nvidia"
@@ -129,7 +152,7 @@ resource "aws_instance" "coreos_builder" {
 		volume_size = 40
 	}
 
-	security_groups = ["default", "allow_ssh"]
+	security_groups = ["default", "${aws_security_group.allow_ssh.name}"]
 
 	connection {
 		user = "nvidia"
