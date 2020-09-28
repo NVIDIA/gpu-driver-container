@@ -81,7 +81,7 @@ build() {
   docker_ssh build -t "${REGISTRY}:${long_version}" \
                    --build-arg KERNEL_VERSION="${kernel_version}" \
                    --build-arg DRIVER_VERSION="${DRIVER_VERSION}" \
-                   "https://gitlab.com/nvidia/container-images/driver.git#master:${platform}"
+                   "${CI_PROJECT_URL}#${CI_COMMIT_REF_NAME}:${platform}"
 
   docker_ssh save "${REGISTRY}:${long_version}" -o "${long_version}.tar"
 
@@ -106,6 +106,12 @@ cleanup() {
 }
 
 trap cleanup EXIT
+
+log "DRIVER VERSION: ${DRIVER_VERSION}"
+log "CONTAINER VERSION: ${CONTAINER_VERSION}"
+log "REGISTRY: ${REGISTRY}"
+log "FORCE: ${FORCE}"
+log "CI_PIPELINE_ID: ${CI_PIPELINE_ID}"
 
 cat << EOF > terraform.tfvars
 ssh_key_pub = "${SSH_KEY}.pub"
