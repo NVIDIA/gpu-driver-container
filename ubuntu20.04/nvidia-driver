@@ -61,7 +61,8 @@ _install_prerequisites() (
     depmod ${KERNEL_VERSION}
 
     echo "Generating Linux kernel version string..."
-    extract-vmlinux boot/vmlinuz-${KERNEL_VERSION} | strings | grep -E '^Linux version' | sed 's/^\(.*\)\s\+(.*)$/\1/' > version
+
+    file boot/vmlinuz-* | awk 'BEGIN { RS="," } $1=="version" { print $2 }' - > version
     if [ -z "$(<version)" ]; then
         echo "Could not locate Linux kernel version string" >&2
         return 1

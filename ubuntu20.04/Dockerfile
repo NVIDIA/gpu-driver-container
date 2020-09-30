@@ -7,6 +7,7 @@ RUN dpkg --add-architecture i386 && \
         ca-certificates \
         curl \
         kmod \
+        file \
         libc6:i386 \
         libelf-dev && \
     rm -rf /var/lib/apt/lists/*
@@ -17,8 +18,7 @@ RUN echo "deb [arch=amd64] http://archive.ubuntu.com/ubuntu/ focal main universe
     usermod -o -u 0 -g 0 _apt
 
 RUN curl -fsSL -o /usr/local/bin/donkey https://github.com/3XX0/donkey/releases/download/v1.1.0/donkey && \
-    curl -fsSL -o /usr/local/bin/extract-vmlinux https://raw.githubusercontent.com/torvalds/linux/master/scripts/extract-vmlinux && \
-    chmod +x /usr/local/bin/donkey /usr/local/bin/extract-vmlinux
+    chmod +x /usr/local/bin/donkey
 
 #ARG BASE_URL=http://us.download.nvidia.com/XFree86/Linux-x86_64
 ARG BASE_URL=https://us.download.nvidia.com/tesla
