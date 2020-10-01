@@ -44,17 +44,18 @@ _install_prerequisites() (
     trap "rm -rf ${tmp_dir}" EXIT
     cd ${tmp_dir}
 
+    echo "Installing elfutils..."
     dnf install -q -y elfutils-libelf.x86_64 elfutils-libelf-devel.x86_64
 
     rm -rf /lib/modules/${KERNEL_VERSION}
     mkdir -p /lib/modules/${KERNEL_VERSION}/proc
 
     echo "Installing Linux kernel headers..."
-    dnf -q -y install kernel-headers-${KERNEL_VERSION} kernel-devel-${KERNEL_VERSION} > /dev/null
+    dnf -q -y --enablerepo=rhel-8-for-x86_64-baseos-eus-rpms --releasever=8.1 install kernel-headers-${KERNEL_VERSION} kernel-devel-${KERNEL_VERSION} > /dev/null
     ln -s /usr/src/kernels/${KERNEL_VERSION} /lib/modules/${KERNEL_VERSION}/build
 
     echo "Installing Linux kernel module files..."
-    dnf install -y -q kernel-core-${KERNEL_VERSION} --setopt=install_weak_deps=False --best --downloadonly --downloaddir=$(pwd)
+    dnf -q -y --enablerepo=rhel-8-for-x86_64-baseos-eus-rpms --releasever=8.1 install kernel-core-${KERNEL_VERSION} --setopt=install_weak_deps=False --best --downloadonly --downloaddir=$(pwd)
     cat ./kernel-core-*.rpm | rpm2cpio | cpio -idm --quiet
     rm ./*.rpm
 
