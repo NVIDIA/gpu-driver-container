@@ -22,6 +22,32 @@ _cleanup_package_cache() {
     fi
 }
 
+_add_repo() {
+  local releasever="$1"
+  local repofile=/etc/yum.repos.d/centos$releasever.repo
+  local arch="$(uname -m)"
+
+  if [ \! -e "$repofile" ]; then
+  cat > "$repofile" << EOF
+[CentOS${releasever}_BaseOS]
+name=CentOS-$releasever - Base
+#mirrorlist=http://mirrorlist.centos.org/?release=$releasever&arch=$arch&repo=BaseOS
+baseurl=http://mirror.centos.org/centos-$releasever/$releasever/os/$arch
+gpgcheck=1
+enabled=1
+#gpgkey=https://www.centos.org/keys/RPM-GPG-KEY-CentOS-Official
+gpgkey=https://www.centos.org/keys/RPM-GPG-KEY-CentOS-7
+EOF
+  fi
+}
+
+_del_repo() {
+  local releasever="$1"
+  local repofile=/etc/yum.repos.d/centos$releasever.repo
+
+  rm -f "${repofile}" || true
+}
+
 # Resolve the kernel version to the form major.minor.patch-revision.
 _resolve_kernel_version() {
     local version=$(yum -q list available --show-duplicates kernel-headers |
@@ -61,7 +87,7 @@ _install_prerequisites() (
     depmod ${KERNEL_VERSION}
 
     echo "Generating Linux kernel version string..."
-    extract-vmlinux boot/vmlinuz-${KERNEL_VERSION} | strings | grep -E '^Linux version' | sed 's/^\(.*\)\s\+(.*)$/\1/' > version
+    file boot/vmlinuz-* | awk 'BEGIN { RS="," } $1=="version" { print $2 }' - | head -1 > version
     if [ -z "$(<version)" ]; then
         echo "Could not locate Linux kernel version string" >&2
         return 1
@@ -97,10 +123,7 @@ _kernel_requires_package() {
     echo "Checking NVIDIA driver packages..."
     cd /usr/src/nvidia-${DRIVER_VERSION}/kernel
 
-    # When the kernel version is latest on host, this check fails and lead to recompilation, even when precompiled modules exist.
-    #if [ "${KERNEL_VERSION}" != "$(uname -r)" ]; then
     proc_mount_arg="--proc-mount-point /lib/modules/${KERNEL_VERSION}/proc"
-    #fi
     for pkg_name in $(ls -d -1 precompiled/** 2> /dev/null); do
         is_match=$(../mkprecompiled --match ${pkg_name} ${proc_mount_arg})
         if [ "${is_match}" == "kernel interface matches." ]; then
@@ -307,11 +330,13 @@ init() {
     _unmount_rootfs
 
     if _kernel_requires_package; then
+        _add_repo 7
         _update_package_cache
         _resolve_kernel_version || exit 1
         _install_prerequisites
         _create_driver_package
         _remove_prerequisites
+        _del_repo 7
         _cleanup_package_cache
     fi
 
@@ -346,6 +371,7 @@ update() {
 
     trap "echo 'Caught signal'; exit 1" HUP INT QUIT PIPE TERM
 
+    _add_repo 7
     _update_package_cache
     _resolve_kernel_version || exit 1
     _install_prerequisites
@@ -353,6 +379,7 @@ update() {
         _create_driver_package
     fi
     _remove_prerequisites
+    _del_repo 7
     _cleanup_package_cache
 
     echo "Done"
