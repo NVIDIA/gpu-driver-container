@@ -182,8 +182,8 @@ for version in ${CENTOS_VERSIONS}; do
   fi
 done
 
-build "rhel7" "${CONTAINER_VERSION}-rhel7" "${CONTAINER_VERSION}-rhel7" ""
-build "rhel8" "${CONTAINER_VERSION}-rhel8" "${CONTAINER_VERSION}-rhel8" ""
+build "rhel7" "${CONTAINER_VERSION}-rhel7" "$(mk_short_version rhel7)" ""
+build "rhel8" "${CONTAINER_VERSION}-rhel8" "$(mk_short_version rhel8)" ""
 
 # Add rhcos tags
 docker pull "${REGISTRY}:${CONTAINER_VERSION}-rhel8"
