@@ -80,14 +80,14 @@ _remove_prerequisites() {
 
 # Check if the kernel version requires a new precompiled driver packages.
 _kernel_requires_package() {
-    local proc_mount_arg=""
-
     echo "Checking NVIDIA driver packages..."
     cd /usr/src/nvidia-${DRIVER_VERSION}/kernel
 
-    if [ "${KERNEL_VERSION}" != "$(uname -r)" ]; then
-        proc_mount_arg="--proc-mount-point /lib/modules/${KERNEL_VERSION}/proc"
-    fi
+    # This if condition is causing recomplition on the currently running kernel
+    # proc_mount_arg needs to be set, to do the module match check below
+    #if [ "${KERNEL_VERSION}" != "$(uname -r)" ]; then
+    local proc_mount_arg="--proc-mount-point /lib/modules/${KERNEL_VERSION}/proc"
+    #fi
     for pkg_name in $(ls -d -1 precompiled/** 2> /dev/null); do
         if ! ../mkprecompiled --match ${pkg_name} ${proc_mount_arg} > /dev/null; then
             echo "Found NVIDIA driver package ${pkg_name##*/}"
