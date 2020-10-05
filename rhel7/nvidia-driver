@@ -272,6 +272,9 @@ _mount_rootfs() {
     mount --make-private /sys
     mkdir -p ${RUN_DIR}/driver
     mount --rbind / ${RUN_DIR}/driver
+
+    echo "Change device files security context for selinux compatibility"
+    chcon -R -t container_file_t ${RUN_DIR}/driver/dev
 }
 
 # Unmount the driver rootfs from the run directory.
