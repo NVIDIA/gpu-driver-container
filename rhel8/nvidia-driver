@@ -51,13 +51,11 @@ _install_prerequisites() (
     mkdir -p /lib/modules/${KERNEL_VERSION}/proc
 
     echo "Installing Linux kernel headers..."
-    dnf -q -y --enablerepo=rhel-8-for-x86_64-baseos-eus-rpms --releasever=8.1 install kernel-headers-${KERNEL_VERSION} kernel-devel-${KERNEL_VERSION} > /dev/null
+    dnf -q -y --enablerepo=rhocp-${VERSION_ID}-for-rhel-8-x86_64-rpms --enablerepo=rhel-8-for-x86_64-baseos-eus-rpms --releasever=${RHEL_VERSION} install kernel-headers-${KERNEL_VERSION} kernel-devel-${KERNEL_VERSION} > /dev/null
     ln -s /usr/src/kernels/${KERNEL_VERSION} /lib/modules/${KERNEL_VERSION}/build
 
     echo "Installing Linux kernel module files..."
-    dnf -q -y --enablerepo=rhel-8-for-x86_64-baseos-eus-rpms --releasever=8.1 install kernel-core-${KERNEL_VERSION} --setopt=install_weak_deps=False --best --downloadonly --downloaddir=$(pwd)
-    cat ./kernel-core-*.rpm | rpm2cpio | cpio -idm --quiet
-    rm ./*.rpm
+    dnf -q -y --enablerepo=rhocp-${VERSION_ID}-for-rhel-8-x86_64-rpms --enablerepo=rhel-8-for-x86_64-baseos-eus-rpms --releasever=${RHEL_VERSION} install kernel-core-${KERNEL_VERSION} > /dev/null
 
     mv lib/modules/${KERNEL_VERSION}/modules.* /lib/modules/${KERNEL_VERSION}
     mv lib/modules/${KERNEL_VERSION}/kernel /lib/modules/${KERNEL_VERSION}
