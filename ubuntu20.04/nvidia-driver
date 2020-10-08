@@ -99,7 +99,7 @@ _kernel_requires_package() {
 
 # Compile the kernel modules, optionally sign them, and generate a precompiled package for use by the nvidia-installer.
 _create_driver_package() (
-    local pkg_name="nvidia-modules-${KERNEL_VERSION%%-*}${PACKAGE_TAG:+-${PACKAGE_TAG}}"
+    local pkg_name="nvidia-modules-${KERNEL_VERSION%-*}${PACKAGE_TAG:+-${PACKAGE_TAG}}"
     local nvidia_sign_args=""
     local nvidia_modeset_sign_args=""
     local nvidia_uvm_sign_args=""
