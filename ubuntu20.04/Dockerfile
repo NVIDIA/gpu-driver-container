@@ -9,7 +9,9 @@ RUN dpkg --add-architecture i386 && \
         kmod \
         file \
         libc6:i386 \
-        libelf-dev && \
+        libelf-dev \
+	libglvnd-dev \
+	pkg-config && \
     rm -rf /var/lib/apt/lists/*
 
 RUN echo "deb [arch=amd64] http://archive.ubuntu.com/ubuntu/ focal main universe" > /etc/apt/sources.list && \
