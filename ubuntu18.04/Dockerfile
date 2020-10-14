@@ -1,4 +1,4 @@
-FROM ubuntu:18.04
+FROM nvidia/cuda:11.0-base-ubuntu18.04
 
 RUN dpkg --add-architecture i386 && \
     apt-get update && apt-get install -y --no-install-recommends \
@@ -8,7 +8,9 @@ RUN dpkg --add-architecture i386 && \
         curl \
         kmod \
         libc6:i386 \
-        libelf-dev && \
+        libelf-dev \
+	libglvnd-dev\
+	pkg-config && \
     rm -rf /var/lib/apt/lists/*
 
 RUN echo "deb [arch=amd64] http://archive.ubuntu.com/ubuntu/ bionic main universe" > /etc/apt/sources.list && \
@@ -55,15 +57,5 @@ WORKDIR /usr/src/nvidia-$DRIVER_VERSION
 
 ARG PUBLIC_KEY=empty
 COPY ${PUBLIC_KEY} kernel/pubkey.x509
-
-ARG PRIVATE_KEY
-ARG KERNEL_VERSION=generic,generic-hwe-18.04
-
-# Compile the kernel modules and generate precompiled packages for use by the nvidia-installer.
-RUN apt-get update && \
-    for version in $(echo $KERNEL_VERSION | tr ',' ' '); do \
-        nvidia-driver update -k $version -t builtin ${PRIVATE_KEY:+"-s ${PRIVATE_KEY}"}; \
-    done && \
-    rm -rf /var/lib/apt/lists/*
 
 ENTRYPOINT ["nvidia-driver", "init"]
