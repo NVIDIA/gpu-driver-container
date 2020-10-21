@@ -90,7 +90,7 @@ _install_prerequisites() (
     echo "kernel requires gcc version: 'gcc-${gcc_version}', current gcc version is '${current_gcc}'"
 
     if [[ "gcc-${gcc_version}" != "${current_gcc}"* ]]; then
-        yum install -q -y "gcc-${gcc_version}"
+        dnf install -q -y --releasever=${RHEL_VERSION} "gcc-${gcc_version}"
     fi
 )
 
@@ -98,7 +98,7 @@ _install_prerequisites() (
 _remove_prerequisites() {
     true
     if [ "${PACKAGE_TAG:-}" != "builtin" ]; then
-        yum -q -y remove kernel-headers-${KERNEL_VERSION} kernel-devel-${KERNEL_VERSION} > /dev/null
+        dnf -q -y remove kernel-headers-${KERNEL_VERSION} kernel-devel-${KERNEL_VERSION} > /dev/null
         # TODO remove module files not matching an existing driver package.
     fi
 }
