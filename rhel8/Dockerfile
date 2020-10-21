@@ -7,7 +7,7 @@ RUN yum install -y \
         glibc.i686 \
         make \
         cpio \
-	binutils \
+        binutils \
         kmod && \
     rm -rf /var/cache/yum/*
 
