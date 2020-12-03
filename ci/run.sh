@@ -13,9 +13,6 @@ CONTAINER_VERSION=${DRIVER_VERSION}-${CI_COMMIT_TAG}
 FORCE=${FORCE:-}
 if [ -z "$REGISTRY" ]; then
   REGISTRY=nvidia/driver
-  REGISTRY_API_GETTAGS="https://registry.hub.docker.com/v1/repositories/${REGISTRY}/tags"
-else
-  REGISTRY_API_GETTAGS="${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/registry/repositories?tags=true"
 fi
 SSH_KEY=${SSH_KEY:-${HOME}/.ssh/id_rsa}
 
@@ -37,8 +34,8 @@ log() {
 }
 
 get_tags() {
-  curl -fsSL --header "${API_TOKEN:-PRIVATE-TOKEN: ${API_TOKEN}}" "${REGISTRY_API_GETTAGS}" \
-  | jq -r '.[] | .name'
+  # git tag --points-at HEAD
+  git describe --tags HEAD
 }
 
 tag_exists() {
