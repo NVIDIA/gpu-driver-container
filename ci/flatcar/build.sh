@@ -8,15 +8,17 @@ set -o xtrace
 DRIVER_VERSION=${1}
 CONTAINER_VERSION=${2}
 REGISTRY=${3}
+CI_REPOSITORY_URL=${CI_REPOSITORY_URL:-https://gitlab.com/nvidia/driver.git}
+CI_COMMIT_REF_NAME=${CI_COMMIT_REF_NAME:-master}
 
 # Get the kernel version
 kernel_version=$(uname -r)
 
 docker build -t "install-driver:${DRIVER_VERSION}" \
-             --build-arg DRIVER_VERSION="${DRIVER_VERSION}" "https://gitlab.com/nvidia/driver.git#master:flatcar"
+             --build-arg DRIVER_VERSION="${DRIVER_VERSION}" "${CI_REPOSITORY_URL}#${CI_COMMIT_REF_NAME}:flatcar"
 
 docker run --privileged --name "compile_driver-${DRIVER_VERSION}" "install-driver:${DRIVER_VERSION}" \
-	     update --kernel ${kernel_version}
+	     update --kernel "${kernel_version}"
 
 docker commit -m "Compile Linux kernel modules version ${kernel_version} for NVIDIA driver version ${DRIVER_VERSION}" \
 	     --change='ENTRYPOINT ["nvidia-driver", "init"]' "compile_driver-${DRIVER_VERSION}" "${REGISTRY}:${CONTAINER_VERSION}-${kernel_version}-flatcar"
