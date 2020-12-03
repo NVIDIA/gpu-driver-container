@@ -172,6 +172,11 @@ coreos-scan:
     TAGS_REGEX: "$DRIVER_VERSION.*coreos"
   <<: *scan_definition
 
+flatcar-scan:
+  variables:
+    TAGS_REGEX: "$DRIVER_VERSION.*flatcar"
+  <<: *scan_definition
+
 deploy:
   stage: deploy
   script:

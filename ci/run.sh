@@ -125,12 +125,12 @@ EOF
 log 'Creating AWS resources'
 terraform apply -auto-approve
 public_ip_ubuntu16_04=$(terraform output public_ip_ubuntu16_04)
-public_ip_coreos=$(terraform output public_ip_coreos)
+public_ip_flatcar=$(terraform output public_ip_flatcar)
 
 log 'Add instance to known hosts'
 # shellcheck disable=SC2086
 ssh-keyscan -H "${public_ip_ubuntu16_04}" >> "${HOME}/.ssh/known_hosts"
-ssh-keyscan -H "${public_ip_coreos}" >> "${HOME}/.ssh/known_hosts"
+ssh-keyscan -H "${public_ip_flatcar}" >> "${HOME}/.ssh/known_hosts"
 
 log 'Get tags'
 tags=$(get_tags)
@@ -195,17 +195,16 @@ done
 docker container prune
 docker image prune -a
 
-
-# Resolving CoreOS version
-coreos_kernel=$(ssh "nvidia@${public_ip_coreos}" uname -r)
-coreos_tag_long=${CONTAINER_VERSION}-${coreos_kernel}-coreos
-if [[ -n ${FORCE} ]] || ! tag_exists "${coreos_tag_long}" "${tags}"; then
-    log 'Building CoreOS image'
+# Resolving Flatcar version
+flatcar_kernel=$(ssh "nvidia@${public_ip_flatcar}" uname -r)
+flatcar_tag_long=${CONTAINER_VERSION}-${flatcar_kernel}-flatcar
+if [[ -n ${FORCE} ]] || ! tag_exists "${flatcar_tag_long}" "${tags}"; then
+    log 'Building Flatcar image'
     # shellcheck disable=SC2029
-    ssh "nvidia@${public_ip_coreos}" /home/nvidia/build.sh "${DRIVER_VERSION}" "${CONTAINER_VERSION}" "${REGISTRY}"
+    ssh "nvidia@${public_ip_flatcar}" /home/nvidia/build.sh "${DRIVER_VERSION}" "${CONTAINER_VERSION}" "${REGISTRY}" || true
     # shellcheck disable=SC2029
-    scp "nvidia@${public_ip_coreos}:/home/nvidia/${coreos_tag_long}.tar" .
+    scp "nvidia@${public_ip_flatcar}:/home/nvidia/${flatcar_tag_long}.tar" . || true
 
-    docker load -i "${coreos_tag_long}.tar"
-    docker push "${REGISTRY}:${coreos_tag_long}"
+    docker load -i "${flatcar_tag_long}.tar" || true
+    docker push "${REGISTRY}:${flatcar_tag_long}" || true
 fi
