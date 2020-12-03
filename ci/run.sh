@@ -52,14 +52,16 @@ latest_ubuntu_kernel() {
 latest_centos_kernel() {
   docker run --rm centos:"${1}" /bin/bash -c\
     "yum install -y yum-utils &> /dev/null && repoquery kernel-headers \
-      | cut -d ':' -f 2"
+      | cut -d ':' -f 2 \
+      | tail -n 1"
 }
 
 latest_rhel_kernel() {
   if [[ "${1}" -eq 7 ]]; then
     docker run --rm centos:"${1}" /bin/bash -c\
       "yum install -y yum-utils &> /dev/null && repoquery kernel-headers \
-        | cut -d ':' -f 2"
+        | cut -d ':' -f 2 \
+        | tail -n 1"
   elif [[ "${1}" -eq 8 ]]; then
     docker run --rm centos:"${1}" /bin/bash -c\
       "dnf repoquery -q --latest-limit 1 kernel-headers \
