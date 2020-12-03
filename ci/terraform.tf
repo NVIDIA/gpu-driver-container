@@ -13,6 +13,12 @@ variable "ssh_key_pub" {}
 variable "project_name" {}
 variable "ci_pipeline_id" {}
 
+variable "flatcar_channel" {
+	type        = string
+	default     = "stable"
+	description = "Flatcar channel to deploy on instances"
+}
+
 data "aws_ami" "ubuntu16_04" {
 	most_recent = true
 
@@ -114,6 +120,82 @@ output "public_ip_ubuntu16_04" {
 	value = aws_instance.ubuntu16_04.public_ip
 }
 
+data "ignition_user" "nvidia" {
+	name = "nvidia"
+	ssh_authorized_keys = [file(var.ssh_key_pub)]
+	primary_group = "docker"
+	groups = ["sudo"]
+}
+
+# Get the latest Flatcar Pro AMI available for the given channel
+data "aws_ami" "flatcar_pro_latest" {
+	most_recent = true
+	owners      = ["aws-marketplace"]
+
+	filter {
+		name   = "architecture"
+		values = ["x86_64"]
+	}
+
+	filter {
+		name   = "virtualization-type"
+		values = ["hvm"]
+	}
+
+	filter {
+		name   = "name"
+		values = ["Flatcar-pro-${var.flatcar_channel}-*"]
+	}
+}
+
+data "ignition_config" "flatcar_ignition_config" {
+	users = [data.ignition_user.nvidia.id]
+}
+
+resource "aws_instance" "flatcar_builder" {
+	ami           = data.aws_ami.flatcar_pro_latest.id
+	instance_type = "c4.4xlarge"
+
+	tags = {
+		Name = "${var.project_name}-${var.ci_pipeline_id}-flatcar"
+		product = "cloud-native"
+		project = var.project_name
+		environment = "cicd"
+	}
+
+	root_block_device {
+		volume_size = 40
+	}
+
+	security_groups = ["default", "${aws_security_group.allow_ssh.name}"]
+
+	connection {
+		user = "nvidia"
+		host = self.public_ip
+		agent = true
+	}
+
+	provisioner "file" {
+		source = "./flatcar/build.sh"
+		destination = "~/build.sh"
+	}
+
+	provisioner "remote-exec" {
+		inline = [
+		"sudo systemctl stop update-engine",
+		"sudo systemctl stop locksmithd",
+		"sudo modprobe -a loop ipmi_msghandler",
+		"chmod +x ~/build.sh"
+		]
+	}
+
+	user_data = data.ignition_config.flatcar_ignition_config.rendered
+}
+
+output "public_ip_flatcar" {
+	value = "${aws_instance.coreos_builder.public_ip}"
+}
+
 # Launch the latest CoreOS instance
 data "aws_ami" "coreos" {
 	most_recent = true
@@ -124,13 +206,6 @@ data "aws_ami" "coreos" {
 		name = "name"
 		values = ["CoreOS-stable-*"]
 	}
-}
-
-data "ignition_user" "nvidia" {
-	name = "nvidia"
-	ssh_authorized_keys = [file(var.ssh_key_pub)]
-	primary_group = "docker"
-	groups = ["sudo"]
 }
 
 data "ignition_config" "coreos_ignition_config" {
