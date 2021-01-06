@@ -163,12 +163,17 @@ _load_driver() {
 
 
    if [ "${DRIVER_TYPE}" = "vgpu" ]; then
-        export LD_LIBRARY_PATH=/usr/lib64/nvidia/gridd
+        export LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu/nvidia/gridd
         echo "licensing libraries at ${LD_LIBRARY_PATH}"
 
-        echo "Copying gridd.conf..."
-        cp /drivers/gridd.conf /etc/nvidia/gridd.conf
-
+        if [ "${VPU_LICENSE_SERVER_TYPE}" = "FNE" ]; then
+            echo "Copying gridd.conf..."
+            cp /drivers/gridd.conf /etc/nvidia/gridd.conf
+        elif [ "${VPU_LICENSE_SERVER_TYPE}" = "NLS" ]; then
+            echo "Copying MessengerToken..."
+            mkdir -p  /etc/nvidia/MessengerToken/
+            cp /drivers/MessengerToken/* /etc/nvidia/MessengerToken/
+        fi
         echo "Starting nvidia-gridd.."
         nvidia-gridd
     fi
@@ -195,6 +200,21 @@ _unload_driver() {
         done
         if [ $i -eq 10 ]; then
             echo "Could not stop NVIDIA persistence daemon" >&2
+            return 1
+        fi
+    fi
+
+    if [ -f /var/run/nvidia-gridd/nvidia-gridd.pid ]; then
+        echo "Stopping NVIDIA grid daemon..."
+        local pid=$(< /var/run/nvidia-gridd/nvidia-gridd.pid)
+
+        kill -SIGTERM "${pid}"
+        for i in $(seq 1 10); do
+            kill -0 "${pid}" 2> /dev/null || break
+            sleep 0.1
+        done
+        if [ $i -eq 10 ]; then
+            echo "Could not stop NVIDIA Grid daemon" >&2
             return 1
         fi
     fi
