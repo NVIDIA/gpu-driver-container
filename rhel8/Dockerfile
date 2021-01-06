@@ -6,9 +6,13 @@ ARG DRIVER_VERSION=450.80.02
 ENV DRIVER_VERSION=$DRIVER_VERSION
 ARG DRIVER_ARCH=x86_64
 ENV DRIVER_ARCH=$DRIVER_ARCH
+
 # Arg to indicate if driver type is either of passthrough/baremetal or vgpu
 ARG DRIVER_TYPE=passthrough
 ENV DRIVER_TYPE=$DRIVER_TYPE
+ARG VPU_LICENSE_SERVER_TYPE=FNE
+ENV VPU_LICENSE_SERVER_TYPE=$VPU_LICENSE_SERVER_TYPE
+
 ADD install.sh /tmp/
 
 RUN sh /tmp/install.sh depinstall && \
