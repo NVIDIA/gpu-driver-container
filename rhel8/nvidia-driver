@@ -5,7 +5,6 @@ set -eu
 
 RUN_DIR=/run/nvidia
 PID_FILE=${RUN_DIR}/${0##*/}.pid
-DRIVER_VERSION=${DRIVER_VERSION:?"Missing driver version"}
 KERNEL_UPDATE_HOOK=/run/kernel/postinst.d/update-nvidia-driver
 
 _update_package_cache() {
@@ -43,9 +42,6 @@ _install_prerequisites() (
 
     trap "rm -rf ${tmp_dir}" EXIT
     cd ${tmp_dir}
-
-    echo "Installing elfutils..."
-    dnf install -q -y elfutils-libelf.x86_64 elfutils-libelf-devel.x86_64
 
     rm -rf /lib/modules/${KERNEL_VERSION}
     mkdir -p /lib/modules/${KERNEL_VERSION}/proc
@@ -183,6 +179,17 @@ _load_driver() {
 
     echo "Starting NVIDIA persistence daemon..."
     nvidia-persistenced --persistence-mode
+
+    if [ "${DRIVER_TYPE}" = "vgpu" ]; then
+        export LD_LIBRARY_PATH=/usr/lib64/nvidia/gridd
+        echo "licensing libraries at ${LD_LIBRARY_PATH}"
+
+        echo "Copying gridd.conf..."
+        cp /drivers/gridd.conf /etc/nvidia/gridd.conf
+
+        echo "Starting nvidia-gridd.."
+        nvidia-gridd
+    fi
 }
 
 # Stop persistenced and unload the kernel modules if they are currently loaded.
@@ -303,6 +310,21 @@ _shutdown() {
 }
 
 init() {
+    if [ "${DRIVER_TYPE}" = "vgpu" ]; then
+        # TODO: invoke metadata file parsing
+        # TODO: cp matching driver based on HOST_DRIVER_VERSION, HOST_DRIVER_BRANCH
+        # TODO: override DRIVER_VERSION to matching driver
+        export DRIVER_VERSION=460.16-grid
+    fi
+
+    # Install the userspace components and copy the kernel module sources.
+    sh NVIDIA-Linux-$DRIVER_ARCH-$DRIVER_VERSION.run -x && \
+        cd NVIDIA-Linux-$DRIVER_ARCH-$DRIVER_VERSION && \
+        sh /tmp/install.sh nvinstall && \
+        mkdir -p /usr/src/nvidia-$DRIVER_VERSION && \
+        mv LICENSE mkprecompiled kernel /usr/src/nvidia-$DRIVER_VERSION && \
+        sed '9,${/^\(kernel\|LICENSE\)/!d}' .manifest > /usr/src/nvidia-$DRIVER_VERSION/.manifest
+
     echo -e "\n========== NVIDIA Software Installer ==========\n"
     echo -e "Starting installation of NVIDIA driver version ${DRIVER_VERSION} for Linux kernel version ${KERNEL_VERSION}\n"
 
@@ -354,6 +376,20 @@ update() {
         exec 4>&-
     fi
     exec 3>&-
+
+    # vgpu driver version is choosen dynamically during runtime, so pre-compile modules for
+    # only non-vgpu driver types
+    if [ "${DRIVER_TYPE}" != "vgpu" ]; then
+        # Install the userspace components and copy the kernel module sources.
+        if [ ! -e /usr/src/nvidia-${DRIVER_VERSION}/mkprecompiled ]; then
+            sh NVIDIA-Linux-$DRIVER_ARCH-$DRIVER_VERSION.run -x && \
+                cd NVIDIA-Linux-$DRIVER_ARCH-$DRIVER_VERSION && \
+                sh /tmp/install.sh nvinstall && \
+                mkdir -p /usr/src/nvidia-$DRIVER_VERSION && \
+                mv LICENSE mkprecompiled kernel /usr/src/nvidia-$DRIVER_VERSION && \
+                sed '9,${/^\(kernel\|LICENSE\)/!d}' .manifest > /usr/src/nvidia-$DRIVER_VERSION/.manifest
+        fi
+    fi
 
     echo -e "\n========== NVIDIA Software Updater ==========\n"
     echo -e "Starting update of NVIDIA driver version ${DRIVER_VERSION} for Linux kernel version ${KERNEL_VERSION}\n"
