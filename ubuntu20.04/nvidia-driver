@@ -311,7 +311,6 @@ init() {
         # TODO: invoke metadata file parsing
         # TODO: cp matching driver based on HOST_DRIVER_VERSION, HOST_DRIVER_BRANCH
         # TODO: override DRIVER_VERSION to matching driver
-        export DRIVER_VERSION=460.16-grid
     fi
 
     # Install the userspace components and copy the kernel module sources.
