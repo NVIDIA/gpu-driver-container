@@ -35,6 +35,7 @@ _resolve_kernel_version() {
         echo "Could not resolve Linux kernel version" >&2
         return 1
     fi
+
     KERNEL_VERSION="${version}-${flavor:-generic}"
     echo "Proceeding with Linux kernel version ${KERNEL_VERSION}"
     return 0
@@ -160,6 +161,24 @@ _load_driver() {
 
     echo "Starting NVIDIA persistence daemon..."
     nvidia-persistenced --persistence-mode
+
+
+   if [ "${DRIVER_TYPE}" = "vgpu" ]; then
+        export LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu/nvidia/gridd
+        echo "licensing libraries at ${LD_LIBRARY_PATH}"
+
+        if [ "${VPU_LICENSE_SERVER_TYPE}" = "FNE" ]; then
+            echo "Copying gridd.conf..."
+            cp /drivers/gridd.conf /etc/nvidia/gridd.conf
+        elif [ "${VPU_LICENSE_SERVER_TYPE}" = "NLS" ]; then
+            echo "Copying MessengerToken..."
+            mkdir -p  /etc/nvidia/MessengerToken/
+            cp /drivers/MessengerToken/* /etc/nvidia/MessengerToken/
+        fi
+        echo "Starting nvidia-gridd.."
+        nvidia-gridd
+    fi
+
     return 0
 }
 
@@ -182,6 +201,21 @@ _unload_driver() {
         done
         if [ $i -eq 10 ]; then
             echo "Could not stop NVIDIA persistence daemon" >&2
+            return 1
+        fi
+    fi
+
+    if [ -f /var/run/nvidia-gridd/nvidia-gridd.pid ]; then
+        echo "Stopping NVIDIA grid daemon..."
+        local pid=$(< /var/run/nvidia-gridd/nvidia-gridd.pid)
+
+        kill -SIGTERM "${pid}"
+        for i in $(seq 1 10); do
+            kill -0 "${pid}" 2> /dev/null || break
+            sleep 0.1
+        done
+        if [ $i -eq 10 ]; then
+            echo "Could not stop NVIDIA Grid daemon" >&2
             return 1
         fi
     fi
@@ -274,6 +308,34 @@ _shutdown() {
 }
 
 init() {
+    if [ "${DRIVER_TYPE}" = "vgpu" ]; then
+        # TODO: invoke metadata file parsing
+        # TODO: cp matching driver based on HOST_DRIVER_VERSION, HOST_DRIVER_BRANCH
+        # TODO: override DRIVER_VERSION to matching driver
+        echo "vgpu driver version selected: ${DRIVER_VERSION}"
+    fi
+
+    # Install the userspace components and copy the kernel module sources.
+    sh NVIDIA-Linux-x86_64-$DRIVER_VERSION.run -x && \
+        cd NVIDIA-Linux-x86_64-$DRIVER_VERSION && \
+        ./nvidia-installer --silent \
+                    --no-kernel-module \
+                    --install-compat32-libs \
+                    --no-nouveau-check \
+                    --no-nvidia-modprobe \
+                    --no-rpms \
+                    --no-backup \
+                    --no-check-for-alternate-installs \
+                    --no-libglx-indirect \
+                    --no-install-libglvnd \
+                    --x-prefix=/tmp/null \
+                    --x-module-path=/tmp/null \
+                    --x-library-path=/tmp/null \
+                    --x-sysconfig-path=/tmp/null && \
+        mkdir -p /usr/src/nvidia-${DRIVER_VERSION} && \
+        mv LICENSE mkprecompiled kernel /usr/src/nvidia-${DRIVER_VERSION} && \
+        sed '9,${/^\(kernel\|LICENSE\)/!d}' .manifest > /usr/src/nvidia-${DRIVER_VERSION}/.manifest
+
     echo -e "\n========== NVIDIA Software Installer ==========\n"
     echo -e "Starting installation of NVIDIA driver version ${DRIVER_VERSION} for Linux kernel version ${KERNEL_VERSION}\n"
 
@@ -324,6 +386,33 @@ update() {
         exec 4>&-
     fi
     exec 3>&-
+
+    # vgpu driver version is choosen dynamically during runtime, so pre-compile modules for
+    # only non-vgpu driver types
+    if [ "${DRIVER_TYPE}" != "vgpu" ]; then
+        # Install the userspace components and copy the kernel module sources.
+        if [ ! -e /usr/src/nvidia-${DRIVER_VERSION}/mkprecompiled ]; then
+            sh NVIDIA-Linux-x86_64-$DRIVER_VERSION.run -x && \
+                cd NVIDIA-Linux-x86_64-$DRIVER_VERSION && \
+                ./nvidia-installer --silent \
+                            --no-kernel-module \
+                            --install-compat32-libs \
+                            --no-nouveau-check \
+                            --no-nvidia-modprobe \
+                            --no-rpms \
+                            --no-backup \
+                            --no-check-for-alternate-installs \
+                            --no-libglx-indirect \
+                            --no-install-libglvnd \
+                            --x-prefix=/tmp/null \
+                            --x-module-path=/tmp/null \
+                            --x-library-path=/tmp/null \
+                            --x-sysconfig-path=/tmp/null && \
+                mkdir -p /usr/src/nvidia-${DRIVER_VERSION} && \
+                mv LICENSE mkprecompiled kernel /usr/src/nvidia-${DRIVER_VERSION} && \
+                sed '9,${/^\(kernel\|LICENSE\)/!d}' .manifest > /usr/src/nvidia-${DRIVER_VERSION}/.manifest
+        fi
+    fi
 
     echo -e "\n========== NVIDIA Software Updater ==========\n"
     echo -e "Starting update of NVIDIA driver version ${DRIVER_VERSION} for Linux kernel version ${KERNEL_VERSION}\n"
