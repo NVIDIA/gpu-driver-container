@@ -28,33 +28,22 @@ ARG DRIVER_VERSION=450.80.02
 ENV DRIVER_VERSION=$DRIVER_VERSION
 ENV DEBIAN_FRONTEND=noninteractive
 
-# Install the userspace components and copy the kernel module sources.
-RUN cd /tmp && \
-    curl -fSsl -O $BASE_URL/$DRIVER_VERSION/NVIDIA-Linux-x86_64-$DRIVER_VERSION.run && \
-    sh NVIDIA-Linux-x86_64-$DRIVER_VERSION.run -x && \
-    cd NVIDIA-Linux-x86_64-$DRIVER_VERSION* && \
-    ./nvidia-installer --silent \
-                       --no-kernel-module \
-                       --install-compat32-libs \
-                       --no-nouveau-check \
-                       --no-nvidia-modprobe \
-                       --no-rpms \
-                       --no-backup \
-                       --no-check-for-alternate-installs \
-                       --no-libglx-indirect \
-                       --no-install-libglvnd \
-                       --x-prefix=/tmp/null \
-                       --x-module-path=/tmp/null \
-                       --x-library-path=/tmp/null \
-                       --x-sysconfig-path=/tmp/null && \
-    mkdir -p /usr/src/nvidia-$DRIVER_VERSION && \
-    mv LICENSE mkprecompiled kernel /usr/src/nvidia-$DRIVER_VERSION && \
-    sed '9,${/^\(kernel\|LICENSE\)/!d}' .manifest > /usr/src/nvidia-$DRIVER_VERSION/.manifest && \
-    rm -rf /tmp/*
+# Arg to indicate if driver type is either of passthrough(baremetal) or vgpu
+ARG DRIVER_TYPE=passthrough
+ENV DRIVER_TYPE=$DRIVER_TYPE
+ARG VPU_LICENSE_SERVER_TYPE=FNE
+ENV VPU_LICENSE_SERVER_TYPE=$VPU_LICENSE_SERVER_TYPE
 
 COPY nvidia-driver /usr/local/bin
 
-WORKDIR /usr/src/nvidia-$DRIVER_VERSION
+ADD drivers drivers/
+
+# Fetch the installer automatically for passthrough/baremetal types
+RUN if [ "$DRIVER_TYPE" != "vgpu" ]; then cd drivers && \
+    curl -fSsl -O $BASE_URL/$DRIVER_VERSION/NVIDIA-Linux-x86_64-$DRIVER_VERSION.run && \
+    chmod +x  NVIDIA-Linux-x86_64-$DRIVER_VERSION.run; fi
+
+WORKDIR  /drivers
 
 ARG PUBLIC_KEY=empty
 COPY ${PUBLIC_KEY} kernel/pubkey.x509
