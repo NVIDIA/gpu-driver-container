@@ -6,27 +6,31 @@ ARG DRIVER_VERSION=450.80.02
 ENV DRIVER_VERSION=$DRIVER_VERSION
 ARG DRIVER_ARCH=x86_64
 ENV DRIVER_ARCH=$DRIVER_ARCH
+
+# Arg to indicate if driver type is either of passthrough/baremetal or vgpu
+ARG DRIVER_TYPE=passthrough
+ENV DRIVER_TYPE=$DRIVER_TYPE
+ARG VPU_LICENSE_SERVER_TYPE=FNE
+ENV VPU_LICENSE_SERVER_TYPE=$VPU_LICENSE_SERVER_TYPE
+
 ADD install.sh /tmp/
 
 RUN sh /tmp/install.sh depinstall && \
     curl -fsSL -o /usr/local/bin/donkey https://github.com/3XX0/donkey/releases/download/v1.1.0/donkey && \
     curl -fsSL -o /usr/local/bin/extract-vmlinux https://raw.githubusercontent.com/torvalds/linux/master/scripts/extract-vmlinux && \
     chmod +x /usr/local/bin/donkey /usr/local/bin/extract-vmlinux && \
-    ln -s /sbin/ldconfig /sbin/ldconfig.real && \
-    # Install the userspace components and copy the kernel module sources.
-    cd /tmp && \
+    ln -s /sbin/ldconfig /sbin/ldconfig.real
+
+# Fetch the installer automatically for passthrough/baremetal types
+RUN if [ "$DRIVER_TYPE" != "vgpu" ]; then cd drivers && \
     curl -fSsl -O $BASE_URL/$DRIVER_VERSION/NVIDIA-Linux-$DRIVER_ARCH-$DRIVER_VERSION.run && \
-    sh NVIDIA-Linux-$DRIVER_ARCH-$DRIVER_VERSION.run -x && \
-    cd NVIDIA-Linux-$DRIVER_ARCH-$DRIVER_VERSION && \
-    sh /tmp/install.sh nvinstall && \
-    mkdir -p /usr/src/nvidia-$DRIVER_VERSION && \
-    mv LICENSE mkprecompiled kernel /usr/src/nvidia-$DRIVER_VERSION && \
-    sed '9,${/^\(kernel\|LICENSE\)/!d}' .manifest > /usr/src/nvidia-$DRIVER_VERSION/.manifest && \
-    rm -rf /tmp/*
+    chmod +x  NVIDIA-Linux-$DRIVER_ARCH-$DRIVER_VERSION.run; fi
 
 COPY nvidia-driver /usr/local/bin
 
-WORKDIR /usr/src/nvidia-$DRIVER_VERSION
+ADD drivers drivers/
+
+WORKDIR /drivers
 
 ARG PUBLIC_KEY=empty
 COPY ${PUBLIC_KEY} kernel/pubkey.x509
