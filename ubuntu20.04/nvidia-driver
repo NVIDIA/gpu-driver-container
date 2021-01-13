@@ -167,10 +167,10 @@ _load_driver() {
         export LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu/nvidia/gridd
         echo "licensing libraries at ${LD_LIBRARY_PATH}"
 
-        if [ "${VPU_LICENSE_SERVER_TYPE}" = "FNE" ]; then
+        if [ "${VGPU_LICENSE_SERVER_TYPE}" = "FNE" ]; then
             echo "Copying gridd.conf..."
             cp /drivers/gridd.conf /etc/nvidia/gridd.conf
-        elif [ "${VPU_LICENSE_SERVER_TYPE}" = "NLS" ]; then
+        elif [ "${VGPU_LICENSE_SERVER_TYPE}" = "NLS" ]; then
             echo "Copying MessengerToken..."
             mkdir -p  /etc/nvidia/MessengerToken/
             cp /drivers/MessengerToken/* /etc/nvidia/MessengerToken/
