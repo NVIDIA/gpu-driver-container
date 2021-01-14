@@ -1,4 +1,4 @@
-module vgpu-catalog-parser
+module vgpu-util
 
 go 1.15
 
