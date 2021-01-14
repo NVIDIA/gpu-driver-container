@@ -10,8 +10,8 @@ ENV DRIVER_ARCH=$DRIVER_ARCH
 # Arg to indicate if driver type is either of passthrough/baremetal or vgpu
 ARG DRIVER_TYPE=passthrough
 ENV DRIVER_TYPE=$DRIVER_TYPE
-ARG VPU_LICENSE_SERVER_TYPE=FNE
-ENV VPU_LICENSE_SERVER_TYPE=$VPU_LICENSE_SERVER_TYPE
+ARG VGPU_LICENSE_SERVER_TYPE=FNE
+ENV VGPU_LICENSE_SERVER_TYPE=$VGPU_LICENSE_SERVER_TYPE
 
 ADD install.sh /tmp/
 
@@ -21,14 +21,14 @@ RUN sh /tmp/install.sh depinstall && \
     chmod +x /usr/local/bin/donkey /usr/local/bin/extract-vmlinux && \
     ln -s /sbin/ldconfig /sbin/ldconfig.real
 
+ADD drivers drivers/
+
 # Fetch the installer automatically for passthrough/baremetal types
 RUN if [ "$DRIVER_TYPE" != "vgpu" ]; then cd drivers && \
     curl -fSsl -O $BASE_URL/$DRIVER_VERSION/NVIDIA-Linux-$DRIVER_ARCH-$DRIVER_VERSION.run && \
     chmod +x  NVIDIA-Linux-$DRIVER_ARCH-$DRIVER_VERSION.run; fi
 
 COPY nvidia-driver /usr/local/bin
-
-ADD drivers drivers/
 
 WORKDIR /drivers
 
