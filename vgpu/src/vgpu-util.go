@@ -1,3 +1,16 @@
+// Copyright (c) 2019, NVIDIA CORPORATION.  All rights reserved.
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
 package main
 
 import (
@@ -78,9 +91,18 @@ type VGPUDriverCatalog struct {
 
 // PCIDeviceInfo represents Nvidia PCI device info
 type PCIDeviceInfo struct {
-	deviceID    string
-	vendor      string
-	subsystemID string
+	deviceID         string
+	vendor           string
+	subsystemID      string
+	config           []byte
+	name             string
+	vendorCapability []byte
+}
+
+// VGPUConfigInfo represents vGPU config info
+type VGPUConfigInfo struct {
+	version string
+	branch  string
 }
 
 var (
@@ -94,17 +116,39 @@ var (
 
 const (
 	// LogFile is the path for logging
-	LogFile = "/var/log/vgpu-catalog-parser.log"
+	LogFile = "/var/log/vgpu-util.log"
 	// DefaultInstallerDirectory indicates default location where driver installers are located
 	DefaultInstallerDirectory = "/drivers"
 	// DefaultCatalogFile indicates default location where catalog file is located
-	DefaultCatalogFile = "/drivers/vgpu-driver-catalog-file.yaml"
+	DefaultCatalogFile = "/drivers/vgpuDriverCatalog.yaml"
 	// GuestCPU indicates default guest CPU type
 	GuestCPU = "x86"
 	// SysfsBasePath indicates base path for PCI devices info
 	SysfsBasePath = "/sys/bus/pci/devices"
 	// NvidiaVendorID represents Nvidia PCI vendor ID
 	NvidiaVendorID = "0x10de"
+	// PciDevicesRoot represents base path for all pci devices under sysfs
+	PciDevicesRoot = "/sys/bus/pci/devices"
+	// PciStatusByte indicates status byte
+	PciStatusByte = 0x06
+	// PciStatusCapabilityList indicates if capability list is supported
+	PciStatusCapabilityList = 0x10
+	// PciCapabilityList indicates offset of first capability list entry
+	PciCapabilityList = 0x34
+	// PciCapabilityListID indicates offset for capability id
+	PciCapabilityListID = 0
+	// PciCapabilityListNext indicates offset for next capability in the list
+	PciCapabilityListNext = 1
+	// PciCapabilityLength indicates offset for capability length
+	PciCapabilityLength = 2
+	// PciCapabilityVendorSpecificID indicates PCI vendor specific capability id
+	PciCapabilityVendorSpecificID = 0x09
+	// VGPUCapabilityRecordStart indicates offset of beginning vGPU capability record
+	VGPUCapabilityRecordStart = 5
+	// HostDriverVersionLength indicates max length of driver version
+	HostDriverVersionLength = 10
+	// HostDriverBranchLength indicates max length of driver branch
+	HostDriverBranchLength = 10
 )
 
 func main() {
@@ -119,41 +163,33 @@ func main() {
 	c := cli.NewApp()
 	c.Name = "vgpu-catalog-parser"
 	c.Usage = "Find appropriate vGPU driver based on host driver version and branch"
-	c.UsageText = " [-d | --host-driver-version] [-b | --host-driver-branch] [-i | --installer-directory] [-c | --catalog-file]"
-	c.Version = "1.0.0"
+	c.Version = "0.1.0"
 
 	// Create the 'match' subcommand
 	match := cli.Command{}
 	match.Name = "match"
-	match.Usage = "Find vGPU driver matching host driver version and branch"
-
+	match.Usage = "Match vGPU driver version compatible with hypervisor vGPU driver version and branch"
+	match.UsageText = "[-i | --installer-directory] [-c | --catalog-file]"
 	match.Action = func(c *cli.Context) error {
 		return Match(c)
+	}
+
+	// Create the 'cleanup' subcommand
+	count := cli.Command{}
+	count.Name = "count"
+	count.Usage = "Count number of vGPU devices that expose vGPU capability information"
+	count.Action = func(c *cli.Context) error {
+		return Count(c)
 	}
 
 	// Register the subcommands with the top-level CLI
 	c.Commands = []*cli.Command{
 		&match,
+		&count,
 	}
 
-	// Setup command flags
-	commandFlags := []cli.Flag{
-		&cli.StringFlag{
-			Name:        "host-driver-version",
-			Aliases:     []string{"d"},
-			Usage:       "Host driver version",
-			Value:       "",
-			Destination: &hostDriverVersion,
-			EnvVars:     []string{"VGPU_HOST_DRIVER_VERSION"},
-		},
-		&cli.StringFlag{
-			Name:        "host-driver-branch",
-			Aliases:     []string{"b"},
-			Usage:       "Host driver branch",
-			Value:       "",
-			Destination: &hostDriverBranch,
-			EnvVars:     []string{"VGPU_HOST_DRIVER_BRANCH"},
-		},
+	// Match command flags
+	matchFlags := []cli.Flag{
 		&cli.StringFlag{
 			Name:        "installer-directory",
 			Aliases:     []string{"i"},
@@ -173,7 +209,7 @@ func main() {
 	}
 
 	// Update the subcommand flags
-	match.Flags = append([]cli.Flag{}, commandFlags...)
+	match.Flags = append([]cli.Flag{}, matchFlags...)
 
 	// Run the top-level CLI
 	if err := c.Run(os.Args); err != nil {
@@ -196,6 +232,18 @@ func initializeLogger() (*os.File, error) {
 	return logFile, nil
 }
 
+// Count determines number of vGPU devices on host(with vGPU capability exposed v12+)
+func Count(c *cli.Context) error {
+	// find device id and subsystem id of local GPU device
+	vgpuDevices, err := GetVGPUDevices()
+	if err != nil {
+		return fmt.Errorf("unable to search for vGPU devices on host: %v", err)
+	}
+
+	fmt.Printf("NUM_OF_VGPU_DEVICES=%d\n", len(vgpuDevices))
+	return nil
+}
+
 // Match vGPU driver version from given host driver version and branch
 func Match(c *cli.Context) error {
 	log.Infof("Starting 'match' with %v", c.App.Name)
@@ -213,21 +261,34 @@ func Match(c *cli.Context) error {
 	}
 
 	// find device id and subsystem id of local GPU device
-	pciDeviceInfo, err := getPCIDeviceInfo()
+	vgpuDevices, err := GetVGPUDevices()
 	if err != nil {
-		return fmt.Errorf("unable to find local nvidia pci device info: %v", err)
+		return fmt.Errorf("unable to search for vGPU devices on host: %v", err)
 	}
 
-	version, err := FindMatch(driverCatalog, availableDrivers, pciDeviceInfo)
+	if len(vgpuDevices) == 0 {
+		// no vgpu devices present on host with vendor capability enabled in config space(v12+)
+		// no version match can be performed, return here
+		return nil
+	}
+
+	// fetch vGPU host manager version and branch
+	deviceInfo, err := GetVGPUInfo(vgpuDevices[0])
+	if err != nil {
+		return fmt.Errorf("unable to unable to fetch vgpu device info for %s: %v", vgpuDevices[0].name, err)
+	}
+	// set global host branch and version variables
+	hostDriverVersion = deviceInfo.version
+	hostDriverBranch = deviceInfo.branch
+
+	version, err := FindMatch(driverCatalog, availableDrivers, vgpuDevices[0])
 	if err != nil {
 		return fmt.Errorf("unable to find matching driver version: %v", err)
 	}
 
 	log.Infof("Found matching vGPU guest driver version %s", version)
-
-	// set via both env and output
-	os.Setenv("DRIVER_VERSION", version)
-	fmt.Println("DRIVER_VERSION=" + version)
+	// output to stdout
+	fmt.Println("DRIVER_VERSION=" + version + "-grid")
 
 	log.Infof("Completed 'match' with %v", c.App.Name)
 	return nil
@@ -243,7 +304,6 @@ func FindAvailableDrivers() ([]string, error) {
 
 	for _, file := range files {
 		// fetch driver version from filename
-		fmt.Println(file.Name())
 		driverVersion := driverVersionRegex.FindStringSubmatch(path.Base(file.Name()))
 		if len(driverVersion) > 0 {
 			availableDrivers = append(availableDrivers, driverVersion[0])
@@ -503,7 +563,9 @@ func LoadCatalog() (*VGPUDriverCatalog, error) {
 	return &driverCatalog, nil
 }
 
-func getPCIDeviceInfo() (*PCIDeviceInfo, error) {
+// GetVGPUDevices returns all vGPU devices discovered on the host
+func GetVGPUDevices() ([]*PCIDeviceInfo, error) {
+	var deviceList []*PCIDeviceInfo
 	// fetch pci devices
 	devices, err := ioutil.ReadDir(SysfsBasePath)
 	if err != nil {
@@ -532,9 +594,27 @@ func getPCIDeviceInfo() (*PCIDeviceInfo, error) {
 		}
 		subsystemIDStr := strings.TrimSpace(string(subsystemID))
 		log.Debugf("got pci subsystem device id as %s for device %s", subsystemIDStr, device.Name())
-		return &PCIDeviceInfo{vendor: NvidiaVendorID, deviceID: deviceIDStr, subsystemID: subsystemIDStr}, nil
+
+		// fetch config space
+		config, err := ioutil.ReadFile(path.Join(SysfsBasePath, device.Name(), "config"))
+		if err != nil {
+			return nil, fmt.Errorf("Unable to read PCI configuration space for %s: %v", device.Name(), err)
+		}
+		vgpuDevice := &PCIDeviceInfo{name: device.Name(), vendor: NvidiaVendorID, deviceID: deviceIDStr, subsystemID: subsystemIDStr, config: config}
+		capability, err := getVendorSpecificCapability(vgpuDevice)
+		if err != nil {
+			return nil, fmt.Errorf("Unable to read PCI configuration space for %s: %v", device.Name(), err)
+		}
+		vgpuDevice.vendorCapability = capability
+
+		// check if its vGPU device
+		if !isVGPUDevice(vgpuDevice) {
+			continue
+		}
+		// add device to the vgpu device list
+		deviceList = append(deviceList, vgpuDevice)
 	}
-	return nil, nil
+	return deviceList, nil
 }
 
 func foundGPU(gpuList []GPUDescriptor, pciDeviceInfo *PCIDeviceInfo) bool {
@@ -591,4 +671,107 @@ func foundAvailableDriver(availableDriverList []string, requiredDriver string) b
 		}
 	}
 	return false
+}
+
+// getVendorSpecificCapability returns the vendor specific capability from configuration space
+func getVendorSpecificCapability(p *PCIDeviceInfo) ([]byte, error) {
+	if len(p.config) < 256 {
+		return nil, fmt.Errorf("Entire PCI configuration is not read for device %s. Please run with privileged mode to read complete PCI configuration data", p.name)
+	}
+
+	if p.config[PciStatusByte]&PciStatusCapabilityList == 0 {
+		return nil, nil
+	}
+
+	var visited [256]byte
+	pos := int(getByte(p.config, PciCapabilityList))
+	for pos != 0 {
+		id := int(getByte(p.config, pos+PciCapabilityListID))
+		next := int(getByte(p.config, pos+PciCapabilityListNext))
+		length := int(getByte(p.config, pos+PciCapabilityLength))
+
+		if visited[pos] != 0 {
+			// chain looped
+			break
+		}
+		if id == 0xff {
+			// chain broken
+			break
+		}
+		if id == PciCapabilityVendorSpecificID {
+			capability := p.config[pos+PciCapabilityListID : pos+PciCapabilityListID+length]
+			return capability, nil
+		}
+
+		visited[pos]++
+		pos = next
+	}
+	return nil, nil
+}
+
+// getByte returns a single byte of data at specified position
+func getByte(buffer []byte, pos int) uint8 {
+	return uint8(buffer[pos])
+}
+
+// isVGPUDevice returns true if the device is of type vGPU
+func isVGPUDevice(p *PCIDeviceInfo) bool {
+	if len(p.vendorCapability) < 5 {
+		return false
+	}
+	// check for vGPU signature, 0x56, 0x46 i.e "VF"
+	if p.vendorCapability[3] != 0x56 {
+		return false
+	}
+	if p.vendorCapability[4] != 0x46 {
+		return false
+	}
+	return true
+}
+
+// GetVGPUInfo returns information about vGPU manager running on the underlying hypervisor host
+func GetVGPUInfo(p *PCIDeviceInfo) (*VGPUConfigInfo, error) {
+	if len(p.vendorCapability) == 0 {
+		return nil, fmt.Errorf("Vendor capability record is not provided to fetch vgpu space info for %s", p.name)
+	}
+
+	// traverse vGPU vendor capability records until host driver version record(id: 0) is found
+	var hostDriverVersion string
+	var hostDriverBranch string
+	foundDriverVersionRecord := false
+	pos := VGPUCapabilityRecordStart
+	record := getByte(p.vendorCapability, VGPUCapabilityRecordStart)
+	for record != 0 && pos < len(p.vendorCapability) {
+		// find next record
+		recordLength := getByte(p.vendorCapability, pos+1)
+		pos = pos + int(recordLength)
+		record = getByte(p.vendorCapability, pos)
+	}
+
+	if record == 0 && pos+2+HostDriverVersionLength+HostDriverBranchLength <= len(p.vendorCapability) {
+		foundDriverVersionRecord = true
+		// found vGPU host driver version record type
+		// initialized at record data byte, i.e pos + 1(record id byte) + 1(record lengh byte)
+		i := pos + 2
+		// 10 bytes of driver version
+		for ; i < pos+2+HostDriverVersionLength; i++ {
+			hostDriverVersion += string(getByte(p.vendorCapability, i))
+		}
+		hostDriverVersion = strings.Trim(hostDriverVersion, "\x00")
+		// 10 bytes of driver branch
+		for ; i < pos+2+HostDriverVersionLength+HostDriverBranchLength; i++ {
+			hostDriverBranch += string(getByte(p.vendorCapability, i))
+		}
+		hostDriverBranch = strings.Trim(hostDriverBranch, "\x00")
+	}
+
+	if !foundDriverVersionRecord {
+		return nil, fmt.Errorf("Cannot find driver version record in vendor specific capability for device %s", p.name)
+	}
+
+	info := &VGPUConfigInfo{
+		version: strings.TrimSpace(strings.ToUpper(hostDriverVersion)),
+		branch:  strings.TrimSpace(strings.ToUpper(hostDriverBranch)),
+	}
+	return info, nil
 }
