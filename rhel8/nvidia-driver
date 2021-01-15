@@ -195,7 +195,7 @@ _load_driver() {
         fi
 
         echo "Starting nvidia-gridd.."
-        LD_LIBRARY_PATH=/usr/lib64/nvidia/gridd:$LD_LIBRARY_PATH nvidia-gridd
+        LD_LIBRARY_PATH=/usr/lib64/nvidia/gridd nvidia-gridd
     fi
 }
 
