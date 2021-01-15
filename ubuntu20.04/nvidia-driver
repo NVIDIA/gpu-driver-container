@@ -173,7 +173,7 @@ _load_driver() {
             cp /drivers/MessengerToken/* /etc/nvidia/MessengerToken/
         fi
         echo "Starting nvidia-gridd.."
-        LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu/nvidia/gridd:$LD_LIBRARY_PATH nvidia-gridd
+        LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu/nvidia/gridd nvidia-gridd
     fi
 
     return 0
