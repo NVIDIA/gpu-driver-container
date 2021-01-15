@@ -305,8 +305,12 @@ func FindAvailableDrivers() ([]string, error) {
 	for _, file := range files {
 		// fetch driver version from filename
 		driverVersion := driverVersionRegex.FindStringSubmatch(path.Base(file.Name()))
-		if len(driverVersion) > 0 {
-			availableDrivers = append(availableDrivers, driverVersion[0])
+		if len(driverVersion) > 1 {
+			// matched list should be as
+			// 0: NVIDIA-Linux-x86_64-460.16-grid.run
+			// 1: 460.16
+			log.Debugf("adding available driver %s", driverVersion[1])
+			availableDrivers = append(availableDrivers, driverVersion[1])
 		}
 	}
 	return availableDrivers, nil
@@ -334,18 +338,18 @@ func FindMatch(driverCatalog *VGPUDriverCatalog, availbleDriverList []string, pc
 				}
 
 				// check if allowList cpu list is present and doesn't match guestGPU, or denyList cpu list is present and matches guestGPU
-				if !foundGPU(branch.Allow.GPU, pciDeviceInfo) {
+				if len(branch.Allow.GPU) > 0 && !foundGPU(branch.Allow.GPU, pciDeviceInfo) {
 					continue
 				}
-				if foundGPU(branch.Deny.GPU, pciDeviceInfo) {
+				if len(branch.Deny.GPU) > 0 && foundGPU(branch.Deny.GPU, pciDeviceInfo) {
 					continue
 				}
 
 				// check if allowList cpu list is present and doesn't match guestCPU, or denyList cpu list is present and matches guestCPU
-				if !foundCPU(branch.Allow.CPU) {
+				if len(branch.Allow.CPU) > 0 && !foundCPU(branch.Allow.CPU) {
 					continue
 				}
-				if foundCPU(branch.Deny.CPU) {
+				if len(branch.Deny.CPU) > 0 && foundCPU(branch.Deny.CPU) {
 					continue
 				}
 
@@ -355,26 +359,24 @@ func FindMatch(driverCatalog *VGPUDriverCatalog, availbleDriverList []string, pc
 		} else if branch.Type == "guest" {
 			log.Debugf("checking guest branch descriptor %s", branch.Name)
 			// check if allowList cpu list is present and doesn't match guestGPU, or denyList cpu list is present and matches guestGPU
-			if !foundGPU(branch.Allow.GPU, pciDeviceInfo) {
+			if len(branch.Allow.GPU) > 0 && !foundGPU(branch.Allow.GPU, pciDeviceInfo) {
 				continue
 			}
-			if foundGPU(branch.Deny.GPU, pciDeviceInfo) {
+			if len(branch.Deny.GPU) > 0 && foundGPU(branch.Deny.GPU, pciDeviceInfo) {
 				continue
 			}
 
 			// check if allowList cpu list is present and doesn't match guestCPU, or denyList cpu list is present and matches guestCPU
-			if !foundCPU(branch.Allow.CPU) {
+			if len(branch.Allow.CPU) > 0 && !foundCPU(branch.Allow.CPU) {
 				continue
 			}
-			if foundCPU(branch.Deny.CPU) {
+			if len(branch.Deny.CPU) > 0 && foundCPU(branch.Deny.CPU) {
 				continue
 			}
 
-			if len(branch.Deny.Branch) > 0 {
-				if foundBranch(branch.Deny.Branch, hostDriverBranch) {
-					log.Infof("host branch %s matches guest denied branch list for %s, ignore...", hostDriverBranch, branch.Name)
-					continue
-				}
+			if len(branch.Deny.Branch) > 0 && foundBranch(branch.Deny.Branch, hostDriverBranch) {
+				log.Infof("host branch %s matches guest denied branch list for %s, ignore...", hostDriverBranch, branch.Name)
+				continue
 			}
 			if len(branch.Allow.Branch) > 0 {
 				if !foundBranch(branch.Allow.Branch, hostDriverBranch) {
@@ -420,18 +422,18 @@ func FindMatch(driverCatalog *VGPUDriverCatalog, availbleDriverList []string, pc
 	for _, driver := range driverCatalog.Driver {
 		if driver.Type == "guest" {
 			// continue if allowList cpu list is present and doesn't match guestCPU, or denyList cpu list is present and matches guestCPU
-			if !foundCPU(driver.Allow.CPU) {
+			if len(driver.Allow.CPU) > 0 && !foundCPU(driver.Allow.CPU) {
 				continue
 			}
-			if foundCPU(driver.Deny.CPU) {
+			if len(driver.Deny.CPU) > 0 && foundCPU(driver.Deny.CPU) {
 				continue
 			}
 
 			//  continue if allowList gpu list is present and doesn't match guest4PartId, or denyList gpu list is present and matches guest4PartId
-			if !foundGPU(driver.Allow.GPU, pciDeviceInfo) {
+			if len(driver.Allow.GPU) > 0 && !foundGPU(driver.Allow.GPU, pciDeviceInfo) {
 				continue
 			}
-			if foundGPU(driver.Deny.GPU, pciDeviceInfo) {
+			if len(driver.Deny.GPU) > 0 && foundGPU(driver.Deny.GPU, pciDeviceInfo) {
 				continue
 			}
 
@@ -440,16 +442,12 @@ func FindMatch(driverCatalog *VGPUDriverCatalog, availbleDriverList []string, pc
 				continue
 			}
 
-			if len(driver.Allow.Driver) > 0 {
-				if foundDriver(driver.Allow.Driver, hostDriverVersion) {
-					guestDriverInfoList = append(guestDriverInfoList, driver)
-					continue
-				}
+			if len(driver.Allow.Driver) > 0 && !foundDriver(driver.Allow.Driver, hostDriverVersion) {
+				guestDriverInfoList = append(guestDriverInfoList, driver)
+				continue
 			}
-			if len(driver.Deny.Driver) > 0 {
-				if foundDriver(driver.Deny.Driver, hostDriverVersion) {
-					continue
-				}
+			if len(driver.Deny.Driver) > 0 && foundDriver(driver.Deny.Driver, hostDriverVersion) {
+				continue
 			}
 			for _, guestBranchDescriptor := range guestBranchInfoList {
 				if guestBranchDescriptor.Name == driver.Branch {
@@ -458,18 +456,18 @@ func FindMatch(driverCatalog *VGPUDriverCatalog, availbleDriverList []string, pc
 			}
 		} else if driver.Type == "host" {
 			// continue if allowList cpu list is present and doesn't match guestCPU, or denyList cpu list is present and matches guestCPU
-			if !foundCPU(driver.Allow.CPU) {
+			if len(driver.Allow.CPU) > 0 && !foundCPU(driver.Allow.CPU) {
 				continue
 			}
-			if foundCPU(driver.Deny.CPU) {
+			if len(driver.Deny.CPU) > 0 && foundCPU(driver.Deny.CPU) {
 				continue
 			}
 
 			//  continue if allowList gpu list is present and doesn't match guest4PartId, or denyList gpu list is present and matches guest4PartId
-			if !foundGPU(driver.Allow.GPU, pciDeviceInfo) {
+			if len(driver.Allow.GPU) > 0 && !foundGPU(driver.Allow.GPU, pciDeviceInfo) {
 				continue
 			}
-			if foundGPU(driver.Deny.GPU, pciDeviceInfo) {
+			if len(driver.Deny.GPU) > 0 && foundGPU(driver.Deny.GPU, pciDeviceInfo) {
 				continue
 			}
 			if driver.Branch == hostDriverBranch && driver.Version == hostDriverVersion {
@@ -483,6 +481,7 @@ func FindMatch(driverCatalog *VGPUDriverCatalog, availbleDriverList []string, pc
 		}
 	}
 
+	log.Debugf("filtered %d guest driver info lists", len(guestDriverInfoList))
 	// Filter guestDriverInfoList to remove any guest drivers that are unavailable, or are made ineligible by a host driver's
 	// allow / deny lists.
 	for i, guestDriver := range guestDriverInfoList {
@@ -529,6 +528,7 @@ func FindMatch(driverCatalog *VGPUDriverCatalog, availbleDriverList []string, pc
 	// Pick driver from guestDriverInfoList based on match criteria
 	for _, driver := range guestDriverInfoList {
 		if driver.Branch == hostDriverBranch {
+			log.Infof("Found compatible guest driver version %s matching host version %s branch %s", driver.Version, hostDriverVersion, hostDriverBranch)
 			return driver.Version, nil
 		}
 	}
