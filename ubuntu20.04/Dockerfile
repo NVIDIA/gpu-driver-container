@@ -1,3 +1,24 @@
+FROM ubuntu:20.04 as build
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        g++ \
+        ca-certificates \
+        wget \
+        git && \
+    rm -rf /var/lib/apt/lists/*
+
+ENV GOLANG_VERSION 1.15.5
+RUN wget -nv -O - https://storage.googleapis.com/golang/go${GOLANG_VERSION}.linux-amd64.tar.gz \
+    | tar -C /usr/local -xz
+ENV PATH /usr/local/go/bin:$PATH
+
+WORKDIR /work
+
+RUN git clone https://gitlab.com/nvidia/container-images/driver && \
+    cd driver/vgpu/src && \
+    go build -o vgpu-util && \
+    mv vgpu-util /work
+
 FROM nvidia/cuda:11.0-base-ubuntu20.04
 
 RUN dpkg --add-architecture i386 && \
@@ -33,8 +54,13 @@ ARG DRIVER_TYPE=passthrough
 ENV DRIVER_TYPE=$DRIVER_TYPE
 ARG VGPU_LICENSE_SERVER_TYPE=FNE
 ENV VGPU_LICENSE_SERVER_TYPE=$VGPU_LICENSE_SERVER_TYPE
+# Enable vGPU version compability check by default
+ARG DISABLE_VGPU_VERSION_CHECK=true
+ENV DISABLE_VGPU_VERSION_CHECK=$DISABLE_VGPU_VERSION_CHECK
 
 COPY nvidia-driver /usr/local/bin
+
+COPY --from=build /work/vgpu-util /usr/local/bin
 
 ADD drivers drivers/
 

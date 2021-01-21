@@ -7,6 +7,7 @@ RUN_DIR=/run/nvidia
 PID_FILE=${RUN_DIR}/${0##*/}.pid
 DRIVER_VERSION=${DRIVER_VERSION:?"Missing driver version"}
 KERNEL_UPDATE_HOOK=/run/kernel/postinst.d/update-nvidia-driver
+NUM_VGPU_DEVICES=0
 
 _update_package_cache() {
     if [ "${PACKAGE_TAG:-}" != "builtin" ]; then
@@ -331,12 +332,41 @@ _shutdown() {
     return 1
 }
 
+_find_vgpu_driver_version() {
+    local count=""
+    local version=""
+
+    if [ "${DISABLE_VGPU_VERSION_CHECK}" = "true" ]; then
+        echo "vgpu version compatibility check is disabled"
+        return 0
+    fi
+    # check if vgpu devices are present
+    count=$(vgpu-util count)
+    if [ $? -ne 0 ]; then
+         echo "cannot find vgpu devices on host, pleae check /var/log/vgpu-util.log for more details..."
+         return 0
+    fi
+    NUM_VGPU_DEVICES=$(echo "$count" | awk -F= '{print $2}')
+    if [ $NUM_VGPU_DEVICES -eq 0 ]; then
+        # no vgpu devices found, treat as passthrough
+        return 0
+    fi
+    echo "found $NUM_VGPU_DEVICES vgpu devices on host"
+
+    # find compatible guest driver using drive catalog
+    version=$(vgpu-util match -i /drivers -c /drivers/vgpuDriverCatalog.yaml)
+    if [ $? -ne 0 ]; then
+        echo "cannot find match for compatible vgpu driver from available list, please check /var/log/vgpu-util.log for more details..."
+        return 1
+    fi
+    DRIVER_VERSION=$(echo "$version" | awk -F= '{print $2}')
+    echo "vgpu driver version selected: ${DRIVER_VERSION}"
+    return 0
+}
+
 init() {
     if [ "${DRIVER_TYPE}" = "vgpu" ]; then
-        # TODO: invoke metadata file parsing
-        # TODO: cp matching driver based on HOST_DRIVER_VERSION, HOST_DRIVER_BRANCH
-        # TODO: override DRIVER_VERSION to matching driver
-        echo "vgpu driver version selected: ${DRIVER_VERSION}"
+        _find_vgpu_driver_version || exit 1
     fi
 
     # Install the userspace components and copy the kernel module sources.
