@@ -403,7 +403,7 @@ func FindMatch(driverCatalog *VGPUDriverCatalog, availbleDriverList []string, pc
 		if !foundBranch(hostBranchInfo.Allow.Branch, guestBranch.Name) {
 			log.Debugf("Removing guest branch %s as not found in allowed list of host branch", guestBranch.Name)
 			// remove guest branch
-			guestBranchInfoList = append(guestBranchInfoList[:i], guestBranchInfoList[i+1])
+			removeBranchDescriptors(guestBranchInfoList, i)
 			continue
 		}
 
@@ -411,7 +411,7 @@ func FindMatch(driverCatalog *VGPUDriverCatalog, availbleDriverList []string, pc
 			if deniedGuestBranch == guestBranch.Name {
 				log.Debugf("Removing guest branch %s as found in denied list of host branch", guestBranch.Name)
 				// remove guest branch
-				guestBranchInfoList = append(guestBranchInfoList[:i], guestBranchInfoList[i+1])
+				removeBranchDescriptors(guestBranchInfoList, i)
 				continue
 			}
 		}
@@ -488,11 +488,7 @@ func FindMatch(driverCatalog *VGPUDriverCatalog, availbleDriverList []string, pc
 		if !foundAvailableDriver(availbleDriverList, guestDriver.Version) {
 			// remove guest driver info
 			log.Debugf("removing guest driver info list %s as its not available", guestDriver.Version)
-			if i < len(guestDriverInfoList)-1 {
-				guestDriverInfoList = append(guestDriverInfoList[:i], guestDriverInfoList[i+1])
-			} else {
-				guestDriverInfoList = guestDriverInfoList[:i]
-			}
+			removeDriverDescriptor(guestDriverInfoList, i)
 			continue
 		}
 		if hostDriverInfo.Version != "" {
@@ -502,23 +498,14 @@ func FindMatch(driverCatalog *VGPUDriverCatalog, availbleDriverList []string, pc
 				}
 				// remove guest driver from guest driver info list
 				log.Debugf("removing guest driver info list %s", guestDriver.Version)
-				if i < len(guestDriverInfoList)-1 {
-					guestDriverInfoList = append(guestDriverInfoList[:i], guestDriverInfoList[i+1])
-				} else {
-					guestDriverInfoList = guestDriverInfoList[:i]
-				}
-				guestDriverInfoList = append(guestDriverInfoList[:i], guestDriverInfoList[i+1])
+				removeDriverDescriptor(guestDriverInfoList, i)
 				continue
 			}
 			if len(hostDriverInfo.Deny.Driver) > 0 {
 				if foundDriver(hostDriverInfo.Deny.Driver, guestDriver.Version) {
 					log.Debugf("removing guest driver info list %s as its denied", guestDriver.Version)
 					// remove guest driver from guest driver info list
-					if i < len(guestDriverInfoList)-1 {
-						guestDriverInfoList = append(guestDriverInfoList[:i], guestDriverInfoList[i+1])
-					} else {
-						guestDriverInfoList = guestDriverInfoList[:i]
-					}
+					removeDriverDescriptor(guestDriverInfoList, i)
 				}
 				continue
 			}
@@ -774,4 +761,26 @@ func GetVGPUInfo(p *PCIDeviceInfo) (*VGPUConfigInfo, error) {
 		branch:  strings.TrimSpace(strings.ToUpper(hostDriverBranch)),
 	}
 	return info, nil
+}
+
+func removeDriverDescriptor(driverDescriptors []DriverDescriptor, index int) {
+	if index < 0 || index >= len(driverDescriptors) {
+		return
+	}
+	if index == len(driverDescriptors)-1 {
+		driverDescriptors = driverDescriptors[:index]
+		return
+	}
+	driverDescriptors = append(driverDescriptors[:index], driverDescriptors[index+1:]...)
+}
+
+func removeBranchDescriptors(branchDescriptors []BranchDescriptor, index int) {
+	if index < 0 || index >= len(branchDescriptors) {
+		return
+	}
+	if index == len(branchDescriptors)-1 {
+		branchDescriptors = branchDescriptors[:index]
+		return
+	}
+	branchDescriptors = append(branchDescriptors[:index], branchDescriptors[index+1:]...)
 }
