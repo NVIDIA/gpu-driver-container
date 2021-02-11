@@ -293,7 +293,7 @@ init() {
         _resolve_kernel_version || exit 1
         _install_prerequisites
         _create_driver_package
-        _remove_prerequisites
+        #_remove_prerequisites
         _cleanup_package_cache
     fi
 
