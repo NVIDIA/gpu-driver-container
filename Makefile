@@ -5,19 +5,22 @@ SHELL := /bin/bash
 ifeq ($(IMAGE),)
 export IMAGE := nvidia/driver
 endif
-export VERSION ?= "440.64.00"
+VERSION ?= "460.32.30"
 
 CI_COMMIT_TAG := "$(shell git describe --abbrev=0 --tags)"
 
-all: build
+all:
 
-# Building through TF
-build:
-	IMAGE="$(IMAGE)" VERSION="$(VERSION)" ./ci/build.sh
+# Build default version(s)
+build: $(patsubst %,driver-%,$(VERSION))
 
-# Local building
+# Building multiple versions through TF
+driver-%:
+	IMAGE="$(IMAGE)" VERSION="$*" ./ci/build.sh
+
+# Local building of a single version
 local-%:
-	CI_COMMIT_TAG="${CI_COMMIT_TAG}" FORCE=true REGISTRY="${IMAGE}" DRIVER_VERSION="${VERSION}" ./ci/$*/build.sh "$(VERSION)" "$(CI_COMMIT_TAG)" "$(IMAGE)"
+	CI_COMMIT_TAG="${CI_COMMIT_TAG}" FORCE=true REGISTRY="${IMAGE}" DRIVER_VERSION="$(firstword ${VERSION})" ./ci/$*/build.sh "$(firstword $(VERSION))" "$(CI_COMMIT_TAG)" "$(IMAGE)"
 
 build-local: build-flatcar build-coreos
 
