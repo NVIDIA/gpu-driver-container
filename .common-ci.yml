@@ -23,5 +23,20 @@ shellcheck:
     - shellcheck --version
     - shellcheck --external-sources ci/run.sh
     - shellcheck --external-sources ci/build.sh
+    - shellcheck --external-sources ci/gitlab-get-driver-tags.sh
   except:
     - schedules
+
+gettags:
+  stage: driver-tags
+  image: docker:stable
+  artifacts:
+    paths:
+    - driver-tags
+  script:
+    # Install build dependencies
+    - apk add --no-cache bash curl jq
+    # Log into docker
+    - docker login -u "${CI_REGISTRY_USER}" -p "${CI_REGISTRY_PASSWORD}" "${CI_REGISTRY}"
+    # Get list of tags from registry
+    - "./ci/gitlab-get-driver-tags.sh"
