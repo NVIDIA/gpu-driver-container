@@ -13,6 +13,9 @@
 ## RELEASE_REGISTRY_PASSWORD
 ##
 
+include:
+    - local: '.common-ci.yml'
+
 default:
   image: docker:stable
   services:
@@ -31,14 +34,6 @@ variables:
   DRIVER_VERSION: "450.102.04"
   GIT_SSL_NO_VERIFY: "true"
   TF_VERSION: "0.12.18"
-
-stages:
-  - syntax-check
-  - build
-  - test
-  - scan
-  - deploy
-  - release
 
 .builddep_setup: &builddep_setup
   - apk add --no-cache bash findutils libmagic curl make git jq openssh-client libressl-dev
@@ -102,18 +97,6 @@ stages:
 .release_action: &release_action
   - make IMAGE="${RELEASE_REGISTRY_IMAGE}" VERSION="${DRIVER_VERSION}" all
   - make IMAGE="${RELEASE_REGISTRY_IMAGE}" VERSION="${DRIVER_VERSION}" push
-
-shellcheck:
-  stage: syntax-check
-  image:
-    name: koalaman/shellcheck-alpine
-  services: []
-  before_script: []
-  script:
-    - shellcheck --version
-    - shellcheck --external-sources ci/run.sh
-  except:
-    - schedules
 
 build:
   stage: build
