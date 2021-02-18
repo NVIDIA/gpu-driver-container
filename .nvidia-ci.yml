@@ -36,145 +36,132 @@ variables:
   GIT_SSL_NO_VERIFY: "true"
   TF_VERSION: "0.12.18"
 
-.builddep_setup: &builddep_setup
-  - apk add --no-cache bash findutils libmagic curl make git jq openssh-client libressl-dev
-  - curl -fsSL https://releases.hashicorp.com/terraform/${TF_VERSION}/terraform_${TF_VERSION}_linux_amd64.zip -o terraform.zip
-  - unzip terraform.zip && mv terraform /usr/local/bin/terraform && rm terraform.zip
+.builddep_setup_template:
+  before_script:
+    # Install build dependencies
+    - apk add --no-cache bash findutils libmagic curl make git jq openssh-client libressl-dev
+    - curl -fsSL https://releases.hashicorp.com/terraform/${TF_VERSION}/terraform_${TF_VERSION}_linux_amd64.zip -o terraform.zip
+    - unzip terraform.zip && mv terraform /usr/local/bin/terraform && rm terraform.zip
 
-.testdep_setup: &testdep_setup
-  - apk add --no-cache bash make perl
+# template for setting up build environment, docker login, and docker pull
+.dockerbuild_init_template:
+  before_script:
+    # Install build dependencies
+    - apk add --no-cache bash findutils libmagic curl make git jq openssh-client libressl-dev
+    - curl -fsSL https://releases.hashicorp.com/terraform/${TF_VERSION}/terraform_${TF_VERSION}_linux_amd64.zip -o terraform.zip
+    - unzip terraform.zip && mv terraform /usr/local/bin/terraform && rm terraform.zip
+    # Log into docker
+    - docker login -u "${CI_REGISTRY_USER}" -p "${CI_REGISTRY_PASSWORD}" "${CI_REGISTRY}"
+    # Pull images
+    # tags pulled with $CI_PROJECT_NAME to work-around issue with contamer's support for local scans.
+    - "HEADER=\"PRIVATE-TOKEN: ${API_TOKEN}\""
+    - IMAGES_URL="${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/registry/repositories"
+    - IMAGE_ID=$(curl -fsSL --header "${HEADER}" "${IMAGES_URL}" | jq -r --arg CI_PROJECT_PATH "${CI_PROJECT_PATH}" '.[] | select(.path == $CI_PROJECT_PATH) | .id')
+    - TAGS_URL="${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/registry/repositories/${IMAGE_ID}/tags"
+    - TAGS_REGEX=${TAGS_REGEX:-"$DRIVER_VERSION"}
+    - tags=$(curl -fsSL --header "${HEADER}" "${TAGS_URL}" | jq -r --arg TAGS_REGEX "$TAGS_REGEX" '.[] | select(.name|test($TAGS_REGEX)) | .location')
+    - echo $tags
+    - |
+      for tag in $tags;
+      do
+        docker pull $tag;
+      done
 
-.python_setup: &python_setup
-  - apk add --no-cache python3 python3-dev py3-pip py3-wheel
-
-.dockerlogin_setup: &dockerlogin_setup
-  - docker login -u "${CI_REGISTRY_USER}" -p "${CI_REGISTRY_PASSWORD}" "${CI_REGISTRY}"
-
-# tags pulled images with $CI_PROJECT_NAME to work-around issue with contamer's support for local scans.
-.pull_images: &pull_images
-  - "HEADER=\"PRIVATE-TOKEN: ${API_TOKEN}\""
-  - IMAGES_URL="${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/registry/repositories"
-  - IMAGE_ID=$(curl -fsSL --header "${HEADER}" "${IMAGES_URL}" | jq -r --arg CI_PROJECT_PATH "${CI_PROJECT_PATH}" '.[] | select(.path == $CI_PROJECT_PATH) | .id')
-  - TAGS_URL="${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/registry/repositories/${IMAGE_ID}/tags"
-  - TAGS_REGEX=${TAGS_REGEX:-"$DRIVER_VERSION"}
-  - tags=$(curl -fsSL --header "${HEADER}" "${TAGS_URL}" | jq -r --arg TAGS_REGEX "$TAGS_REGEX" '.[] | select(.name|test($TAGS_REGEX)) | .location')
-  - echo $tags
-  - |
-    for tag in $tags;
-    do
-      docker pull $tag;
-    done
-
-.releasedockerlogin_setup: &releasedockerlogin_setup
-  - 'docker login -u "${RELEASE_REGISTRY_USER}" -p "${RELEASE_REGISTRY_PASSWORD}" "${RELEASE_REGISTRY}"'
-
-.build_action: &build_action
-  - make IMAGE="${CI_REGISTRY_IMAGE}" VERSION="${DRIVER_VERSION}" all
-  - make IMAGE="${CI_REGISTRY_IMAGE}" VERSION="${DRIVER_VERSION}" push
-
-.test_action: &test_action
-  - "true"
-
-.deploy_action: &deploy_action
-  - make IMAGE="${CI_REGISTRY_IMAGE}" VERSION="${DRIVER_VERSION}" push
-  - |
-    for tag in $tags
-    do
-      docker push $tag
-    done
-
-# contamer does not support local scans on images that contain a port number
-.scan_action: &scan_action
-  - git clone https://gitlab-ci-token:${CI_JOB_TOKEN}@gitlab-master.nvidia.com/sectooling/scanning/contamer.git
-  - cd contamer
-  - pip3 install -r requirements.txt
-  - |
-    for tag in $tags;
-    do
-      docker tag $tag $(basename $tag);
-      python3 contamer.py -ls --fail-on-non-os --suppress-vulns CVE-2020-14352 CVE-2020-15888 -- $(basename $tag);
-    done
-
-.release_action: &release_action
-  - make IMAGE="${RELEASE_REGISTRY_IMAGE}" VERSION="${DRIVER_VERSION}" all
-  - make IMAGE="${RELEASE_REGISTRY_IMAGE}" VERSION="${DRIVER_VERSION}" push
+.build:
+  stage: build
+  extends: .dockerbuild_init_template
+  script:
+    - make IMAGE="${CI_REGISTRY_IMAGE}" VERSION="${DRIVER_VERSION}" all
+    - make IMAGE="${CI_REGISTRY_IMAGE}" VERSION="${DRIVER_VERSION}" push
 
 build:
-  stage: build
-  script:
-    - *builddep_setup
-    - *dockerlogin_setup
-    - *pull_images
-    - *build_action
+  extends: .build
 
 test:
   stage: test
+  before_script:
+    # Test setup
+    - apk add --no-cache bash make perl
   script:
-    - *testdep_setup
-    - *test_action
+    # Test action ...
+    - "true" # TODO: write a test!
 
-.scan_template: &scan_definition
+.scan_template:
   stage: scan
+  extends: .dockerbuild_init_template
   except:
     variables:
     - $CI_COMMIT_MESSAGE =~ /\[skip[ _-]scans?\]/i
     - $SKIP_SCANS
   script:
-    - *builddep_setup
-    - *python_setup
-    - *dockerlogin_setup
-    - *pull_images
-    - *scan_action
+    # Setup Python for scan
+    - apk add --no-cache python3 python3-dev py3-pip py3-wheel
+    # Scan action
+    - git clone https://gitlab-ci-token:${CI_JOB_TOKEN}@gitlab-master.nvidia.com/sectooling/scanning/contamer.git
+    - cd contamer
+    - pip3 install -r requirements.txt
+    - |
+      for tag in $tags;
+      do
+        docker tag $tag $(basename $tag);
+        python3 contamer.py -ls --fail-on-non-os --suppress-vulns CVE-2020-14352 CVE-2020-15888 -- $(basename $tag);
+      done
 
 ubuntu16.04-scan:
+  extends: .scan_template
   variables:
     TAGS_REGEX: "$DRIVER_VERSION.*ubuntu16.04"
-  <<: *scan_definition
 
 ubuntu18.04-scan:
+  extends: .scan_template
   variables:
     TAGS_REGEX: "$DRIVER_VERSION.*ubuntu18.04"
-  <<: *scan_definition
 
 centos7-scan:
+  extends: .scan_template
   variables:
     TAGS_REGEX: "$DRIVER_VERSION.*centos7"
-  <<: *scan_definition
 
 rhel-scan:
+  extends: .scan_template
   variables:
     TAGS_REGEX: "$DRIVER_VERSION.*rhel"
-  <<: *scan_definition
 
 rhcos-scan:
+  extends: .scan_template
   variables:
     TAGS_REGEX: "$DRIVER_VERSION.*rhcos"
-  <<: *scan_definition
 
 coreos-scan:
+  extends: .scan_template
   variables:
     TAGS_REGEX: "$DRIVER_VERSION.*coreos"
-  <<: *scan_definition
 
 flatcar-scan:
+  extends: .scan_template
   variables:
     TAGS_REGEX: "$DRIVER_VERSION.*flatcar"
-  <<: *scan_definition
 
 deploy:
   stage: deploy
+  extends: .dockerbuild_init_template
   script:
-    - *builddep_setup
-    - *dockerlogin_setup
-    - *pull_images
-    - *deploy_action
+    - make IMAGE="${CI_REGISTRY_IMAGE}" VERSION="${DRIVER_VERSION}" push
+    - |
+      for tag in $tags
+      do
+        docker push $tag
+      done
 
 release:
   stage: release
+  extends: .builddep_setup_template
   only:
     - tags
   script:
+    # Login into release registry
     - 'echo Commit Tag: $CI_COMMIT_TAG ; [[ -n "$CI_COMMIT_TAG" ]] || exit 1'
-    - *builddep_setup
-    - *releasedockerlogin_setup
-    - *release_action
+    - 'docker login -u "${RELEASE_REGISTRY_USER}" -p "${RELEASE_REGISTRY_PASSWORD}" "${RELEASE_REGISTRY}"'
+    # Release Action (build & push)
+    - make IMAGE="${RELEASE_REGISTRY_IMAGE}" VERSION="${DRIVER_VERSION}" all
+    - make IMAGE="${RELEASE_REGISTRY_IMAGE}" VERSION="${DRIVER_VERSION}" push
