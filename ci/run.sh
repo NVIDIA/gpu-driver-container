@@ -7,7 +7,11 @@ set -o xtrace
 
 export TF_IN_AUTOMATION=yes
 
-DRIVER_VERSION=${DRIVER_VERSION}
+if [ -z "$DRIVER_VERSION" ]; then
+  echo "Driver Version must be specified with environment variable DRIVER_VERSION" >&2
+  exit 1
+fi
+
 CONTAINER_VERSION=${DRIVER_VERSION}-${CI_COMMIT_TAG}
 
 FORCE=${FORCE:-}
