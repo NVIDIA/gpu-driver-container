@@ -1,5 +1,5 @@
 #! /bin/bash
-# Copyright (c) 2018, NVIDIA CORPORATION. All rights reserved.
+# Copyright (c) 2018-2021, NVIDIA CORPORATION. All rights reserved.
 
 set -eu
 
@@ -15,28 +15,34 @@ export DEBIAN_FRONTEND=noninteractive
 
 # Install the kernel modules header/builtin/order files and generate the kernel version string.
 _install_prerequisites() (
-    rm -rf /lib/modules/${KERNEL_VERSION}
+    rm -rf "/lib/modules/${KERNEL_VERSION}"
     rm -rf /usr/src/linux*
 
     # Get the OS release for given kernel version
-    local kernel=$(echo ${KERNEL_VERSION} | cut -d "-" -f1)
-    local os_release=$(curl -Ls ${COREOS_ALL_RELEASES} | jq -r --arg kernel_ver "${kernel}" 'to_entries[] | select (.value.major_software.kernel[0] == $kernel_ver) | .key')
-    local latest_release=$(echo ${os_release} | awk '{ print $1 }')
+    local kernel
+    kernel=$(echo "${KERNEL_VERSION}" | cut -d "-" -f1)
+    local os_release
+    os_release=$(curl -Ls "${COREOS_ALL_RELEASES}" | jq -r --arg kernel_ver "${kernel}" 'to_entries[] | select (.value.major_software.kernel[0] == $kernel_ver) | .key')
+    local latest_release
+    latest_release=$(echo "${os_release}" | awk '{ print $1 }')
     local dev_image="flatcar_developer_container.bin"
     local dev_image_url="https://${COREOS_RELEASE_CHANNEL}.release.flatcar-linux.net/${COREOS_RELEASE_BOARD}/${latest_release}/${dev_image}.bz2"
 
     curl -Ls "${dev_image_url}" | bzip2 -dq > "${dev_image}"
-    local sector_size=$(fdisk -l ${dev_image} | grep "^Sector size" | awk '{ print $4 }')
-    local sector_start=$(fdisk -l ${dev_image} | grep "^${dev_image}*" | awk '{ print $2 }')
-    local offset_limit=$((${sector_start} * ${sector_size}))
+    local sector_size
+    sector_size=$(fdisk -l "${dev_image}" | grep "^Sector size" | awk '{ print $4 }')
+    local sector_start
+    sector_start=$(fdisk -l "${dev_image}" | grep "^${dev_image}*" | awk '{ print $2 }')
+    local offset_limit=$((sector_start * sector_size))
 
     mkdir -p /mnt/coreos
     local loop_dev="/dev/loop0"
     _exec mount -o loop=${loop_dev},offset=${offset_limit} ${dev_image} /mnt/coreos
 
     # add more space to the device
-    local mount_path=$(losetup --list --noheadings -O BACK-FILE ${loop_dev})
-    dd if=/dev/zero bs=1MiB of=${mount_path} conv=notrunc oflag=append count=3000
+    local mount_path
+    mount_path=$(losetup --list --noheadings -O BACK-FILE "${loop_dev}")
+    dd if=/dev/zero bs=1MiB of="${mount_path}" conv=notrunc oflag=append count=3000
     losetup -c ${loop_dev}
     resize2fs ${loop_dev}
 
@@ -69,9 +75,9 @@ echo "Compiling NVIDIA driver kernel modules with $(gcc --version | head -1)..."
 cd /usr/src/nvidia-*/kernel
 make -s -j SYSSRC=/usr/src/linux nv-linux.o nv-modeset-linux.o > /dev/null
 EOF
-    mkdir -p /lib/modules/${KERNEL_VERSION}
-    cp /mnt/coreos/lib/modules/${KERNEL_VERSION}/modules.* /lib/modules/${KERNEL_VERSION}/
-    depmod ${KERNEL_VERSION}
+    mkdir -p "/lib/modules/${KERNEL_VERSION}"
+    cp "/mnt/coreos/lib/modules/${KERNEL_VERSION}/"modules.* "/lib/modules/${KERNEL_VERSION}/"
+    depmod "${KERNEL_VERSION}"
 
     _exec umount -l /mnt/coreos
     rm -rf /mnt/coreos
@@ -83,13 +89,13 @@ _kernel_requires_package() {
     local proc_mount_arg=""
 
     echo "Checking NVIDIA driver packages..."
-    cd /usr/src/nvidia-${DRIVER_VERSION}/kernel
+    cd "/usr/src/nvidia-${DRIVER_VERSION}/kernel"
 
     if [ "${KERNEL_VERSION}" != "$(uname -r)" ]; then
         proc_mount_arg="--proc-mount-point /usr/src/linux/proc"
     fi
     for pkg_name in $(ls -d -1 precompiled/** 2> /dev/null); do
-        if ! ../mkprecompiled --match ${pkg_name} ${proc_mount_arg} > /dev/null; then
+        if ! ../mkprecompiled --match "${pkg_name}" "${proc_mount_arg}" > /dev/null; then
             echo "Found NVIDIA driver package ${pkg_name##*/}"
             return 1
         fi
@@ -105,14 +111,14 @@ _create_driver_package() (
     local nvidia_uvm_sign_args=""
 
     echo "Relinking NVIDIA driver kernel modules..."
-    cd /usr/src/nvidia-${DRIVER_VERSION}/kernel
+    cd "/usr/src/nvidia-${DRIVER_VERSION}/kernel"
     rm -f nvidia.ko nvidia-modeset.ko
     ld -d -r -o nvidia.ko ./nv-linux.o ./nvidia/nv-kernel.o_binary
     ld -d -r -o nvidia-modeset.ko ./nv-modeset-linux.o ./nvidia-modeset/nv-modeset-kernel.o_binary
 
     if [ -n "${PRIVATE_KEY}" ]; then
         echo "Signing NVIDIA driver kernel modules..."
-        donkey get ${PRIVATE_KEY} sh -c "PATH=${PATH}:/usr/src/linux-headers-${KERNEL_VERSION}/scripts && \
+        donkey get "${PRIVATE_KEY}" sh -c "PATH=${PATH}:/usr/src/linux-headers-${KERNEL_VERSION}/scripts && \
           sign-file sha512 \$DONKEY_FILE pubkey.x509 nvidia.ko nvidia.ko.sign &&                          \
           sign-file sha512 \$DONKEY_FILE pubkey.x509 nvidia-modeset.ko nvidia-modeset.ko.sign &&          \
           sign-file sha512 \$DONKEY_FILE pubkey.x509 nvidia-uvm.ko"
@@ -122,24 +128,24 @@ _create_driver_package() (
     fi
 
     echo "Building NVIDIA driver package ${pkg_name}..."
-    ../mkprecompiled --pack ${pkg_name} --description ${KERNEL_VERSION}                              \
+    ../mkprecompiled --pack "${pkg_name}" --description "${KERNEL_VERSION}"                          \
                                         --proc-mount-point /usr/src/linux/proc                       \
-                                        --driver-version ${DRIVER_VERSION}                           \
+                                        --driver-version "${DRIVER_VERSION}"                         \
                                         --kernel-interface nv-linux.o                                \
                                         --linked-module-name nvidia.ko                               \
                                         --core-object-name nvidia/nv-kernel.o_binary                 \
-                                        ${nvidia_sign_args}                                          \
+                                        "${nvidia_sign_args}"                                        \
                                         --target-directory .                                         \
                                         --kernel-interface nv-modeset-linux.o                        \
                                         --linked-module-name nvidia-modeset.ko                       \
                                         --core-object-name nvidia-modeset/nv-modeset-kernel.o_binary \
-                                        ${nvidia_modeset_sign_args}                                  \
+                                        "${nvidia_modeset_sign_args}"                                \
                                         --target-directory .                                         \
                                         --kernel-module nvidia-uvm.ko                                \
-                                        ${nvidia_uvm_sign_args}                                      \
+                                        "${nvidia_uvm_sign_args}"                                    \
                                         --target-directory .
     mkdir -p precompiled
-    mv ${pkg_name} precompiled
+    mv "${pkg_name}" precompiled
 )
 
 # Load the kernel modules and start persistenced.
@@ -161,14 +167,15 @@ _unload_driver() {
 
     echo "Stopping NVIDIA persistence daemon..."
     if [ -f /var/run/nvidia-persistenced/nvidia-persistenced.pid ]; then
-        local pid=$(< /var/run/nvidia-persistenced/nvidia-persistenced.pid)
+        local pid
+        pid=$(< /var/run/nvidia-persistenced/nvidia-persistenced.pid)
 
         kill -SIGTERM "${pid}"
         for i in $(seq 1 10); do
             kill -0 "${pid}" 2> /dev/null || break
             sleep 0.1
         done
-        if [ $i -eq 10 ]; then
+        if [ "$i" -eq 10 ]; then
             echo "Could not stop NVIDIA persistence daemon" >&2
             return 1
         fi
@@ -189,13 +196,14 @@ _unload_driver() {
         nvidia_refs=$(< /sys/module/nvidia/refcnt)
         rmmod_args+=("nvidia")
     fi
-    if [ ${nvidia_refs} -gt ${nvidia_deps} ] || [ ${nvidia_uvm_refs} -gt 0 ] || [ ${nvidia_modeset_refs} -gt 0 ]; then
+    if [ "${nvidia_refs}" -gt "${nvidia_deps}" ] || [ "${nvidia_uvm_refs}" -gt 0 ] ||                \
+            [ "${nvidia_modeset_refs}" -gt 0 ]; then
         echo "Could not unload NVIDIA driver kernel modules, driver is in use" >&2
         return 1
     fi
 
     if [ ${#rmmod_args[@]} -gt 0 ]; then
-        rmmod ${rmmod_args[@]}
+        rmmod "${rmmod_args[@]}"
     fi
     return 0
 }
@@ -205,8 +213,8 @@ _install_driver() {
     local install_args=()
 
     echo "Installing NVIDIA driver kernel modules..."
-    cd /usr/src/nvidia-${DRIVER_VERSION}
-    rm -rf /lib/modules/${KERNEL_VERSION}/video
+    cd "/usr/src/nvidia-${DRIVER_VERSION}"
+    rm -rf "/lib/modules/${KERNEL_VERSION}/video"
 
     if [ "${ACCEPT_LICENSE}" = "yes" ]; then
         install_args+=("--accept-license")
@@ -216,15 +224,15 @@ _install_driver() {
 
 # Execute binaries by root owning them first
 _exec() {
-        exec_bin_path=$(which $1)
-        exec_user=$(stat -c "%u" ${exec_bin_path})
-        exec_group=$(stat -c "%g" ${exec_bin_path})
+        exec_bin_path=$(command -v "$1")
+        exec_user=$(stat -c "%u" "${exec_bin_path}")
+        exec_group=$(stat -c "%g" "${exec_bin_path}")
         if [[ "${exec_user}" != "0" || "${exec_group}" != "0" ]]; then
-                chown 0:0 ${exec_bin_path}
-                $@
-                chown ${exec_user}:${exec_group} ${exec_bin_path}
+                chown 0:0 "${exec_bin_path}"
+                "$@"
+                chown "${exec_user}":"${exec_group}" "${exec_bin_path}"
         else
-                $@
+                "$@"
         fi
 }
 
@@ -248,17 +256,17 @@ _unmount_rootfs() {
 _shutdown() {
     if _unload_driver; then
         _unmount_rootfs
-        rm -f ${PID_FILE}
+        rm -f "${PID_FILE}"
         return 0
     fi
     return 1
 }
 
 init() {
-    echo -e "\n========== NVIDIA Software Installer ==========\n"
-    echo -e "Starting installation of NVIDIA driver version ${DRIVER_VERSION} for Linux kernel version ${KERNEL_VERSION}\n"
+    printf "\\n========== NVIDIA Software Installer ==========\\n"
+    printf "Starting installation of NVIDIA driver version %s for Linux kernel version %s\\n" "${DRIVER_VERSION}" "${KERNEL_VERSION}"
 
-    exec 3> ${PID_FILE}
+    exec 3> "${PID_FILE}"
     if ! flock -n 3; then
         echo "An instance of the NVIDIA driver is already running, aborting"
         exit 1
@@ -290,8 +298,8 @@ init() {
 
 update() {
     exec 3>&2
-    if exec 2> /dev/null 4< ${PID_FILE}; then
-        if ! flock -n 4 && read pid <&4 && kill -0 "${pid}"; then
+    if exec 2> /dev/null 4< "${PID_FILE}"; then
+        if ! flock -n 4 && read -r pid <&4 && kill -0 "${pid}"; then
             exec > >(tee -a "/proc/${pid}/fd/1")
             exec 2> >(tee -a "/proc/${pid}/fd/2" >&3)
         else
@@ -301,8 +309,8 @@ update() {
     fi
     exec 3>&-
 
-    echo -e "\n========== NVIDIA Software Updater ==========\n"
-    echo -e "Starting update of NVIDIA driver version ${DRIVER_VERSION} for Linux kernel version ${KERNEL_VERSION}\n"
+    printf "\\n========== NVIDIA Software Updater ==========\\n"
+    printf "Starting update of NVIDIA driver version %s for Linux kernel version %s\\n" "${DRIVER_VERSION}" "${KERNEL_VERSION}"
 
     trap "echo 'Caught signal'; exit 1" HUP INT QUIT PIPE TERM
 
