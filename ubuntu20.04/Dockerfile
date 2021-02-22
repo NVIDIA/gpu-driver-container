@@ -1,5 +1,7 @@
 FROM ubuntu:20.04 as build
 
+RUN echo 'debconf debconf/frontend select Noninteractive' | debconf-set-selections
+
 RUN apt-get update && apt-get install -y --no-install-recommends \
         g++ \
         ca-certificates \
@@ -20,6 +22,8 @@ RUN git clone https://gitlab.com/nvidia/container-images/driver && \
     mv vgpu-util /work
 
 FROM nvidia/cuda:11.2.1-base-ubuntu20.04
+
+RUN echo 'debconf debconf/frontend select Noninteractive' | debconf-set-selections
 
 RUN dpkg --add-architecture i386 && \
     apt-get update && apt-get install -y --no-install-recommends \
