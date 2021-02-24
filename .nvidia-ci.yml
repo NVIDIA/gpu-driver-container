@@ -28,7 +28,7 @@ variables:
   DOCKER_DRIVER: overlay2
   DOCKER_TLS_CERTDIR: "/certs"
   # project specific variables
-  DRIVER_VERSION: "450.80.02"
+  DRIVER_VERSION: "450.102.04"
   GIT_SSL_NO_VERIFY: "true"
   TF_VERSION: "0.12.18"
 
