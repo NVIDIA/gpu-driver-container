@@ -19,11 +19,11 @@ RUN git clone https://gitlab.com/nvidia/container-images/driver && \
     go build -o vgpu-util && \
     mv vgpu-util /work
 
-FROM registry.access.redhat.com/ubi8:latest
+FROM nvidia/cuda:11.2.1-base-ubi8
 
 #ARG BASE_URL=http://us.download.nvidia.com/XFree86/Linux-x86_64
 ARG BASE_URL=https://us.download.nvidia.com/tesla
-ARG DRIVER_VERSION=450.80.02
+ARG DRIVER_VERSION
 ENV DRIVER_VERSION=$DRIVER_VERSION
 ARG DRIVER_ARCH=x86_64
 ENV DRIVER_ARCH=$DRIVER_ARCH
