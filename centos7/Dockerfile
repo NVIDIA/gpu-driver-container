@@ -1,4 +1,4 @@
-FROM centos:7
+FROM nvidia/cuda:11.2.1-base-centos7
 
 RUN yum install -y \
         ca-certificates \
@@ -15,7 +15,7 @@ RUN curl -fsSL -o /usr/local/bin/donkey https://github.com/3XX0/donkey/releases/
 
 #ARG BASE_URL=http://us.download.nvidia.com/XFree86/Linux-x86_64
 ARG BASE_URL=https://us.download.nvidia.com/tesla
-ARG DRIVER_VERSION=450.80.02
+ARG DRIVER_VERSION
 ENV DRIVER_VERSION=$DRIVER_VERSION
 
 # Install the userspace components and copy the kernel module sources.
