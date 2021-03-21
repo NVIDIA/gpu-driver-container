@@ -6,7 +6,7 @@ COPY nvidia-container-runtime .
 RUN go install -v nvidia-container-runtime
 
 # Build driver image
-FROM ubuntu:16.04
+FROM nvidia/cuda:11.2.1-base-ubuntu16.04
 
 RUN dpkg --add-architecture i386 && \
     apt-get update && apt-get install -y --no-install-recommends \
@@ -40,6 +40,7 @@ RUN curl -fsSL -o /usr/local/bin/donkey https://github.com/3XX0/donkey/releases/
 ARG BASE_URL=https://us.download.nvidia.com/tesla
 ARG DRIVER_VERSION=450.80.02
 ENV DRIVER_VERSION=$DRIVER_VERSION
+ENV DEBIAN_FRONTEND=noninteractive
 
 # Install the userspace components and copy the kernel module sources.
 RUN cd /tmp && \
