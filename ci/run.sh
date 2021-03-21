@@ -34,7 +34,7 @@ mk_short_version() {
 }
 
 log() {
-  echo -e "\033[1;32m[+] $*\033[0m"
+  echo -e "\\033[1;32m[+] $*\\033[0m"
 }
 
 get_tags() {
@@ -49,7 +49,7 @@ tag_exists() {
 latest_ubuntu_kernel() {
   docker run --rm ubuntu:"${1}" /bin/bash -c\
     "apt update &> /dev/null && apt-cache show linux-headers-${2} 2>> /dev/null \
-      | sed -nE 's/^Version:\s+(([0-9]+\.){2}[0-9]+)[-.]([0-9]+).*/\1-\3/p' \
+      | sed -nE 's/^Version:\\s+(([0-9]+\\.){2}[0-9]+)[-.]([0-9]+).*/\\1-\\3/p' \
       | head -n 1"
 }
 
