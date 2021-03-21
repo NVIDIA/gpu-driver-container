@@ -6,6 +6,7 @@ variables:
 
 stages:
   - syntax-check
+  - docker-images
   - build
   - test
   - scan
