@@ -22,5 +22,6 @@ shellcheck:
   script:
     - shellcheck --version
     - shellcheck --external-sources ci/run.sh
+    - shellcheck --external-sources ci/build.sh
   except:
     - schedules
