@@ -7,7 +7,11 @@ set -o xtrace
 
 export TF_IN_AUTOMATION=yes
 
-DRIVER_VERSION=${DRIVER_VERSION}
+if [ -z "$DRIVER_VERSION" ]; then
+  echo "Driver Version must be specified with environment variable DRIVER_VERSION" >&2
+  exit 1
+fi
+
 CONTAINER_VERSION=${DRIVER_VERSION}-${CI_COMMIT_TAG}
 
 FORCE=${FORCE:-}
@@ -30,7 +34,7 @@ mk_short_version() {
 }
 
 log() {
-  echo -e "\033[1;32m[+] $*\033[0m"
+  echo -e "\\033[1;32m[+] $*\\033[0m"
 }
 
 get_tags() {
@@ -45,7 +49,7 @@ tag_exists() {
 latest_ubuntu_kernel() {
   docker run --rm ubuntu:"${1}" /bin/bash -c\
     "apt update &> /dev/null && apt-cache show linux-headers-${2} 2>> /dev/null \
-      | sed -nE 's/^Version:\s+(([0-9]+\.){2}[0-9]+)[-.]([0-9]+).*/\1-\3/p' \
+      | sed -nE 's/^Version:\\s+(([0-9]+\\.){2}[0-9]+)[-.]([0-9]+).*/\\1-\\3/p' \
       | head -n 1"
 }
 
@@ -125,12 +129,12 @@ EOF
 log 'Creating AWS resources'
 terraform apply -auto-approve
 public_ip_ubuntu16_04=$(terraform output public_ip_ubuntu16_04)
-public_ip_coreos=$(terraform output public_ip_coreos)
+public_ip_flatcar=$(terraform output public_ip_flatcar)
 
 log 'Add instance to known hosts'
 # shellcheck disable=SC2086
 ssh-keyscan -H "${public_ip_ubuntu16_04}" >> "${HOME}/.ssh/known_hosts"
-ssh-keyscan -H "${public_ip_coreos}" >> "${HOME}/.ssh/known_hosts"
+ssh-keyscan -H "${public_ip_flatcar}" >> "${HOME}/.ssh/known_hosts"
 
 log 'Get tags'
 tags=$(get_tags)
@@ -195,17 +199,16 @@ done
 docker container prune
 docker image prune -a
 
-
-# Resolving CoreOS version
-coreos_kernel=$(ssh "nvidia@${public_ip_coreos}" uname -r)
-coreos_tag_long=${CONTAINER_VERSION}-${coreos_kernel}-coreos
-if [[ -n ${FORCE} ]] || ! tag_exists "${coreos_tag_long}" "${tags}"; then
-    log 'Building CoreOS image'
+# Resolving Flatcar version
+flatcar_kernel=$(ssh "nvidia@${public_ip_flatcar}" uname -r)
+flatcar_tag_long=${CONTAINER_VERSION}-${flatcar_kernel}-flatcar
+if [[ -n ${FORCE} ]] || ! tag_exists "${flatcar_tag_long}" "${tags}"; then
+    log 'Building Flatcar image'
     # shellcheck disable=SC2029
-    ssh "nvidia@${public_ip_coreos}" /home/nvidia/build.sh "${DRIVER_VERSION}" "${CONTAINER_VERSION}" "${REGISTRY}"
+    ssh "nvidia@${public_ip_flatcar}" /home/nvidia/build.sh "${DRIVER_VERSION}" "${CONTAINER_VERSION}" "${REGISTRY}" || true
     # shellcheck disable=SC2029
-    scp "nvidia@${public_ip_coreos}:/home/nvidia/${coreos_tag_long}.tar" .
+    scp "nvidia@${public_ip_flatcar}:/home/nvidia/${flatcar_tag_long}.tar" . || true
 
-    docker load -i "${coreos_tag_long}.tar"
-    docker push "${REGISTRY}:${coreos_tag_long}"
+    docker load -i "${flatcar_tag_long}.tar" || true
+    docker push "${REGISTRY}:${flatcar_tag_long}" || true
 fi
