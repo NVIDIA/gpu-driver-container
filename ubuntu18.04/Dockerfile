@@ -1,5 +1,7 @@
 FROM nvidia/cuda:11.2.1-base-ubuntu18.04
 
+RUN echo 'debconf debconf/frontend select Noninteractive' | debconf-set-selections
+
 RUN dpkg --add-architecture i386 && \
     apt-get update && apt-get install -y --no-install-recommends \
         apt-utils \
