@@ -1,12 +1,23 @@
+##
+## Environmnet variables required for build
+## API_TOKEN  - gitlab access token with (read_api, read_repository, read_registry)
+##
+
 variables:
   # project specific variables
-  DRIVER_VERSION: "450.80.02"
+  DRIVER_VERSION: "450.102.04"
+  ALL_DRIVER_VERSIONS: "450.102.04 460.32.30"
   GIT_SSL_NO_VERIFY: "true"
   TF_VERSION: "0.12.18"
 
+default:
+  image: docker:stable
+  services:
+    - docker:stable-dind
+
 stages:
   - syntax-check
-  - docker-images
+  - driver-tags
   - build
   - test
   - scan
@@ -22,5 +33,21 @@ shellcheck:
   script:
     - shellcheck --version
     - shellcheck --external-sources ci/run.sh
+    - shellcheck --external-sources ci/build.sh
+    - shellcheck --external-sources ci/gitlab-get-driver-tags.sh
   except:
     - schedules
+
+gettags:
+  stage: driver-tags
+  image: docker:stable
+  artifacts:
+    paths:
+    - driver-tags
+  script:
+    # Install build dependencies
+    - apk add --no-cache bash curl jq
+    # Log into docker
+    - docker login -u "${CI_REGISTRY_USER}" -p "${CI_REGISTRY_PASSWORD}" "${CI_REGISTRY}"
+    # Get list of tags from registry
+    - "./ci/gitlab-get-driver-tags.sh"
