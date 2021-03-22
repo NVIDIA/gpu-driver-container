@@ -10,9 +10,13 @@ variables:
   GIT_SSL_NO_VERIFY: "true"
   TF_VERSION: "0.12.18"
 
+default:
+  image: docker:stable
+  services:
+    - docker:stable-dind
+
 stages:
   - syntax-check
-  - docker-images
   - driver-tags
   - build
   - test
