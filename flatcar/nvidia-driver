@@ -6,23 +6,31 @@ set -eu
 RUN_DIR=/run/nvidia
 PID_FILE=${RUN_DIR}/${0##*/}.pid
 DRIVER_VERSION=${DRIVER_VERSION:?"Missing driver version"}
+NVIDIA_BINUITLS_DIR=/opt/nvidia/binutils
+NVIDIA_KMODS_DIR=/opt/nvidia/${DRIVER_VERSION}
 
 COREOS_RELEASE_CHANNEL=stable
 COREOS_RELEASE_BOARD=amd64-usr
-COREOS_ALL_RELEASES="https://www.flatcar-linux.org/releases-json/releases-${COREOS_RELEASE_CHANNEL}.json"
+COREOS_ALL_RELEASES="https://kinvolk.io/flatcar-container-linux/releases-json/releases-${COREOS_RELEASE_CHANNEL}.json"
 
 export DEBIAN_FRONTEND=noninteractive
 
-# Install the kernel modules header/builtin/order files and generate the kernel version string.
-_install_prerequisites() (
-    rm -rf "/lib/modules/${KERNEL_VERSION}"
-    rm -rf /usr/src/linux*
+# The developement environment is required to access gcc and binutils
+# binutils is particularly required even if we have precompiled kernel interfaces 
+# as the ld version needs to match the version used to build the linked kernel interfaces later
+# Note that container images can only contain precompiled (but not linked) kernel modules
+_install_development_env() {
 
-    # Get the OS release for given kernel version
+    echo "Installing the Flatcar development environment on the filesystem $PWD..."
+
+    # Get the flatcar development environment for a given kernel version. 
+    # The environment is mounted on a loop device and then we chroot into 
+    # the mount to build the NVIDIA kernel driver interface. 
+    # The resulting module files and module dependencies are then archived.
     local kernel
     kernel=$(echo "${KERNEL_VERSION}" | cut -d "-" -f1)
     local os_release
-    os_release=$(curl -Ls "${COREOS_ALL_RELEASES}" | jq -r --arg kernel_ver "${kernel}" 'to_entries[] | select (.value.major_software.kernel[0] == $kernel_ver) | .key')
+    os_release=$(curl -Ls "${COREOS_ALL_RELEASES}" | jq -r --arg kernel_ver "${kernel}" 'to_entries[] | select ((.value.major_software.kernel[0] == $kernel_ver) and (.key != "current")) | .key')    
     local latest_release
     latest_release=$(echo "${os_release}" | awk '{ print $1 }')
     local dev_image="flatcar_developer_container.bin"
@@ -46,6 +54,12 @@ _install_prerequisites() (
     losetup -c ${loop_dev}
     resize2fs ${loop_dev}
 
+    # Version.txt contains some pre-defined environment variables 
+    # that we will use when building the kernel modules
+    curl -fOSsL https://${COREOS_RELEASE_CHANNEL}.release.flatcar-linux.net/${COREOS_RELEASE_BOARD}/${latest_release}/version.txt
+    cp version.txt /usr/src
+
+    # Prepare the mount point for the chroot
     cp --dereference /etc/resolv.conf /mnt/coreos/etc/
     _exec mount --types proc /proc /mnt/coreos/proc
     _exec mount --rbind /sys /mnt/coreos/sys
@@ -55,33 +69,77 @@ _install_prerequisites() (
     mkdir -p /mnt/coreos/usr/src
     _exec mount --rbind /usr/src /mnt/coreos/usr/src
 
+    # Archive the binutils since we need the linker for re-linking the modules
+    if [ ! -e ${NVIDIA_BINUITLS_DIR} ]; then
+        mkdir -p ${NVIDIA_BINUITLS_DIR}/libs
+        mkdir -p ${NVIDIA_BINUITLS_DIR}/bin
+    fi
+    local binutils_ver=$(ls -d /mnt/coreos/usr/lib64/binutils/x86_64-cros-linux-gnu/*)
+    binutils_ver=${binutils_ver##*/}
+    cp -r /mnt/coreos/usr/x86_64-cros-linux-gnu/binutils-bin/${binutils_ver}/* ${NVIDIA_BINUITLS_DIR}/bin/
+    cp -r /mnt/coreos/usr/lib64/binutils/x86_64-cros-linux-gnu/${binutils_ver}/* ${NVIDIA_BINUITLS_DIR}/libs/
+
+}
+
+_cleanup_development_env() {
+    echo "Cleaning up the development environment..."
+    _exec umount -l /mnt/coreos
+    rm -rf /mnt/coreos
+    rm -f "/usr/src/nvidia-${DRIVER_VERSION}/flatcar_developer_container.bin"
+}
+
+# Install the kernel modules header/builtin/order files and generate the kernel version string.
+# The kernel sources are installed on the loop mount by following the official documentation at 
+# https://kinvolk.io/docs/flatcar-container-linux/latest/reference/developer-guides/kernel-modules/
+# We also ensure that the kernel version string (/proc/version) is written so it can be 
+# archived along with the precompiled kernel interfaces. 
+_install_prerequisites() (
+    
+    rm -rf "/lib/modules/${KERNEL_VERSION}"
+    rm -rf /usr/src/linux*
+
+    _install_development_env 
+    echo "Installing the Flatcar kernel sources into the development environment..."
+
     cat <<'EOF' | chroot /mnt/coreos /bin/bash
-KERNEL_VERSION=$(uname -r)
+KERNEL_VERSION=$(cat /usr/src/linux/include/config/kernel.release || ls /lib/modules)
+KERNEL_STRING=$(echo "${KERNEL_VERSION}" | cut -d "-" -f1)
 echo "Installing kernel sources for kernel version ${KERNEL_VERSION}..."
 source /etc/os-release
 [ $(echo ${VERSION_ID//./ } | awk '{print $1}') -lt 2346 ] && \
  echo "Fixing path for flatcar kernel sources..." && \
  sed -i -e "s;http://builds.developer.core-os.net/boards/;https://storage.googleapis.com/flatcar-jenkins/boards/;g" /etc/portage/make.conf
-emerge-gitclone
-emerge -gKq coreos-sources
-gzip -cd /proc/config.gz > /usr/src/linux/.config
-cp /lib/modules/${KERNEL_VERSION}/build/Module.symvers /usr/src/linux/
+export $(cat /usr/src/version.txt | xargs)
+emerge-gitclone \
+&& export OVERLAY_VERSION="flatcar-${FLATCAR_BUILD}" \
+&& export PORTAGE_VERSION="flatcar-${FLATCAR_BUILD}" \
+&& git -C /var/lib/portage/coreos-overlay checkout "$OVERLAY_VERSION" \
+&& git -C /var/lib/portage/portage-stable checkout "$PORTAGE_VERSION"
+emerge -gKq coreos-sources \
+|| echo "failed to download binaries, fallback build from source:" \
+&& emerge -q --jobs 4 --load-average 4 coreos-sources
+# Ensure that the symbolic link points to the right kernel version
+rm -f /usr/src/linux
+ln -s /usr/src/linux-${KERNEL_STRING}-coreos /usr/src/linux
+cp /lib/modules/${KERNEL_VERSION}/build/.config /usr/src/linux
 make -C /usr/src/linux modules_prepare > /dev/null
+cp /lib/modules/${KERNEL_VERSION}/build/Module.symvers /usr/src/linux/
 depmod ${KERNEL_VERSION}
 mkdir -p /usr/src/linux/proc
 cp /proc/version /usr/src/linux/proc/
 
 echo "Compiling NVIDIA driver kernel modules with $(gcc --version | head -1)..."
+cp /lib/modules/${KERNEL_VERSION}/build/scripts/module.lds /usr/src/nvidia-*/kernel
 cd /usr/src/nvidia-*/kernel
-make -s -j SYSSRC=/usr/src/linux nv-linux.o nv-modeset-linux.o > /dev/null
+export IGNORE_CC_MISMATCH=1
+export IGNORE_MISSING_MODULE_SYMVERS=1
+make -s -j SYSSRC=/lib/modules/${KERNEL_VERSION}/source nv-linux.o nv-modeset-linux.o > /dev/null
 EOF
-    mkdir -p "/lib/modules/${KERNEL_VERSION}"
-    cp "/mnt/coreos/lib/modules/${KERNEL_VERSION}/"modules.* "/lib/modules/${KERNEL_VERSION}/"
+    mkdir -p /lib/modules/${KERNEL_VERSION}
+    cp -r /mnt/coreos/lib/modules/${KERNEL_VERSION}/* /lib/modules/${KERNEL_VERSION}/
     depmod "${KERNEL_VERSION}"
-
-    _exec umount -l /mnt/coreos
-    rm -rf /mnt/coreos
-    rm ${dev_image}*
+    
+    _cleanup_development_env
 )
 
 # Check if the kernel version requires a new precompiled driver packages.
@@ -94,8 +152,12 @@ _kernel_requires_package() {
     if [ "${KERNEL_VERSION}" != "$(uname -r)" ]; then
         proc_mount_arg="--proc-mount-point /usr/src/linux/proc"
     fi
-    for pkg_name in $(ls -d -1 precompiled/** 2> /dev/null); do
-        if ! ../mkprecompiled --match "${pkg_name}" "${proc_mount_arg}" > /dev/null; then
+    # Note that mkprecompiled does not handle empty double-quotes;
+    # so don't wrap variables in double-quotes
+    # The precompiled directory structure is laid out as one directory per KERNEL_VERSION 
+    # and it includes the packed kernel interfaces and other files. So we use the following search pattern:
+    for pkg_name in $(ls -d -1 precompiled/*/nvidia-modules* 2> /dev/null); do
+        if ! ../mkprecompiled --match ${pkg_name} ${proc_mount_arg} > /dev/null; then
             echo "Found NVIDIA driver package ${pkg_name##*/}"
             return 1
         fi
@@ -103,18 +165,14 @@ _kernel_requires_package() {
     return 0
 }
 
-# Compile the kernel modules, optionally sign them, and generate a precompiled package for use by the nvidia-installer.
+# Compile the kernel modules, optionally sign them, and generate a precompiled package for use later.
 _create_driver_package() (
     local pkg_name="nvidia-modules-${KERNEL_VERSION%%-*}${PACKAGE_TAG:+-${PACKAGE_TAG}}"
     local nvidia_sign_args=""
     local nvidia_modeset_sign_args=""
     local nvidia_uvm_sign_args=""
 
-    echo "Relinking NVIDIA driver kernel modules..."
     cd "/usr/src/nvidia-${DRIVER_VERSION}/kernel"
-    rm -f nvidia.ko nvidia-modeset.ko
-    ld -d -r -o nvidia.ko ./nv-linux.o ./nvidia/nv-kernel.o_binary
-    ld -d -r -o nvidia-modeset.ko ./nv-modeset-linux.o ./nvidia-modeset/nv-modeset-kernel.o_binary
 
     if [ -n "${PRIVATE_KEY}" ]; then
         echo "Signing NVIDIA driver kernel modules..."
@@ -127,31 +185,45 @@ _create_driver_package() (
         nvidia_uvm_sign_args="--signed"
     fi
 
+    # Note that mkprecompiled does not handle empty double-quotes;
+    # so don't wrap variables in double-quotes
     echo "Building NVIDIA driver package ${pkg_name}..."
-    ../mkprecompiled --pack "${pkg_name}" --description "${KERNEL_VERSION}"                          \
+    ../mkprecompiled --pack ${pkg_name} --description ${KERNEL_VERSION}                              \
                                         --proc-mount-point /usr/src/linux/proc                       \
-                                        --driver-version "${DRIVER_VERSION}"                         \
+                                        --driver-version ${DRIVER_VERSION}                           \
                                         --kernel-interface nv-linux.o                                \
                                         --linked-module-name nvidia.ko                               \
                                         --core-object-name nvidia/nv-kernel.o_binary                 \
-                                        "${nvidia_sign_args}"                                        \
+                                        ${nvidia_sign_args}                                          \
                                         --target-directory .                                         \
                                         --kernel-interface nv-modeset-linux.o                        \
                                         --linked-module-name nvidia-modeset.ko                       \
                                         --core-object-name nvidia-modeset/nv-modeset-kernel.o_binary \
-                                        "${nvidia_modeset_sign_args}"                                \
+                                        ${nvidia_modeset_sign_args}                                  \
                                         --target-directory .                                         \
                                         --kernel-module nvidia-uvm.ko                                \
-                                        "${nvidia_uvm_sign_args}"                                    \
+                                        ${nvidia_uvm_sign_args}                                      \
                                         --target-directory .
-    mkdir -p precompiled
-    mv "${pkg_name}" precompiled
+    # Archive the module files, so we can re-link later
+    # The archive is created one per kernel version, including the package created above
+    # and the corresponding module files. 
+    # Finally, delete any linked kernel modules (.ko) as they cannot be part of the container image
+    local archive_dir=precompiled/${KERNEL_VERSION}
+    mkdir -p "${archive_dir}"
+    mv "${pkg_name}" "${archive_dir}"
+    local kmods="nvidia nvidia-uvm nvidia-modeset nvidia-drm"
+    for m in $kmods; do 
+       cp ${m}.mod.o "${archive_dir}"
+       rm -f ${m}.ko
+    done
+    cp modules.order "${archive_dir}"
+    echo "Packaged precompiled driver into $PWD/${archive_dir}"
 )
 
 # Load the kernel modules and start persistenced.
 _load_driver() {
     echo "Loading NVIDIA driver kernel modules..."
-    modprobe -a nvidia nvidia-uvm nvidia-modeset
+    modprobe -d ${NVIDIA_KMODS_DIR} -a nvidia nvidia-uvm nvidia-modeset
 
     echo "Starting NVIDIA persistence daemon..."
     nvidia-persistenced --persistence-mode
@@ -213,13 +285,44 @@ _install_driver() {
     local install_args=()
 
     echo "Installing NVIDIA driver kernel modules..."
-    cd "/usr/src/nvidia-${DRIVER_VERSION}"
-    rm -rf "/lib/modules/${KERNEL_VERSION}/video"
+    local base_dir=/usr/src/nvidia-${DRIVER_VERSION}/kernel
+    cd "${base_dir}"
 
     if [ "${ACCEPT_LICENSE}" = "yes" ]; then
         install_args+=("--accept-license")
     fi
-    nvidia-installer --kernel-module-only --no-drm --ui=none --no-nouveau-check ${install_args[@]+"${install_args[@]}"}
+    # Prepare the final destination of the kernel modules and a staging directory 
+    # We will also setup some variables needed in the chroot 
+    # The precompiled kernel interfaces are first unpacked, and then re-linked using 
+    # the same linker that was used to build the precompiled modules 
+    mkdir -p ${NVIDIA_KMODS_DIR}/lib/modules/${KERNEL_VERSION}
+    local staging_dir=${base_dir}/staging/${KERNEL_VERSION}
+    mkdir -p ${staging_dir}
+
+    local pkg_name="nvidia-modules-${KERNEL_VERSION%%-*}${PACKAGE_TAG:+-${PACKAGE_TAG}}"
+    local archive_dir=${base_dir}/precompiled/${KERNEL_VERSION}
+    # Note that mkprecompiled does not handle empty double-quotes;
+    # so don't wrap variables in double-quotes
+    ../mkprecompiled --unpack ${archive_dir}/${pkg_name} -o ${staging_dir}
+    cp ${archive_dir}/*.mod.o ${staging_dir}
+
+    # Re-link the modules by using the binutils we archived from the development 
+    # environment.
+    local old_ld_path=$LD_LIBRARY_PATH
+    export LD_LIBRARY_PATH=${NVIDIA_BINUITLS_DIR}/libs:$LD_LIBRARY_PATH
+    cd ${staging_dir}
+    cp ../../nvidia/nv-kernel.o_binary .
+    cp ../../nvidia-modeset/nv-modeset-kernel.o_binary .
+    echo "Re-linking NVIDIA driver kernel modules..."
+    ${NVIDIA_BINUITLS_DIR}/bin/ld -d -r -T ${base_dir}/module.lds -o nvidia.ko ./nv-linux.o ./nv-kernel.o_binary ./nvidia.mod.o
+    ${NVIDIA_BINUITLS_DIR}/bin/ld -d -r -T ${base_dir}/module.lds -o nvidia-modeset.ko ./nv-modeset-linux.o ./nv-modeset-kernel.o_binary nvidia-modeset.mod.o
+    export LD_LIBRARY_PATH=${old_ld_path}
+    
+
+    # Copy the kernel modules to their final destination and generate the module dependencies
+    cp ${staging_dir}/*.ko ${NVIDIA_KMODS_DIR}/lib/modules/${KERNEL_VERSION}
+    cp ${archive_dir}/modules.order ${NVIDIA_KMODS_DIR}/lib/modules/${KERNEL_VERSION}
+    depmod -b ${NVIDIA_KMODS_DIR} ${KERNEL_VERSION}
 }
 
 # Execute binaries by root owning them first
@@ -315,6 +418,7 @@ update() {
     trap "echo 'Caught signal'; exit 1" HUP INT QUIT PIPE TERM
 
     _install_prerequisites
+
     if _kernel_requires_package; then
         _create_driver_package
     fi
