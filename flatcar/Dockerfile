@@ -1,30 +1,24 @@
-# Build nvidia-container-runtime binary
-FROM golang:1.11.2 as build-runtime
+FROM nvidia/cuda:11.2.2-base-ubuntu18.04
 
-WORKDIR /go/src/nvidia-container-runtime
-COPY nvidia-container-runtime .
-RUN go install -v nvidia-container-runtime
-
-# Build driver image
-FROM nvidia/cuda:11.2.1-base-ubuntu16.04
+RUN echo 'debconf debconf/frontend select Noninteractive' | debconf-set-selections
 
 RUN dpkg --add-architecture i386 && \
     apt-get update && apt-get install -y --no-install-recommends \
         apt-transport-https \
         apt-utils \
-	bc \
-	binutils \
+        bc \
+        binutils \
         build-essential \
         ca-certificates \
         curl \
-	gnupg2 \
-	jq \
+        gnupg2 \
+        jq \
         kmod \
         libc6:i386 \
         libelf-dev \
-	libssl-dev \
-	module-init-tools \
-	software-properties-common && \
+        libssl-dev \
+        module-init-tools \
+        software-properties-common && \
     rm -rf /var/lib/apt/lists/*
 
 RUN echo "deb [arch=amd64] http://archive.ubuntu.com/ubuntu/ bionic main" > /etc/apt/sources.list && \
@@ -38,7 +32,7 @@ RUN curl -fsSL -o /usr/local/bin/donkey https://github.com/3XX0/donkey/releases/
 
 #ARG BASE_URL=http://us.download.nvidia.com/XFree86/Linux-x86_64
 ARG BASE_URL=https://us.download.nvidia.com/tesla
-ARG DRIVER_VERSION=450.80.02
+ARG DRIVER_VERSION=460.32.03
 ENV DRIVER_VERSION=$DRIVER_VERSION
 ENV DEBIAN_FRONTEND=noninteractive
 
@@ -66,18 +60,7 @@ RUN cd /tmp && \
     sed '9,${/^\(kernel\|LICENSE\)/!d}' .manifest > /usr/src/nvidia-$DRIVER_VERSION/.manifest && \
     rm -rf /tmp/*
 
-# Install and configure nvidia-container-runtime
 ENV NVIDIA_VISIBLE_DEVICES void
-
-COPY --from=build-runtime /go/bin/nvidia-container-runtime /usr/bin/nvidia-container-runtime
-
-RUN curl -s -L https://nvidia.github.io/nvidia-container-runtime/gpgkey | apt-key add - && \
-    distribution=$(. /etc/os-release;echo $ID$VERSION_ID) && \
-    curl -s -L https://nvidia.github.io/nvidia-container-runtime/$distribution/nvidia-container-runtime.list | tee /etc/apt/sources.list.d/nvidia-container-runtime.list && \
-    apt-get update && \
-    apt-get install -y nvidia-container-runtime-hook && \
-    cd /usr && ln -s lib/x86_64-linux-gnu lib64 && cd - && \
-    sed -i 's/^#root/root/; s;@/sbin/ldconfig.real;@/run/nvidia/driver/sbin/ldconfig.real;' /etc/nvidia-container-runtime/config.toml
 
 COPY nvidia-driver /usr/local/bin
 
