@@ -6,6 +6,7 @@ set -o pipefail
 set -o xtrace
 
 DRIVER_VERSION=${1}
+# CONTAINER_VERSION ignored
 CONTAINER_VERSION=${2}
 REGISTRY=${3}
 CI_REPOSITORY_URL=${CI_REPOSITORY_URL:-https://gitlab.com/nvidia/driver.git}
@@ -21,6 +22,6 @@ docker run --privileged --name "compile_driver-${DRIVER_VERSION}" "install-drive
 	     update --kernel "${kernel_version}"
 
 docker commit -m "Compile Linux kernel modules version ${kernel_version} for NVIDIA driver version ${DRIVER_VERSION}" \
-	     --change='ENTRYPOINT ["nvidia-driver", "init"]' "compile_driver-${DRIVER_VERSION}" "${REGISTRY}:${CONTAINER_VERSION}-${kernel_version}-flatcar"
+	     --change='ENTRYPOINT ["nvidia-driver", "init"]' "compile_driver-${DRIVER_VERSION}" "${REGISTRY}:${DRIVER_VERSION}-${kernel_version}-flatcar"
 
-docker save "${REGISTRY}:${CONTAINER_VERSION}-${kernel_version}-flatcar" -o "${CONTAINER_VERSION}-${kernel_version}-flatcar.tar"
+docker save "${REGISTRY}:${DRIVER_VERSION}-${kernel_version}-flatcar" -o "${DRIVER_VERSION}-${kernel_version}-flatcar.tar"
