@@ -1,4 +1,4 @@
-.PHONY: all build build-local push push-short push-latest
+.PHONY: all build local push push-short push-latest
 
 SHELL := /bin/bash
 
@@ -22,7 +22,7 @@ driver-%:
 local-%:
 	CI_COMMIT_TAG="${CI_COMMIT_TAG}" FORCE=true REGISTRY="${IMAGE}" DRIVER_VERSION="$(firstword ${VERSION})" ./ci/$*/build.sh "$(firstword $(VERSION))" "$(CI_COMMIT_TAG)" "$(IMAGE)"
 
-build-local: build-flatcar build-coreos
+local: local-flatcar local-coreos
 
 push:
 	true
