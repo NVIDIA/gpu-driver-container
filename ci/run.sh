@@ -205,10 +205,11 @@ flatcar_tag_long=${CONTAINER_VERSION}-${flatcar_kernel}-flatcar
 if [[ -n ${FORCE} ]] || ! tag_exists "${flatcar_tag_long}" "${tags}"; then
     log 'Building Flatcar image'
     # shellcheck disable=SC2029
-    ssh "nvidia@${public_ip_flatcar}" /home/nvidia/build.sh "${DRIVER_VERSION}" "${CONTAINER_VERSION}" "${REGISTRY}" || true
-    # shellcheck disable=SC2029
-    scp "nvidia@${public_ip_flatcar}:/home/nvidia/${flatcar_tag_long}.tar" . || true
+    ssh "nvidia@${public_ip_flatcar}" /home/nvidia/build.sh "${DRIVER_VERSION}" "${CONTAINER_VERSION}" "${REGISTRY}"
+    scp "nvidia@${public_ip_flatcar}:/home/nvidia/${flatcar_tag_long}.tar" .
 
-    docker load -i "${flatcar_tag_long}.tar" || true
-    docker push "${REGISTRY}:${flatcar_tag_long}" || true
+    docker load -i "${flatcar_tag_long}.tar"
+    docker tag "${REGISTRY}:${flatcar_tag_long}" "${REGISTRY}:${DRIVER_VERSION}-flatcar"
+    docker push "${REGISTRY}:${flatcar_tag_long}"
+    docker push "${REGISTRY}:${DRIVER_VERSION}-flatcar"
 fi
