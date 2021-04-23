@@ -44,6 +44,7 @@ gettags:
   artifacts:
     paths:
     - driver-tags
+    expire_in: 2 weeks
   script:
     # Install build dependencies
     - apk add --no-cache bash curl jq
