@@ -9,8 +9,8 @@ set -o xtrace
 
 ## Configuration
 
-# DRIVER_VERSION='450.102.04'
-DRIVER_VERSION='460.32.03'
+# DRIVER_VERSION='450.119.03'
+DRIVER_VERSION='460.73.01'
 
 REGISTRY='nvidia/driver'
 # DOCKERHUB_RELEASE="yes"
