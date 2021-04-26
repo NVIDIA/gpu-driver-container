@@ -5,8 +5,8 @@
 
 variables:
   # project specific variables
-  DRIVER_VERSION: "450.102.04"
-  ALL_DRIVER_VERSIONS: "450.102.04 460.32.30"
+  DRIVER_VERSION: "450.119.03"
+  ALL_DRIVER_VERSIONS: "450.119.03 460.73.01"
   GIT_SSL_NO_VERIFY: "true"
   TF_VERSION: "0.12.18"
 
@@ -44,6 +44,7 @@ gettags:
   artifacts:
     paths:
     - driver-tags
+    expire_in: 2 weeks
   script:
     # Install build dependencies
     - apk add --no-cache bash curl jq
