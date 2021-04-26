@@ -5,7 +5,7 @@ SHELL := /bin/bash
 ifeq ($(IMAGE),)
 export IMAGE := nvidia/driver
 endif
-VERSION ?= "460.32.30"
+VERSION ?= "460.73.01"
 
 CI_COMMIT_TAG := "$(shell git describe --abbrev=0 --tags)"
 
