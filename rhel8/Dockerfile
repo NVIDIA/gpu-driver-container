@@ -1,11 +1,6 @@
-FROM ubuntu:20.04 as build
+FROM nvidia/cuda:11.2.1-base-ubi8 as build
 
-RUN apt-get update && apt-get install -y --no-install-recommends \
-        g++ \
-        ca-certificates \
-        wget \
-        git && \
-    rm -rf /var/lib/apt/lists/*
+RUN dnf install -y git wget
 
 ENV GOLANG_VERSION 1.15.5
 RUN wget -nv -O - https://storage.googleapis.com/golang/go${GOLANG_VERSION}.linux-amd64.tar.gz \
@@ -44,6 +39,10 @@ RUN sh /tmp/install.sh depinstall && \
     curl -fsSL -o /usr/local/bin/extract-vmlinux https://raw.githubusercontent.com/torvalds/linux/master/scripts/extract-vmlinux && \
     chmod +x /usr/local/bin/donkey /usr/local/bin/extract-vmlinux && \
     ln -s /sbin/ldconfig /sbin/ldconfig.real
+
+# Install K8s client to fetch node resources, cluster version etc
+RUN curl -o /usr/bin/kubectl -L "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl";
+RUN chmod a+x /usr/bin/kubectl
 
 ADD drivers drivers/
 
