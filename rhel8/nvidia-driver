@@ -23,12 +23,47 @@ _cleanup_package_cache() {
     fi
 }
 
+_resolve_ocp_version() {
+    if [ ! -z "${RESOLVE_OCP_VERSION}" ]; then
+        local version=$(kubectl get clusterversion -o json | jq ".items[].status.desired.version" |
+            sed -e 's/^"//' -e 's/"$//' | awk -F. '{printf("%d.%d\n", $1, $2)}')
+        echo "Resolving OpenShift version..."
+        if [ -z "${version}" ]; then
+            echo "Could not resolve OpenShift version" >&2
+            return 1
+        fi
+        OPENSHIFT_VERSION="${version}"
+        echo "Proceeding with OpenShift version ${OPENSHIFT_VERSION}"
+    fi
+    return 0
+}
+
+_resolve_rhel_version() {
+    if [ -f /host-etc/os-release ]; then
+        echo "Resolving RHEL version..."
+        local version=""
+        local id=$(cat /host-etc/os-release | grep ^ID= | awk -F= '{print $2}' | sed -e 's/^"//' -e 's/"$//')
+        if [ "${id}" = "rhcos"]; then
+            version=$(cat /host-etc/os-release | grep RHEL_VERSION | awk -F= '{print $2}' | sed -e 's/^"//' -e 's/"$//')
+        elif [ "${id}" = "rhel"]; then
+            version=$(cat /host-etc/os-release | grep VERSION_ID | awk -F= '{print $2}' | sed -e 's/^"//' -e 's/"$//')
+        fi
+        if [ -z "${version}" ]; then
+            echo "Could not resolve RHEL version" >&2
+            return 1
+        fi
+        RHEL_VERSION="${version}"
+        echo "Proceeding with RHEL version ${RHEL_VERSION}"
+    fi
+    return 0
+}
+
 # Resolve the kernel version to the form major.minor.patch-revision.
 _resolve_kernel_version() {
+    echo "Resolving Linux kernel version..."
     local version=$(yum -q list available --showduplicates kernel-headers |
       awk -v arch=$(uname -m) 'NR>1 {print $2"."arch}' | tac | grep -E -m1 "^${KERNEL_VERSION/latest/.*}")
 
-    echo "Resolving Linux kernel version..."
     if [ -z "${version}" ]; then
         echo "Could not resolve Linux kernel version" >&2
         return 1
@@ -503,5 +538,8 @@ done
 if [ $# -ne 0 ]; then
     usage
 fi
+
+_resolve_rhel_version || exit 1
+_resolve_ocp_version || exit 1
 
 $command
