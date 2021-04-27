@@ -10,7 +10,8 @@ dep_installer () {
         glibc.i686 \
         make \
         cpio \
-        kmod
+        kmod \
+        jq
   elif [ "$DRIVER_ARCH" = "ppc64le" ]; then
     dnf install -y \
         libglvnd-glx \
@@ -20,7 +21,8 @@ dep_installer () {
         glibc \
         make \
         cpio \
-        kmod
+        kmod \
+        jq
   fi
   rm -rf /var/cache/yum/*
 }
