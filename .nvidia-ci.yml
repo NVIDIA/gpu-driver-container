@@ -113,6 +113,11 @@ centos7-scan:
   variables:
     TAGS_REGEX: "$DRIVER_VERSION.*centos7"
 
+centos8-scan:
+  extends: .scan_template
+  variables:
+    TAGS_REGEX: "$DRIVER_VERSION.*centos8"
+
 rhel-scan:
   extends: .scan_template
   variables:
@@ -122,28 +127,6 @@ rhcos-scan:
   extends: .scan_template
   variables:
     TAGS_REGEX: "$DRIVER_VERSION.*rhcos"
-
-coreos-scan:
-  extends: .scan_template
-  variables:
-    TAGS_REGEX: "$DRIVER_VERSION.*coreos"
-
-flatcar-scan:
-  extends: .scan_template
-  variables:
-    TAGS_REGEX: "$DRIVER_VERSION.*flatcar"
-
-# TODO: add this back when e2e deploy is in place
-# deploy:
-#  stage: deploy
-#  extends: .builddep_setup_template
-#  script:
-#    - make IMAGE="${CI_REGISTRY_IMAGE}" VERSION="${ALL_DRIVER_VERSIONS}" push
-#    - |
-#      for tag in $tags
-#      do
-#        docker push $tag
-#      done
 
 release:
   stage: release
@@ -159,4 +142,3 @@ release:
     - 'docker login -u "${NGC_REGISTRY_USER}" -p "${NGC_REGISTRY_TOKEN}" "${NGC_REGISTRY}"'
     # Release Action (build & push)
     - make IMAGE="${NGC_PROD_IMAGE}" VERSION="${DRIVER_VERSION}" all
-    - make IMAGE="${NGC_PROD_IMAGE}" VERSION="${DRIVER_VERSION}" push

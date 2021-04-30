@@ -2,9 +2,6 @@ provider "aws" {
 	region = "us-west-2"
 }
 
-provider "ignition" {
-}
-
 provider "template" {
 }
 
@@ -119,13 +116,6 @@ output "public_ip_ubuntu16_04" {
 	value = aws_instance.ubuntu16_04.public_ip
 }
 
-data "ignition_user" "nvidia" {
-	name = "nvidia"
-	ssh_authorized_keys = [file(var.ssh_key_pub)]
-	primary_group = "docker"
-	groups = ["sudo"]
-}
-
 # Get the latest Flatcar Pro AMI available for the given channel
 data "aws_ami" "flatcar_pro_latest" {
 	most_recent = true
@@ -147,54 +137,6 @@ data "aws_ami" "flatcar_pro_latest" {
 	}
 }
 
-data "ignition_config" "flatcar_ignition_config" {
-	users = [data.ignition_user.nvidia.id]
-}
-
-resource "aws_instance" "flatcar_builder" {
-	ami           = data.aws_ami.flatcar_pro_latest.id
-	instance_type = "c4.4xlarge"
-
-	tags = {
-		Name = "${var.project_name}-${var.ci_pipeline_id}-flatcar"
-		product = "cloud-native"
-		project = var.project_name
-		environment = "cicd"
-	}
-
-	root_block_device {
-		volume_size = 40
-	}
-
-	security_groups = ["default", aws_security_group.allow_ssh.name]
-
-	connection {
-		user = "nvidia"
-		host = self.public_ip
-		agent = true
-	}
-
-	provisioner "file" {
-		source = "./flatcar/build.sh"
-		destination = "~/build.sh"
-	}
-
-	provisioner "remote-exec" {
-		inline = [
-		"sudo systemctl stop update-engine",
-		"sudo systemctl stop locksmithd",
-		"sudo modprobe -a loop ipmi_msghandler",
-		"chmod +x ~/build.sh"
-		]
-	}
-
-	user_data = data.ignition_config.flatcar_ignition_config.rendered
-}
-
-output "public_ip_flatcar" {
-	value = aws_instance.coreos_builder.public_ip
-}
-
 # Launch the latest CoreOS instance
 data "aws_ami" "coreos" {
 	most_recent = true
@@ -205,52 +147,4 @@ data "aws_ami" "coreos" {
 		name = "name"
 		values = ["CoreOS-stable-*"]
 	}
-}
-
-data "ignition_config" "coreos_ignition_config" {
-	users = [data.ignition_user.nvidia.id]
-}
-
-resource "aws_instance" "coreos_builder" {
-	ami           = data.aws_ami.coreos.id
-	instance_type = "c4.4xlarge"
-
-	tags = {
-		Name = "${var.project_name}-${var.ci_pipeline_id}-coreos"
-		product = "cloud-native"
-		project = var.project_name
-		environment = "cicd"
-	}
-
-	root_block_device {
-		volume_size = 40
-	}
-
-	security_groups = ["default", aws_security_group.allow_ssh.name]
-
-	connection {
-		user = "nvidia"
-		host = self.public_ip
-		agent = true
-	}
-
-	provisioner "file" {
-		source = "./coreos/build.sh"
-		destination = "~/build.sh"
-	}
-
-	provisioner "remote-exec" {
-		inline = [
-		"sudo systemctl stop update-engine",
-		"sudo systemctl stop locksmithd",
-		"sudo modprobe -a loop ipmi_msghandler",
-		"chmod +x ~/build.sh"
-		]
-	}
-
-	user_data = data.ignition_config.coreos_ignition_config.rendered
-}
-
-output "public_ip_coreos" {
-	value = aws_instance.coreos_builder.public_ip
 }
