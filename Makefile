@@ -9,7 +9,7 @@ VERSION ?= "460.73.01"
 
 CI_COMMIT_TAG := "$(shell git describe --abbrev=0 --tags)"
 
-all:
+all: build
 
 # Build default version(s)
 build: $(patsubst %,driver-%,$(VERSION))
