@@ -1,4 +1,4 @@
-FROM nvidia/cuda:11.2.1-base-centos7
+FROM nvidia/cuda:11.3.0-base-centos7
 
 RUN yum install -y \
         ca-certificates \

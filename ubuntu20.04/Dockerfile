@@ -22,7 +22,7 @@ RUN git clone https://gitlab.com/nvidia/container-images/driver && \
     go build -o vgpu-util && \
     mv vgpu-util /work
 
-FROM nvidia/cuda:11.2.1-base-ubuntu20.04
+FROM nvidia/cuda:11.3.0-base-ubuntu20.04
 
 RUN echo 'debconf debconf/frontend select Noninteractive' | debconf-set-selections
 
