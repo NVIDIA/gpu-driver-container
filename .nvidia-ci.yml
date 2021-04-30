@@ -92,6 +92,7 @@ test:
     - cd contamer
     - pip3 install -r requirements.txt
     - |
+      if [ -z "$tags" ]; then echo "No tags to scan!" ; exit 1 ; fi
       for tag in $tags;
       do
         docker tag $tag $(basename $tag);
