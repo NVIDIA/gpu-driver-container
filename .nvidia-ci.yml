@@ -1,4 +1,3 @@
----
 ##
 ## Variables that control where build artifacts are places for scanning and testing:
 ## CI_REGISTRY
@@ -60,7 +59,7 @@ variables:
 
 .build:
   stage: build
-  extends: .dockerbuild_init_template
+  extends: .builddep_setup_template
   script:
     - make IMAGE="${CI_REGISTRY_IMAGE}" VERSION="${ALL_DRIVER_VERSIONS}" all
     - make IMAGE="${CI_REGISTRY_IMAGE}" VERSION="${ALL_DRIVER_VERSIONS}" push
@@ -134,16 +133,17 @@ flatcar-scan:
   variables:
     TAGS_REGEX: "$DRIVER_VERSION.*flatcar"
 
-deploy:
-  stage: deploy
-  extends: .dockerbuild_init_template
-  script:
-    - make IMAGE="${CI_REGISTRY_IMAGE}" VERSION="${ALL_DRIVER_VERSIONS}" push
-    - |
-      for tag in $tags
-      do
-        docker push $tag
-      done
+# TODO: add this back when e2e deploy is in place
+# deploy:
+#  stage: deploy
+#  extends: .builddep_setup_template
+#  script:
+#    - make IMAGE="${CI_REGISTRY_IMAGE}" VERSION="${ALL_DRIVER_VERSIONS}" push
+#    - |
+#      for tag in $tags
+#      do
+#        docker push $tag
+#      done
 
 release:
   stage: release

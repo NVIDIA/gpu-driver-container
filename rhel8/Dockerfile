@@ -1,4 +1,4 @@
-FROM nvidia/cuda:11.2.1-base-ubi8 as build
+FROM nvidia/cuda:11.3.0-base-ubi8 as build
 
 RUN dnf install -y git wget
 
@@ -14,7 +14,7 @@ RUN git clone https://gitlab.com/nvidia/container-images/driver && \
     go build -o vgpu-util && \
     mv vgpu-util /work
 
-FROM nvidia/cuda:11.2.1-base-ubi8
+FROM nvidia/cuda:11.3.0-base-ubi8
 
 #ARG BASE_URL=http://us.download.nvidia.com/XFree86/Linux-x86_64
 ARG BASE_URL=https://us.download.nvidia.com/tesla
