@@ -3,7 +3,6 @@ provider "aws" {
 }
 
 provider "ignition" {
-  version = "1.1.0"
 }
 
 provider "template" {
@@ -98,7 +97,7 @@ resource "aws_instance" "ubuntu16_04" {
 		volume_size = 40
 	}
 
-	security_groups = ["default", "${aws_security_group.allow_ssh.name}"]
+	security_groups = ["default", aws_security_group.allow_ssh.name]
 
 	connection {
 		user = "nvidia"
@@ -167,7 +166,7 @@ resource "aws_instance" "flatcar_builder" {
 		volume_size = 40
 	}
 
-	security_groups = ["default", "${aws_security_group.allow_ssh.name}"]
+	security_groups = ["default", aws_security_group.allow_ssh.name]
 
 	connection {
 		user = "nvidia"
@@ -193,7 +192,7 @@ resource "aws_instance" "flatcar_builder" {
 }
 
 output "public_ip_flatcar" {
-	value = "${aws_instance.coreos_builder.public_ip}"
+	value = aws_instance.coreos_builder.public_ip
 }
 
 # Launch the latest CoreOS instance
@@ -227,7 +226,7 @@ resource "aws_instance" "coreos_builder" {
 		volume_size = 40
 	}
 
-	security_groups = ["default", "${aws_security_group.allow_ssh.name}"]
+	security_groups = ["default", aws_security_group.allow_ssh.name]
 
 	connection {
 		user = "nvidia"
@@ -253,5 +252,5 @@ resource "aws_instance" "coreos_builder" {
 }
 
 output "public_ip_coreos" {
-	value = "${aws_instance.coreos_builder.public_ip}"
+	value = aws_instance.coreos_builder.public_ip
 }
