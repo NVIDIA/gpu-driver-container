@@ -1,4 +1,4 @@
-FROM nvidia/cuda:11.2.1-base-centos8
+FROM nvidia/cuda:11.3.0-base-centos8
 
 RUN dnf install -y \
         ca-certificates \
