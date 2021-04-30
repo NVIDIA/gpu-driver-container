@@ -1,4 +1,4 @@
-FROM nvidia/cuda:11.2.1-base-ubuntu18.04
+FROM nvidia/cuda:11.3.0-base-ubuntu18.04
 
 RUN echo 'debconf debconf/frontend select Noninteractive' | debconf-set-selections
 
