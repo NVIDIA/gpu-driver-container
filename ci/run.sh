@@ -21,7 +21,7 @@ fi
 SSH_KEY=${SSH_KEY:-${HOME}/.ssh/id_rsa}
 
 UBUNTU_VERSIONS=${UBUNTU_VERSIONS:-"16.04 18.04 20.04"}
-CENTOS_VERSIONS=${CENTOS_VERSIONS:-"7"}
+CENTOS_VERSIONS=${CENTOS_VERSIONS:-"7 8"}
 
 mk_long_version() {
   local -r linux_version="${1}" platform="${2}"

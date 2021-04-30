@@ -45,8 +45,12 @@ driver_container_build_ubuntu()
   driver_container_build_simple "ubuntu18.04"
   driver_container_build_simple "ubuntu20.04"
   driver_container_build_simple "ubuntu16.04"
+}
 
+driver_container_build_centos()
+{
   driver_container_build_simple "centos7"
+  driver_container_build_simple "centos8"
 }
 
 list_all_containers()
@@ -95,6 +99,7 @@ ngc_push()
 ## Main
 
 driver_container_build_ubuntu
+driver_container_build_centos
 
 list_all_containers
 
