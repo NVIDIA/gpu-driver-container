@@ -24,6 +24,8 @@ RUN git clone https://gitlab.com/nvidia/container-images/driver && \
 
 FROM nvidia/cuda:11.3.0-base-ubuntu20.04
 
+ENV NVIDIA_VISIBLE_DEVICES=void
+
 RUN echo 'debconf debconf/frontend select Noninteractive' | debconf-set-selections
 
 RUN dpkg --add-architecture i386 && \
