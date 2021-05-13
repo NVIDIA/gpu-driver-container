@@ -8,6 +8,7 @@ PID_FILE=${RUN_DIR}/${0##*/}.pid
 DRIVER_VERSION=${DRIVER_VERSION:?"Missing driver version"}
 KERNEL_UPDATE_HOOK=/run/kernel/postinst.d/update-nvidia-driver
 NUM_VGPU_DEVICES=0
+RESOLVE_OCP_VERSION=${RESOLVE_OCP_VERSION:="false"}
 
 _update_package_cache() {
     if [ "${PACKAGE_TAG:-}" != "builtin" ]; then
@@ -24,7 +25,7 @@ _cleanup_package_cache() {
 }
 
 _resolve_ocp_version() {
-    if [ ! -z "${RESOLVE_OCP_VERSION}" ]; then
+    if [ "${RESOLVE_OCP_VERSION}" = "true" ]; then
         local version=$(kubectl get clusterversion -o json | jq ".items[].status.desired.version" |
             sed -e 's/^"//' -e 's/"$//' | awk -F. '{printf("%d.%d\n", $1, $2)}')
         echo "Resolving OpenShift version..."
@@ -43,9 +44,9 @@ _resolve_rhel_version() {
         echo "Resolving RHEL version..."
         local version=""
         local id=$(cat /host-etc/os-release | grep ^ID= | awk -F= '{print $2}' | sed -e 's/^"//' -e 's/"$//')
-        if [ "${id}" = "rhcos"]; then
+        if [ "${id}" = "rhcos" ]; then
             version=$(cat /host-etc/os-release | grep RHEL_VERSION | awk -F= '{print $2}' | sed -e 's/^"//' -e 's/"$//')
-        elif [ "${id}" = "rhel"]; then
+        elif [ "${id}" = "rhel" ]; then
             version=$(cat /host-etc/os-release | grep VERSION_ID | awk -F= '{print $2}' | sed -e 's/^"//' -e 's/"$//')
         fi
         if [ -z "${version}" ]; then
