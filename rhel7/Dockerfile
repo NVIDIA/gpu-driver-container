@@ -1,5 +1,7 @@
 FROM nvidia/cuda:11.3.0-base-ubi7
 
+ENV NVIDIA_VISIBLE_DEVICES=void
+
 RUN yum install -y \
         ca-certificates \
         curl \
