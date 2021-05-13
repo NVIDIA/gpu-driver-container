@@ -1,5 +1,7 @@
 FROM nvidia/cuda:11.3.0-base-ubuntu16.04
 
+ENV NVIDIA_VISIBLE_DEVICES=void
+
 RUN echo 'debconf debconf/frontend select Noninteractive' | debconf-set-selections
 
 RUN dpkg --add-architecture i386 && \
