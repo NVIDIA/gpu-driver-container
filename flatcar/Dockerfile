@@ -1,5 +1,7 @@
 FROM nvidia/cuda:11.3.0-base-ubuntu18.04
 
+ENV NVIDIA_VISIBLE_DEVICES=void
+
 RUN echo 'debconf debconf/frontend select Noninteractive' | debconf-set-selections
 
 RUN dpkg --add-architecture i386 && \
@@ -59,8 +61,6 @@ RUN cd /tmp && \
     mv LICENSE mkprecompiled kernel /usr/src/nvidia-$DRIVER_VERSION && \
     sed '9,${/^\(kernel\|LICENSE\)/!d}' .manifest > /usr/src/nvidia-$DRIVER_VERSION/.manifest && \
     rm -rf /tmp/*
-
-ENV NVIDIA_VISIBLE_DEVICES void
 
 COPY nvidia-driver /usr/local/bin
 
