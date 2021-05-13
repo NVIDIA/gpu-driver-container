@@ -1,5 +1,7 @@
 FROM nvidia/cuda:11.3.0-base-centos8
 
+ENV NVIDIA_VISIBLE_DEVICES=void
+
 RUN dnf install -y \
         ca-certificates \
         curl \
