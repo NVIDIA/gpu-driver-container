@@ -24,6 +24,22 @@ RUN git clone https://gitlab.com/nvidia/container-images/driver && \
 
 FROM nvidia/cuda:11.3.0-base-ubuntu20.04
 
+#ARG BASE_URL=http://us.download.nvidia.com/XFree86/Linux-x86_64
+ARG BASE_URL=https://us.download.nvidia.com/tesla
+ARG DRIVER_VERSION
+ENV DRIVER_VERSION=$DRIVER_VERSION
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Arg to indicate if driver type is either of passthrough(baremetal) or vgpu
+ARG DRIVER_TYPE=passthrough
+ENV DRIVER_TYPE=$DRIVER_TYPE
+ARG DRIVER_BRANCH=460
+ENV DRIVER_BRANCH=$DRIVER_BRANCH
+ARG VGPU_LICENSE_SERVER_TYPE=FNE
+ENV VGPU_LICENSE_SERVER_TYPE=$VGPU_LICENSE_SERVER_TYPE
+# Enable vGPU version compability check by default
+ARG DISABLE_VGPU_VERSION_CHECK=false
+ENV DISABLE_VGPU_VERSION_CHECK=$DISABLE_VGPU_VERSION_CHECK
 ENV NVIDIA_VISIBLE_DEVICES=void
 
 RUN echo 'debconf debconf/frontend select Noninteractive' | debconf-set-selections
@@ -37,8 +53,10 @@ RUN dpkg --add-architecture i386 && \
         kmod \
         file \
         libelf-dev \
-	libglvnd-dev \
-	pkg-config && \
+        libglvnd-dev \
+        pkg-config \
+        nvidia-fabricmanager-${DRIVER_BRANCH}=${DRIVER_VERSION}-1 \
+        libnvidia-nscq-${DRIVER_BRANCH}=${DRIVER_VERSION}-1 && \
     rm -rf /var/lib/apt/lists/*
 
 RUN echo "deb [arch=amd64] http://archive.ubuntu.com/ubuntu/ focal main universe" > /etc/apt/sources.list && \
@@ -48,21 +66,6 @@ RUN echo "deb [arch=amd64] http://archive.ubuntu.com/ubuntu/ focal main universe
 
 RUN curl -fsSL -o /usr/local/bin/donkey https://github.com/3XX0/donkey/releases/download/v1.1.0/donkey && \
     chmod +x /usr/local/bin/donkey
-
-#ARG BASE_URL=http://us.download.nvidia.com/XFree86/Linux-x86_64
-ARG BASE_URL=https://us.download.nvidia.com/tesla
-ARG DRIVER_VERSION
-ENV DRIVER_VERSION=$DRIVER_VERSION
-ENV DEBIAN_FRONTEND=noninteractive
-
-# Arg to indicate if driver type is either of passthrough(baremetal) or vgpu
-ARG DRIVER_TYPE=passthrough
-ENV DRIVER_TYPE=$DRIVER_TYPE
-ARG VGPU_LICENSE_SERVER_TYPE=FNE
-ENV VGPU_LICENSE_SERVER_TYPE=$VGPU_LICENSE_SERVER_TYPE
-# Enable vGPU version compability check by default
-ARG DISABLE_VGPU_VERSION_CHECK=false
-ENV DISABLE_VGPU_VERSION_CHECK=$DISABLE_VGPU_VERSION_CHECK
 
 COPY nvidia-driver /usr/local/bin
 
