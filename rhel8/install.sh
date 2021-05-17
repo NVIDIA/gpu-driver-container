@@ -11,7 +11,9 @@ dep_installer () {
         make \
         cpio \
         kmod \
-        jq
+        jq \
+        nvidia-fabricmanager-${DRIVER_BRANCH}-${DRIVER_VERSION}-1 \
+        libnvidia-nscq-${DRIVER_BRANCH}-${DRIVER_VERSION}-1
   elif [ "$DRIVER_ARCH" = "ppc64le" ]; then
     dnf install -y \
         libglvnd-glx \
@@ -22,7 +24,9 @@ dep_installer () {
         make \
         cpio \
         kmod \
-        jq
+        jq \
+        nvidia-fabricmanager-${DRIVER_BRANCH}-${DRIVER_VERSION}-1 \
+        libnvidia-nscq-${DRIVER_BRANCH}-${DRIVER_VERSION}-1
   fi
   rm -rf /var/cache/yum/*
 }

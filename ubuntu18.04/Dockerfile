@@ -1,5 +1,12 @@
 FROM nvidia/cuda:11.3.0-base-ubuntu18.04
 
+#ARG BASE_URL=http://us.download.nvidia.com/XFree86/Linux-x86_64
+ARG BASE_URL=https://us.download.nvidia.com/tesla
+ARG DRIVER_VERSION
+ENV DRIVER_VERSION=$DRIVER_VERSION
+ARG DRIVER_BRANCH=460
+ENV DRIVER_BRANCH=$DRIVER_BRANCH
+ENV DEBIAN_FRONTEND=noninteractive
 ENV NVIDIA_VISIBLE_DEVICES=void
 
 RUN echo 'debconf debconf/frontend select Noninteractive' | debconf-set-selections
@@ -13,8 +20,10 @@ RUN dpkg --add-architecture i386 && \
         kmod \
         libc6:i386 \
         libelf-dev \
-	libglvnd-dev\
-	pkg-config && \
+        libglvnd-dev \
+        pkg-config \
+        nvidia-fabricmanager-${DRIVER_BRANCH}=${DRIVER_VERSION}-1 \
+        libnvidia-nscq-${DRIVER_BRANCH}=${DRIVER_VERSION}-1 && \
     rm -rf /var/lib/apt/lists/*
 
 RUN echo "deb [arch=amd64] http://archive.ubuntu.com/ubuntu/ bionic main universe" > /etc/apt/sources.list && \
@@ -25,12 +34,6 @@ RUN echo "deb [arch=amd64] http://archive.ubuntu.com/ubuntu/ bionic main univers
 RUN curl -fsSL -o /usr/local/bin/donkey https://github.com/3XX0/donkey/releases/download/v1.1.0/donkey && \
     curl -fsSL -o /usr/local/bin/extract-vmlinux https://raw.githubusercontent.com/torvalds/linux/master/scripts/extract-vmlinux && \
     chmod +x /usr/local/bin/donkey /usr/local/bin/extract-vmlinux
-
-#ARG BASE_URL=http://us.download.nvidia.com/XFree86/Linux-x86_64
-ARG BASE_URL=https://us.download.nvidia.com/tesla
-ARG DRIVER_VERSION
-ENV DRIVER_VERSION=$DRIVER_VERSION
-ENV DEBIAN_FRONTEND=noninteractive
 
 # Install the userspace components and copy the kernel module sources.
 RUN cd /tmp && \
