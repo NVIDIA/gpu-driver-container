@@ -152,6 +152,15 @@ _create_driver_package() (
     mv ${pkg_name} precompiled
 )
 
+_assert_nvswitch_system() {
+    [ -d /proc/driver/nvidia-nvswitch ] || return 1
+    entries=$(ls -1 /proc/driver/nvidia-nvswitch/devices/*)
+    if [ -z "${entries}" ]; then
+        return 1
+    fi
+    return 0
+}
+
 # Load the kernel modules and start persistenced.
 _load_driver() {
     echo "Loading ipmi and i2c_core kernel modules..."
@@ -164,7 +173,7 @@ _load_driver() {
     nvidia-persistenced --persistence-mode
 
 
-   if [ "${DRIVER_TYPE}" = "vgpu" ]; then
+    if [ "${DRIVER_TYPE}" = "vgpu" ]; then
         if [ "${VGPU_LICENSE_SERVER_TYPE}" = "FNE" ]; then
             echo "Copying gridd.conf..."
             cp /drivers/gridd.conf /etc/nvidia/gridd.conf
@@ -175,6 +184,11 @@ _load_driver() {
         fi
         echo "Starting nvidia-gridd.."
         LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu/nvidia/gridd nvidia-gridd
+    fi
+
+    if _assert_nvswitch_system; then
+        echo "Starting NVIDIA fabric manager daemon..."
+        nv-fabricmanager -c /usr/share/nvidia/nvswitch/fabricmanager.cfg
     fi
 
     return 0
@@ -193,11 +207,11 @@ _unload_driver() {
         local pid=$(< /var/run/nvidia-persistenced/nvidia-persistenced.pid)
 
         kill -SIGTERM "${pid}"
-        for i in $(seq 1 10); do
+        for i in $(seq 1 50); do
             kill -0 "${pid}" 2> /dev/null || break
             sleep 0.1
         done
-        if [ $i -eq 10 ]; then
+        if [ $i -eq 50 ]; then
             echo "Could not stop NVIDIA persistence daemon" >&2
             return 1
         fi
@@ -214,6 +228,21 @@ _unload_driver() {
         done
         if [ $i -eq 10 ]; then
             echo "Could not stop NVIDIA Grid daemon" >&2
+            return 1
+        fi
+    fi
+
+    if [ -f /var/run/nvidia-fabricmanager/nv-fabricmanager.pid ]; then
+        echo "Stopping NVIDIA fabric manager daemon..."
+        local pid=$(< /var/run/nvidia-fabricmanager/nv-fabricmanager.pid)
+
+        kill -SIGTERM "${pid}"
+        for i in $(seq 1 50); do
+            kill -0 "${pid}" 2> /dev/null || break
+            sleep 0.1
+        done
+        if [ $i -eq 50 ]; then
+            echo "Could not stop NVIDIA fabric manager daemon" >&2
             return 1
         fi
     fi
