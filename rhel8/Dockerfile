@@ -49,9 +49,12 @@ RUN chmod a+x /usr/bin/kubectl
 ADD drivers drivers/
 
 # Fetch the installer automatically for passthrough/baremetal types
-RUN if [ "$DRIVER_TYPE" != "vgpu" ]; then cd drivers && \
+RUN if [ "$DRIVER_TYPE" != "vgpu" ]; then \
+    cd drivers && \
     curl -fSsl -O $BASE_URL/$DRIVER_VERSION/NVIDIA-Linux-$DRIVER_ARCH-$DRIVER_VERSION.run && \
-    chmod +x  NVIDIA-Linux-$DRIVER_ARCH-$DRIVER_VERSION.run; fi
+    chmod +x  NVIDIA-Linux-$DRIVER_ARCH-$DRIVER_VERSION.run && \
+    dnf install -y nvidia-fabricmanager-${DRIVER_BRANCH}-${DRIVER_VERSION}-1 \
+        libnvidia-nscq-${DRIVER_BRANCH}-${DRIVER_VERSION}-1; fi
 
 COPY nvidia-driver /usr/local/bin
 
