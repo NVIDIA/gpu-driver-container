@@ -54,9 +54,7 @@ RUN dpkg --add-architecture i386 && \
         file \
         libelf-dev \
         libglvnd-dev \
-        pkg-config \
-        nvidia-fabricmanager-${DRIVER_BRANCH}=${DRIVER_VERSION}-1 \
-        libnvidia-nscq-${DRIVER_BRANCH}=${DRIVER_VERSION}-1 && \
+        pkg-config && \
     rm -rf /var/lib/apt/lists/*
 
 RUN echo "deb [arch=amd64] http://archive.ubuntu.com/ubuntu/ focal main universe" > /etc/apt/sources.list && \
@@ -74,9 +72,13 @@ COPY --from=build /work/vgpu-util /usr/local/bin
 ADD drivers drivers/
 
 # Fetch the installer automatically for passthrough/baremetal types
-RUN if [ "$DRIVER_TYPE" != "vgpu" ]; then cd drivers && \
+RUN if [ "$DRIVER_TYPE" != "vgpu" ]; then \
+    cd drivers && \
     curl -fSsl -O $BASE_URL/$DRIVER_VERSION/NVIDIA-Linux-x86_64-$DRIVER_VERSION.run && \
-    chmod +x  NVIDIA-Linux-x86_64-$DRIVER_VERSION.run; fi
+    chmod +x  NVIDIA-Linux-x86_64-$DRIVER_VERSION.run && \
+    apt-get update && \
+    apt-get install -y --no-install-recommends nvidia-fabricmanager-${DRIVER_BRANCH}=${DRIVER_VERSION}-1 \
+    libnvidia-nscq-${DRIVER_BRANCH}=${DRIVER_VERSION}-1; fi
 
 WORKDIR  /drivers
 
