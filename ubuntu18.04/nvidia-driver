@@ -160,7 +160,7 @@ _assert_nvswitch_system() {
 # Load the kernel modules and start persistenced.
 _load_driver() {
     echo "Loading ipmi and i2c_core kernel modules..."
-    modprobe -a i2c_core ipmi_msghandler
+    modprobe -a i2c_core ipmi_msghandler ipmi_devintf
 
     echo "Loading NVIDIA driver kernel modules..."
     modprobe -a nvidia nvidia-uvm nvidia-modeset
