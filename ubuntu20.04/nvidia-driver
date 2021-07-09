@@ -182,8 +182,12 @@ _load_driver() {
             mkdir -p  /etc/nvidia/MessengerToken/
             cp /drivers/MessengerToken/* /etc/nvidia/MessengerToken/
         fi
+
         echo "Starting nvidia-gridd.."
         LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu/nvidia/gridd nvidia-gridd
+
+        # Start virtual topology daemon
+        _start_vgpu_topology_daemon
     fi
 
     if _assert_nvswitch_system; then
@@ -364,6 +368,12 @@ _find_vgpu_driver_version() {
     DRIVER_VERSION=$(echo "$version" | awk -F= '{print $2}')
     echo "vgpu driver version selected: ${DRIVER_VERSION}"
     return 0
+}
+
+_start_vgpu_topology_daemon() {
+    type nvidia-topologyd > /dev/null 2>&1 || return 0
+    echo "Starting nvidia-topologyd.."
+    nvidia-topologyd
 }
 
 init() {
