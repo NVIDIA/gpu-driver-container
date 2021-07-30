@@ -8,6 +8,7 @@ PID_FILE=${RUN_DIR}/${0##*/}.pid
 DRIVER_VERSION=${DRIVER_VERSION:?"Missing driver version"}
 KERNEL_UPDATE_HOOK=/run/kernel/postinst.d/update-nvidia-driver
 NUM_VGPU_DEVICES=0
+GPU_DIRECT_RDMA_ENABLED="${GPU_DIRECT_RDMA_ENABLED:-false}"
 
 export DEBIAN_FRONTEND=noninteractive
 
@@ -112,6 +113,10 @@ _create_driver_package() (
     echo "Compiling NVIDIA driver kernel modules..."
     cd /usr/src/nvidia-${DRIVER_VERSION}/kernel
 
+    if _gpu_direct_rdma_enabled; then
+        ln -s /run/mellanox/drivers/usr/src/ofa_kernel /usr/src/
+    fi
+
     export IGNORE_CC_MISMATCH=1
     make -s -j SYSSRC=/lib/modules/${KERNEL_VERSION}/build nv-linux.o nv-modeset-linux.o > /dev/null
 
@@ -161,6 +166,30 @@ _assert_nvswitch_system() {
     return 0
 }
 
+# Check if mellanox devices are present
+_mellanox_devices_present() {
+    devices_found=0
+    for dev in /sys/bus/pci/devices/*; do
+        read vendor < $dev/vendor
+        if [ "$vendor" = "0x15b3" ]; then
+            echo "Mellanox device found at $(basename $dev)"
+            return 0
+        fi
+    done
+    echo "No Mellanox devices were found..."
+    return 1
+}
+
+_gpu_direct_rdma_enabled() {
+    if [ "${GPU_DIRECT_RDMA_ENABLED}" = "true" ]; then
+        # check if mellanox cards are present
+        if  _mellanox_devices_present; then
+            return 0
+        fi
+    fi
+    return 1
+}
+
 # Load the kernel modules and start persistenced.
 _load_driver() {
     echo "Loading ipmi and i2c_core kernel modules..."
@@ -169,9 +198,13 @@ _load_driver() {
     echo "Loading NVIDIA driver kernel modules..."
     modprobe -a nvidia nvidia-uvm nvidia-modeset
 
+    if _gpu_direct_rdma_enabled; then
+        echo "Loading NVIDIA Peer Memory kernel module..."
+        modprobe -a nvidia-peermem
+    fi
+
     echo "Starting NVIDIA persistence daemon..."
     nvidia-persistenced --persistence-mode
-
 
     if [ "${DRIVER_TYPE}" = "vgpu" ]; then
         if [ "${VGPU_LICENSE_SERVER_TYPE}" = "FNE" ]; then
@@ -205,6 +238,7 @@ _unload_driver() {
     local nvidia_refs=0
     local nvidia_uvm_refs=0
     local nvidia_modeset_refs=0
+    local nvidia_peermem_refs=0
 
     echo "Stopping NVIDIA persistence daemon..."
     if [ -f /var/run/nvidia-persistenced/nvidia-persistenced.pid ]; then
@@ -262,11 +296,18 @@ _unload_driver() {
         rmmod_args+=("nvidia-uvm")
         ((++nvidia_deps))
     fi
+    if [ -f /sys/module/nvidia_peermem/refcnt ]; then
+        nvidia_peermem_refs=$(< /sys/module/nvidia_peermem/refcnt)
+        rmmod_args+=("nvidia-peermem")
+        ((++nvidia_deps))
+    fi
     if [ -f /sys/module/nvidia/refcnt ]; then
         nvidia_refs=$(< /sys/module/nvidia/refcnt)
         rmmod_args+=("nvidia")
     fi
-    if [ ${nvidia_refs} -gt ${nvidia_deps} ] || [ ${nvidia_uvm_refs} -gt 0 ] || [ ${nvidia_modeset_refs} -gt 0 ]; then
+    if [ ${nvidia_refs} -gt ${nvidia_deps} ] || [ ${nvidia_uvm_refs} -gt 0 ] || [ ${nvidia_modeset_refs} -gt 0 ] || [ ${nvidia_peermem_refs} -gt 0 ]; then
+        # run lsmod to debug module usage
+        lsmod | grep nvidia
         echo "Could not unload NVIDIA driver kernel modules, driver is in use" >&2
         return 1
     fi
