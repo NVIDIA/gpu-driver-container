@@ -231,13 +231,12 @@ _load_driver() {
     nvidia-persistenced --persistence-mode
 
     if [ "${DRIVER_TYPE}" = "vgpu" ]; then
-        if [ "${VGPU_LICENSE_SERVER_TYPE}" = "FNE" ]; then
-            echo "Copying gridd.conf..."
-            cp /drivers/gridd.conf /etc/nvidia/gridd.conf
-        elif [ "${VGPU_LICENSE_SERVER_TYPE}" = "NLS" ]; then
+        echo "Copying gridd.conf..."
+        cp /drivers/gridd.conf /etc/nvidia/gridd.conf
+        if [ "${VGPU_LICENSE_SERVER_TYPE}" = "NLS" ]; then
             echo "Copying MessengerToken..."
-            mkdir -p  /etc/nvidia/MessengerToken/
-            cp /drivers/MessengerToken/* /etc/nvidia/MessengerToken/
+            mkdir -p  /etc/nvidia/ClientConfigToken/
+            cp /drivers/ClientConfigToken/* /etc/nvidia/ClientConfigToken/
         fi
 
         echo "Starting nvidia-gridd.."
