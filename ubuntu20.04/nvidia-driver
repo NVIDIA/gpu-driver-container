@@ -210,7 +210,7 @@ _load_driver() {
         echo "Copying gridd.conf..."
         cp /drivers/gridd.conf /etc/nvidia/gridd.conf
         if [ "${VGPU_LICENSE_SERVER_TYPE}" = "NLS" ]; then
-            echo "Copying MessengerToken..."
+            echo "Copying ClientConfigToken..."
             mkdir -p  /etc/nvidia/ClientConfigToken/
             cp /drivers/ClientConfigToken/* /etc/nvidia/ClientConfigToken/
         fi
