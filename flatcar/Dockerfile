@@ -1,4 +1,4 @@
-FROM nvidia/cuda:11.3.0-base-ubuntu18.04
+FROM nvidia/cuda:11.4.1-base-ubuntu18.04
 
 ENV NVIDIA_VISIBLE_DEVICES=void
 

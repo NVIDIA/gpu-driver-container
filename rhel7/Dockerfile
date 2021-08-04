@@ -1,4 +1,4 @@
-FROM nvidia/cuda:11.3.0-base-ubi7
+FROM nvidia/cuda:11.4.1-base-ubi7
 
 ENV NVIDIA_VISIBLE_DEVICES=void
 
