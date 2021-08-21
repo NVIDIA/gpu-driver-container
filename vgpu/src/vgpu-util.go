@@ -520,13 +520,15 @@ func FindMatch(driverCatalog *VGPUDriverCatalog, availbleDriverList []string, pc
 		}
 	}
 
-	// If no exact match is found, return first guest driver as guest/host driver branch do not require an exact match
-	driver := guestDriverInfoList[0]
-	log.Infof("Found compatible guest driver version %s branch %s for host version %s branch %s", driver.Version, driver.Branch, hostDriverVersion, hostDriverBranch)
-	return driver.Version, nil
+	if len(guestDriverInfoList) > 0 {
+		// If no exact match is found, return first guest driver as guest/host driver branch do not require an exact match
+		driver := guestDriverInfoList[0]
+		log.Infof("Found compatible guest driver version %s branch %s for host version %s branch %s", driver.Version, driver.Branch, hostDriverVersion, hostDriverBranch)
+		return driver.Version, nil
+	}
 
 	// TODO: Identify the most recent guest driver on some specified branch that is compatible with the host driver
-	//return "", fmt.Errorf("Unable to find vGPU driver version matching host driver version %s and branch %s", hostDriverVersion, hostDriverBranch)
+	return "", fmt.Errorf("Unable to find vGPU driver version matching host driver version %s and branch %s", hostDriverVersion, hostDriverBranch)
 }
 
 // LoadCatalog loads the vgpu driver catalog file
