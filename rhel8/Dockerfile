@@ -35,7 +35,6 @@ ARG DISABLE_VGPU_VERSION_CHECK=false
 ENV DISABLE_VGPU_VERSION_CHECK=$DISABLE_VGPU_VERSION_CHECK
 
 ADD install.sh /tmp/
-ADD ocp_dtk_entrypoint.sh /tmp/
 
 RUN sh /tmp/install.sh depinstall && \
     curl -fsSL -o /usr/local/bin/donkey https://github.com/3XX0/donkey/releases/download/v1.1.0/donkey && \
@@ -58,6 +57,7 @@ RUN if [ "$DRIVER_TYPE" != "vgpu" ]; then \
         libnvidia-nscq-${DRIVER_BRANCH}-${DRIVER_VERSION}-1; fi
 
 COPY nvidia-driver /usr/local/bin
+COPY ocp_dtk_entrypoint /usr/local/bin
 
 COPY --from=build /work/vgpu-util /usr/local/bin
 
