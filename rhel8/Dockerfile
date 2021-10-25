@@ -35,6 +35,7 @@ ARG DISABLE_VGPU_VERSION_CHECK=false
 ENV DISABLE_VGPU_VERSION_CHECK=$DISABLE_VGPU_VERSION_CHECK
 
 ADD install.sh /tmp/
+ADD ocp_dtk_entrypoint.sh /tmp/
 
 RUN sh /tmp/install.sh depinstall && \
     curl -fsSL -o /usr/local/bin/donkey https://github.com/3XX0/donkey/releases/download/v1.1.0/donkey && \
