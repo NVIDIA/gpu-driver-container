@@ -13,7 +13,11 @@ RESOLVE_OCP_VERSION=${RESOLVE_OCP_VERSION:="false"}
 _update_package_cache() {
     if [ "${PACKAGE_TAG:-}" != "builtin" ]; then
         echo "Updating the package cache..."
-        yum -q makecache
+        if ! yum -q makecache; then
+            echo "FATAL: failed to reach RHEL package repositories. "\
+                 "Ensure that the cluster can access the proper networks."
+            exit 1
+        fi
     fi
 }
 
@@ -82,7 +86,10 @@ _install_prerequisites() (
     cd ${tmp_dir}
 
     echo "Installing elfutils..."
-    dnf install -q -y elfutils-libelf.x86_64 elfutils-libelf-devel.x86_64
+    if ! dnf install -q -y elfutils-libelf.x86_64 elfutils-libelf-devel.x86_64; then
+        echo "FATAL: failed to install elfutils packages. RHEL entitlement may be improperly deployed."
+        exit 1
+    fi
 
     rm -rf /lib/modules/${KERNEL_VERSION}
     mkdir -p /lib/modules/${KERNEL_VERSION}/proc
@@ -105,7 +112,7 @@ _install_prerequisites() (
     echo "Installing Linux kernel module files..."
     dnf -q -y --releasever=${RHEL_VERSION} install kernel-core-${KERNEL_VERSION} > /dev/null
 
-    # Prevent depmod from giving a WARNING about missing files 
+    # Prevent depmod from giving a WARNING about missing files
     touch /lib/modules/${KERNEL_VERSION}/modules.order
     touch /lib/modules/${KERNEL_VERSION}/modules.builtin
 
@@ -437,7 +444,7 @@ _start_vgpu_topology_daemon() {
     nvidia-topologyd
 }
 
-init() {
+_prepare() {
     if [ "${DRIVER_TYPE}" = "vgpu" ]; then
         _find_vgpu_driver_version || exit 1
     fi
@@ -452,6 +459,10 @@ init() {
 
     echo -e "\n========== NVIDIA Software Installer ==========\n"
     echo -e "Starting installation of NVIDIA driver version ${DRIVER_VERSION} for Linux kernel version ${KERNEL_VERSION}\n"
+}
+
+_prepare_exclusive() {
+    _prepare
 
     exec 3> ${PID_FILE}
     if ! flock -n 3; then
@@ -465,7 +476,9 @@ init() {
 
     _unload_driver || exit 1
     _unmount_rootfs
+}
 
+_build() {
     # Install dependencies
     if _kernel_requires_package; then
         _update_package_cache
@@ -477,6 +490,9 @@ init() {
 
     # Build the driver
     _install_driver
+}
+
+_load() {
     _load_driver
     _mount_rootfs
     _write_kernel_update_hook
@@ -487,6 +503,26 @@ init() {
     trap - EXIT
     while true; do wait $! || continue; done
     exit 0
+}
+
+init() {
+    _prepare_exclusive
+
+    _build
+
+    _load
+}
+
+build() {
+    _prepare
+
+    _build
+}
+
+load() {
+    _prepare_exclusive
+
+    _load
 }
 
 update() {
@@ -540,6 +576,8 @@ Usage: $0 COMMAND [ARG...]
 
 Commands:
   init   [-a | --accept-license]
+  build  [-a | --accept-license]
+  load
   update [-k | --kernel VERSION] [-s | --sign KEYID] [-t | --tag TAG]
 EOF
     exit 1
@@ -551,6 +589,8 @@ fi
 command=$1; shift
 case "${command}" in
     init) options=$(getopt -l accept-license -o a -- "$@") ;;
+    build) options=$(getopt -l accept-license,tag: -o a:t -- "$@") ;;
+    load) options="" ;;
     update) options=$(getopt -l kernel:,sign:,tag: -o k:s:t: -- "$@") ;;
     *) usage ;;
 esac
