@@ -18,7 +18,7 @@ nv-ctr-run-with-dtk() {
     if [[ ! -f "$DRIVER_TOOLKIT_SHARED_DIR/dir_prepared" ]]; then
         cp -r \
            /tmp/install.sh \
-           /tmp/ocp_dtk_entrypoint.sh \
+           /usr/local/bin/ocp_dtk_entrypoint \
            /usr/local/bin/nvidia-driver \
            /usr/local/bin/extract-vmlinux \
            /usr/bin/kubectl \
