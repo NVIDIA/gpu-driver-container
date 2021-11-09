@@ -33,6 +33,8 @@ ENV VGPU_LICENSE_SERVER_TYPE=$VGPU_LICENSE_SERVER_TYPE
 # Enable vGPU version compability check by default
 ARG DISABLE_VGPU_VERSION_CHECK=false
 ENV DISABLE_VGPU_VERSION_CHECK=$DISABLE_VGPU_VERSION_CHECK
+# Avoid dependency of container-toolkit for driver container
+ENV NVIDIA_VISIBLE_DEVICES=void
 
 ADD install.sh /tmp/
 
