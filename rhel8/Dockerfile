@@ -18,12 +18,11 @@ FROM nvidia/cuda:11.4.1-base-ubi8
 
 #ARG BASE_URL=http://us.download.nvidia.com/XFree86/Linux-x86_64
 ARG BASE_URL=https://us.download.nvidia.com/tesla
+ARG CUDA_URL=https://developer.download.nvidia.com/compute/cuda/repos/rhel8/x86_64
 ARG DRIVER_VERSION
 ENV DRIVER_VERSION=$DRIVER_VERSION
 ARG DRIVER_ARCH=x86_64
 ENV DRIVER_ARCH=$DRIVER_ARCH
-ARG DRIVER_BRANCH=460
-ENV DRIVER_BRANCH=$DRIVER_BRANCH
 
 # Arg to indicate if driver type is either of passthrough/baremetal or vgpu
 ARG DRIVER_TYPE=passthrough
@@ -50,11 +49,21 @@ ADD drivers drivers/
 
 # Fetch the installer automatically for passthrough/baremetal types
 RUN if [ "$DRIVER_TYPE" != "vgpu" ]; then \
+    versionArray=(${DRIVER_VERSION//./ }); \
+    DRIVER_BRANCH=${versionArray[0]}; \
+    if [ ${versionArray[0]} -ge 470 ] || ([ ${versionArray[0]} == 460 ] && [ ${versionArray[1]} -ge 91 ]); then \
+      fmPackage=nvidia-fabric-manager-${DRIVER_VERSION}-1; \
+    else \
+      fmPackage=nvidia-fabricmanager-${DRIVER_BRANCH}-${DRIVER_VERSION}-1; \
+    fi; \
+    nscqPackage=libnvidia-nscq-${DRIVER_BRANCH}-${DRIVER_VERSION}-1; \
     cd drivers && \
     curl -fSsl -O $BASE_URL/$DRIVER_VERSION/NVIDIA-Linux-$DRIVER_ARCH-$DRIVER_VERSION.run && \
+    curl -fSsl -O $CUDA_URL/${fmPackage}.${DRIVER_ARCH}.rpm && \
+    curl -fSsl -O $CUDA_URL/${nscqPackage}.${DRIVER_ARCH}.rpm && \
     chmod +x  NVIDIA-Linux-$DRIVER_ARCH-$DRIVER_VERSION.run && \
-    dnf install -y nvidia-fabricmanager-${DRIVER_BRANCH}-${DRIVER_VERSION}-1 \
-        libnvidia-nscq-${DRIVER_BRANCH}-${DRIVER_VERSION}-1; fi
+    dnf localinstall -y ${fmPackage}.${DRIVER_ARCH}.rpm ${nscqPackage}.${DRIVER_ARCH}.rpm && \
+    rm *.rpm; fi
 
 COPY nvidia-driver /usr/local/bin
 COPY ocp_dtk_entrypoint /usr/local/bin
