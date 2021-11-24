@@ -11,7 +11,7 @@ NVIDIA_KMODS_DIR=/opt/nvidia/${DRIVER_VERSION}
 
 COREOS_RELEASE_CHANNEL=stable
 COREOS_RELEASE_BOARD=amd64-usr
-COREOS_ALL_RELEASES="https://kinvolk.io/flatcar-container-linux/releases-json/releases-${COREOS_RELEASE_CHANNEL}.json"
+COREOS_ALL_RELEASES="https://www.flatcar-linux.org/releases-json/releases-${COREOS_RELEASE_CHANNEL}.json"
 
 export DEBIAN_FRONTEND=noninteractive
 
