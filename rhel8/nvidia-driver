@@ -409,6 +409,7 @@ _shutdown() {
 _find_vgpu_driver_version() {
     local count=""
     local version=""
+    local drivers_path="/drivers"
 
     if [ "${DISABLE_VGPU_VERSION_CHECK}" = "true" ]; then
         echo "vgpu version compatibility check is disabled"
@@ -427,8 +428,11 @@ _find_vgpu_driver_version() {
     fi
     echo "found $NUM_VGPU_DEVICES vgpu devices on host"
 
-    # find compatible guest driver using drive catalog
-    version=$(vgpu-util match -i /drivers -c /drivers/vgpuDriverCatalog.yaml)
+    # find compatible guest driver using driver catalog
+    if [ -d "/mnt/shared-nvidia-driver-toolkit/drivers" ]; then
+        drivers_path="/mnt/shared-nvidia-driver-toolkit/drivers"
+    fi
+    version=$(vgpu-util match -i "${drivers_path}" -c "${drivers_path}/vgpuDriverCatalog.yaml")
     if [ $? -ne 0 ]; then
         echo "cannot find match for compatible vgpu driver from available list, please check /var/log/vgpu-util.log for more details..."
         return 1
