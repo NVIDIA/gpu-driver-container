@@ -19,7 +19,9 @@ import (
 	"os"
 	"path"
 	"regexp"
+	"sort"
 	"strings"
+	"time"
 
 	"gopkg.in/yaml.v2"
 
@@ -103,6 +105,23 @@ type PCIDeviceInfo struct {
 type VGPUConfigInfo struct {
 	version string
 	branch  string
+}
+
+type driverTimeSlice []DriverDescriptor
+
+func (t driverTimeSlice) Len() int {
+	return len(t)
+}
+
+func (t driverTimeSlice) Less(i, j int) bool {
+	const shortForm = "2006-01-02"
+	t1, _ := time.Parse(shortForm, t[i].Date)
+	t2, _ := time.Parse(shortForm, t[j].Date)
+	return t2.Before(t1)
+}
+
+func (t driverTimeSlice) Swap(i, j int) {
+	t[i], t[j] = t[j], t[i]
 }
 
 var (
@@ -383,8 +402,8 @@ func FindMatch(driverCatalog *VGPUDriverCatalog, availbleDriverList []string, pc
 					log.Infof("host branch %s doesn't match with guest allowed branch list for %s, ignore...", hostDriverBranch, branch.Name)
 					continue
 				}
-				guestBranchInfoList = append(guestBranchInfoList, branch)
 			}
+			guestBranchInfoList = append(guestBranchInfoList, branch)
 		}
 	}
 
@@ -398,24 +417,21 @@ func FindMatch(driverCatalog *VGPUDriverCatalog, availbleDriverList []string, pc
 	}
 	log.Debugf("filtered %d guest branch info descriptors", len(guestBranchInfoList))
 
-	// Filter guestBranchInfoList to remove any guest branches made ineligible by the host branch's allow / deny lists.
-	for i, guestBranch := range guestBranchInfoList {
-		if !foundBranch(hostBranchInfo.Allow.Branch, guestBranch.Name) {
-			log.Debugf("Removing guest branch %s as not found in allowed list of host branch", guestBranch.Name)
-			// remove guest branch
-			removeBranchDescriptors(guestBranchInfoList, i)
+	validGuestBranchInfoList := []BranchDescriptor{}
+	// Filter guestBranchInfoList to ignore any guest branches made ineligible by the host branch's allow / deny lists.
+	for _, guestBranch := range guestBranchInfoList {
+		if len(hostBranchInfo.Allow.Branch) > 0 && !foundBranch(hostBranchInfo.Allow.Branch, guestBranch.Name) {
+			log.Debugf("Ignoring guest branch %s as not found in allowed list of host branch", guestBranch.Name)
 			continue
 		}
-
-		for _, deniedGuestBranch := range hostBranchInfo.Deny.Branch {
-			if deniedGuestBranch == guestBranch.Name {
-				log.Debugf("Removing guest branch %s as found in denied list of host branch", guestBranch.Name)
-				// remove guest branch
-				removeBranchDescriptors(guestBranchInfoList, i)
-				continue
-			}
+		if foundBranch(hostBranchInfo.Deny.Branch, guestBranch.Name) {
+			log.Debugf("Ignoring guest branch %s as found in denied list of host branch", guestBranch.Name)
+			continue
 		}
+		validGuestBranchInfoList = append(validGuestBranchInfoList, guestBranch)
 	}
+
+	log.Debugf("filtered %d valid guest branch info lists", len(validGuestBranchInfoList))
 
 	// Process driver descriptors to produce a filtered list of candidate guest drivers and a driver descriptor
 	// for the host driver
@@ -443,13 +459,12 @@ func FindMatch(driverCatalog *VGPUDriverCatalog, availbleDriverList []string, pc
 			}
 
 			if len(driver.Allow.Driver) > 0 && !foundDriver(driver.Allow.Driver, hostDriverVersion) {
-				guestDriverInfoList = append(guestDriverInfoList, driver)
 				continue
 			}
 			if len(driver.Deny.Driver) > 0 && foundDriver(driver.Deny.Driver, hostDriverVersion) {
 				continue
 			}
-			for _, guestBranchDescriptor := range guestBranchInfoList {
+			for _, guestBranchDescriptor := range validGuestBranchInfoList {
 				if guestBranchDescriptor.Name == driver.Branch {
 					guestDriverInfoList = append(guestDriverInfoList, driver)
 				}
@@ -482,52 +497,60 @@ func FindMatch(driverCatalog *VGPUDriverCatalog, availbleDriverList []string, pc
 	}
 
 	log.Debugf("filtered %d guest driver info lists", len(guestDriverInfoList))
-	// Filter guestDriverInfoList to remove any guest drivers that are unavailable, or are made ineligible by a host driver's
+	// Filter guestDriverInfoList to ignore any guest drivers that are unavailable, or are made ineligible by a host driver's
 	// allow / deny lists.
-	for i, guestDriver := range guestDriverInfoList {
+	validGuestDriverInfoList := []DriverDescriptor{}
+	for _, guestDriver := range guestDriverInfoList {
 		if !foundAvailableDriver(availbleDriverList, guestDriver.Version) {
-			// remove guest driver info
-			log.Debugf("removing guest driver info list %s as its not available", guestDriver.Version)
-			removeDriverDescriptor(guestDriverInfoList, i)
+			// ignore guest driver info
+			log.Debugf("Ignoring guest driver %s as its not available", guestDriver.Version)
 			continue
 		}
 		if hostDriverInfo.Version != "" {
 			if len(hostDriverInfo.Allow.Driver) > 0 {
-				if foundDriver(hostDriverInfo.Allow.Driver, guestDriver.Version) {
+				if !foundDriver(hostDriverInfo.Allow.Driver, guestDriver.Version) {
+					// ignore guest driver from guest driver info list
+					log.Debugf("Ignoring guest driver %s as its not found in allowed list", guestDriver.Version)
 					continue
 				}
-				// remove guest driver from guest driver info list
-				log.Debugf("removing guest driver info list %s", guestDriver.Version)
-				removeDriverDescriptor(guestDriverInfoList, i)
-				continue
 			}
 			if len(hostDriverInfo.Deny.Driver) > 0 {
 				if foundDriver(hostDriverInfo.Deny.Driver, guestDriver.Version) {
-					log.Debugf("removing guest driver info list %s as its denied", guestDriver.Version)
-					// remove guest driver from guest driver info list
-					removeDriverDescriptor(guestDriverInfoList, i)
+					log.Debugf("Ignoring guest driver %s as its denied", guestDriver.Version)
+					continue
 				}
-				continue
 			}
 		}
+		validGuestDriverInfoList = append(validGuestDriverInfoList, guestDriver)
 	}
 
+	log.Debugf("filtered %d valid guest driver info lists", len(validGuestDriverInfoList))
+
+	dateSortedDriverList := make(driverTimeSlice, 0, len(validGuestDriverInfoList))
+	for _, d := range validGuestDriverInfoList {
+		dateSortedDriverList = append(dateSortedDriverList, d)
+	}
+
+	// Sort filtered guest driver descriptors by date to use latest available driver.
+	sort.Sort(dateSortedDriverList)
+
+	log.Debugf("sorted driver list %+v", dateSortedDriverList)
+
 	// Pick driver from guestDriverInfoList based on match criteria
-	for _, driver := range guestDriverInfoList {
+	for _, driver := range validGuestDriverInfoList {
 		if driver.Branch == hostDriverBranch {
 			log.Infof("Found compatible guest driver version %s matching host version %s branch %s", driver.Version, hostDriverVersion, hostDriverBranch)
 			return driver.Version, nil
 		}
 	}
 
-	if len(guestDriverInfoList) > 0 {
+	if len(validGuestDriverInfoList) > 0 {
 		// If no exact match is found, return first guest driver as guest/host driver branch do not require an exact match
-		driver := guestDriverInfoList[0]
+		driver := validGuestDriverInfoList[0]
 		log.Infof("Found compatible guest driver version %s branch %s for host version %s branch %s", driver.Version, driver.Branch, hostDriverVersion, hostDriverBranch)
 		return driver.Version, nil
 	}
 
-	// TODO: Identify the most recent guest driver on some specified branch that is compatible with the host driver
 	return "", fmt.Errorf("Unable to find vGPU driver version matching host driver version %s and branch %s", hostDriverVersion, hostDriverBranch)
 }
 
@@ -768,26 +791,4 @@ func GetVGPUInfo(p *PCIDeviceInfo) (*VGPUConfigInfo, error) {
 		branch:  strings.TrimSpace(strings.ToUpper(hostDriverBranch)),
 	}
 	return info, nil
-}
-
-func removeDriverDescriptor(driverDescriptors []DriverDescriptor, index int) {
-	if index < 0 || index >= len(driverDescriptors) {
-		return
-	}
-	if index == len(driverDescriptors)-1 {
-		driverDescriptors = driverDescriptors[:index]
-		return
-	}
-	driverDescriptors = append(driverDescriptors[:index], driverDescriptors[index+1:]...)
-}
-
-func removeBranchDescriptors(branchDescriptors []BranchDescriptor, index int) {
-	if index < 0 || index >= len(branchDescriptors) {
-		return
-	}
-	if index == len(branchDescriptors)-1 {
-		branchDescriptors = branchDescriptors[:index]
-		return
-	}
-	branchDescriptors = append(branchDescriptors[:index], branchDescriptors[index+1:]...)
 }
