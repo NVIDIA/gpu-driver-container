@@ -18,7 +18,6 @@ FROM nvidia/cuda:11.4.1-base-ubi8
 
 #ARG BASE_URL=http://us.download.nvidia.com/XFree86/Linux-x86_64
 ARG BASE_URL=https://us.download.nvidia.com/tesla
-ARG CUDA_URL=https://developer.download.nvidia.com/compute/cuda/repos/rhel8/x86_64
 ARG DRIVER_VERSION
 ENV DRIVER_VERSION=$DRIVER_VERSION
 ARG DRIVER_ARCH=x86_64
@@ -61,11 +60,9 @@ RUN if [ "$DRIVER_TYPE" != "vgpu" ]; then \
     nscqPackage=libnvidia-nscq-${DRIVER_BRANCH}-${DRIVER_VERSION}-1; \
     cd drivers && \
     curl -fSsl -O $BASE_URL/$DRIVER_VERSION/NVIDIA-Linux-$DRIVER_ARCH-$DRIVER_VERSION.run && \
-    curl -fSsl -O $CUDA_URL/${fmPackage}.${DRIVER_ARCH}.rpm && \
-    curl -fSsl -O $CUDA_URL/${nscqPackage}.${DRIVER_ARCH}.rpm && \
     chmod +x  NVIDIA-Linux-$DRIVER_ARCH-$DRIVER_VERSION.run && \
-    dnf localinstall -y ${fmPackage}.${DRIVER_ARCH}.rpm ${nscqPackage}.${DRIVER_ARCH}.rpm && \
-    rm *.rpm; fi
+    dnf module enable -y nvidia-driver:${DRIVER_BRANCH} && \
+    dnf install -y ${fmPackage} ${nscqPackage}; fi
 
 COPY nvidia-driver /usr/local/bin
 COPY ocp_dtk_entrypoint /usr/local/bin
