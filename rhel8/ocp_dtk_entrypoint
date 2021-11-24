@@ -114,6 +114,7 @@ dtk-build-driver() {
     cp -v \
        "$DRIVER_TOOLKIT_SHARED_DIR/nvidia-driver" \
        "$DRIVER_TOOLKIT_SHARED_DIR/extract-vmlinux" \
+       "$DRIVER_TOOLKIT_SHARED_DIR/vgpu-util" \
        "${DRIVER_TOOLKIT_SHARED_DIR}/bin"
 
     ln -s $(which true) ${DRIVER_TOOLKIT_SHARED_DIR}/bin/dnf --force
