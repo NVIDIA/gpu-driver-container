@@ -34,6 +34,10 @@ nv-ctr-run-with-dtk() {
 
     set +x
     while [[ ! -f "$DRIVER_TOOLKIT_SHARED_DIR/driver_build_started" ]]; do
+        if [[ -f "$DRIVER_TOOLKIT_SHARED_DIR/driver_toolkit_broken" ]]; then
+            echo "WARNING: broken driver toolkit detected, using entitlement-based fallback"
+            exec bash -x nvidia-driver init
+        fi
         echo "$(date) Waiting for openshift-driver-toolkit-ctr container to start ..."
         sleep 15
     done
@@ -69,6 +73,17 @@ nv-ctr-run-with-dtk() {
 dtk-build-driver() {
     if [[ "${RHCOS_IMAGE_MISSING:-}" == "true" ]]; then
         echo "WARNING: 'istag/driver-toolkit:${RHCOS_VERSION} -n openshift' missing, nothing to do in openshift-driver-toolkit-ctr container"
+        sleep +inf
+    fi
+
+    if ! [[ -f "/lib/modules/$(uname -r)/vmlinuz" ]]; then
+        echo "WARNING: broken Driver Toolkit image detected:"
+        echo "- Node kernel:    $(uname -r)"
+        echo "- Kernel package: $(rpm -q --qf "%{VERSION}-%{RELEASE}.%{ARCH}" kernel-core)"
+
+        echo "INFO: informing nvidia-driver-ctr to fallback on entitled-build."
+        touch "$DRIVER_TOOLKIT_SHARED_DIR/driver_toolkit_broken"
+        echo "INFO: nothing else to do in openshift-driver-toolkit-ctr container, sleeping forever."
         sleep +inf
     fi
 
