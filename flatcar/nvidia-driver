@@ -9,7 +9,7 @@ DRIVER_VERSION=${DRIVER_VERSION:?"Missing driver version"}
 NVIDIA_BINUITLS_DIR=/opt/nvidia/binutils
 NVIDIA_KMODS_DIR=/opt/nvidia/${DRIVER_VERSION}
 
-COREOS_RELEASE_CHANNEL=stable
+export COREOS_RELEASE_CHANNEL=stable
 COREOS_RELEASE_BOARD=amd64-usr
 COREOS_ALL_RELEASES="https://www.flatcar-linux.org/releases-json/releases-${COREOS_RELEASE_CHANNEL}.json"
 
@@ -27,12 +27,8 @@ _install_development_env() {
     # The environment is mounted on a loop device and then we chroot into 
     # the mount to build the NVIDIA kernel driver interface. 
     # The resulting module files and module dependencies are then archived.
-    local kernel
-    kernel=$(echo "${KERNEL_VERSION}" | cut -d "-" -f1)
-    local os_release
-    os_release=$(curl -Ls "${COREOS_ALL_RELEASES}" | jq -r --arg kernel_ver "${kernel}" 'to_entries[] | select ((.value.major_software.kernel[0] == $kernel_ver) and (.key != "current")) | .key')    
     local latest_release
-    latest_release=$(echo "${os_release}" | awk '{ print $1 }')
+    latest_release=$(echo "${COREOS_RELEASE_VERSION}" | awk '{ print $1 }')
     local dev_image="flatcar_developer_container.bin"
     local dev_image_url="https://${COREOS_RELEASE_CHANNEL}.release.flatcar-linux.net/${COREOS_RELEASE_BOARD}/${latest_release}/${dev_image}.bz2"
 
@@ -98,6 +94,11 @@ _install_prerequisites() (
     rm -rf "/lib/modules/${KERNEL_VERSION}"
     rm -rf /usr/src/linux*
 
+    # Gather the tag for the release matching the current kernel version.
+    local kernel
+    kernel=$(echo "${KERNEL_VERSION}" | cut -d "-" -f1)
+    export COREOS_RELEASE_VERSION=$(curl -Ls "${COREOS_ALL_RELEASES}" | jq -r --arg kernel_ver "${kernel}" 'to_entries[] | select ((.value.major_software.kernel[0] == $kernel_ver) and (.key != "current")) | .key')
+
     _install_development_env 
     echo "Installing the Flatcar kernel sources into the development environment..."
 
@@ -111,8 +112,8 @@ source /etc/os-release
  sed -i -e "s;http://builds.developer.core-os.net/boards/;https://storage.googleapis.com/flatcar-jenkins/boards/;g" /etc/portage/make.conf
 export $(cat /usr/src/version.txt | xargs)
 emerge-gitclone \
-&& export OVERLAY_VERSION="flatcar-${FLATCAR_BUILD}" \
-&& export PORTAGE_VERSION="flatcar-${FLATCAR_BUILD}" \
+&& export OVERLAY_VERSION="${COREOS_RELEASE_CHANNEL}-${COREOS_RELEASE_VERSION}" \
+&& export PORTAGE_VERSION="${COREOS_RELEASE_CHANNEL}-${COREOS_RELEASE_VERSION}" \
 && git -C /var/lib/portage/coreos-overlay checkout "$OVERLAY_VERSION" \
 && git -C /var/lib/portage/portage-stable checkout "$PORTAGE_VERSION"
 emerge -gKq coreos-sources \
