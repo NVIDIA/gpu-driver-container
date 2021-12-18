@@ -115,6 +115,17 @@ _create_driver_package() (
 
     if _gpu_direct_rdma_enabled; then
         ln -s /run/mellanox/drivers/usr/src/ofa_kernel /usr/src/
+        # if arch directory exists(MOFED >=5.5) then create a symlink as expected by GPU driver installer
+        # This is required as currently GPU driver installer doesn't expect headers in x86_64 folder, but only in either default or kernel-version folder.
+        # ls -ltr /usr/src/ofa_kernel/
+        # lrwxrwxrwx 1 root root   36 Dec  8 20:10 default -> /etc/alternatives/ofa_kernel_headers
+        # drwxr-xr-x 4 root root 4096 Dec  8 20:14 x86_64
+        # lrwxrwxrwx 1 root root   44 Dec  9 19:05 5.4.0-90-generic -> /usr/src/ofa_kernel/x86_64/5.4.0-90-generic/
+        if [[ -d /run/mellanox/drivers/usr/src/ofa_kernel/x86_64/`uname -r` ]]; then
+            if [[ ! -e /usr/src/ofa_kernel/`uname -r` ]]; then
+                ln -s /run/mellanox/drivers/usr/src/ofa_kernel/x86_64/`uname -r` /usr/src/ofa_kernel/
+            fi
+        fi
     fi
 
     export IGNORE_CC_MISMATCH=1
