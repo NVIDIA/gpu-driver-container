@@ -9,6 +9,7 @@ DRIVER_VERSION=${DRIVER_VERSION:?"Missing driver version"}
 KERNEL_UPDATE_HOOK=/run/kernel/postinst.d/update-nvidia-driver
 NUM_VGPU_DEVICES=0
 GPU_DIRECT_RDMA_ENABLED="${GPU_DIRECT_RDMA_ENABLED:-false}"
+USE_HOST_MOFED="${USE_HOST_MOFED:-false}"
 
 export DEBIAN_FRONTEND=noninteractive
 
@@ -551,11 +552,20 @@ update() {
 
 # Wait for MOFED drivers to be loaded and load nvidia-peermem whenever it gets unloaded during MOFED driver updates
 reload_nvidia_peermem() {
-    until  grep ib_register_peer_memory_client /proc/kallsyms > /dev/null 2>&1 && [ -f /sys/module/nvidia/refcnt ];
-    do
-        echo "waiting for mellanox ofed and nvidia drivers to be installed"
-        sleep 10
-    done
+    if [ "$USE_HOST_MOFED" = "true" ]; then
+        until  lsmod | grep mlx5_core > /dev/null 2>&1 && [ -f /sys/module/nvidia/refcnt ];
+        do
+            echo "waiting for mellanox ofed and nvidia drivers to be installed"
+            sleep 10
+        done
+    else
+        # use driver readiness flag created by MOFED container
+        until  [ -f /run/mellanox/drivers/.driver-ready ] && [ -f /sys/module/nvidia/refcnt ];
+        do
+            echo "waiting for mellanox ofed and nvidia drivers to be installed"
+            sleep 10
+        done
+    fi
     if chroot /run/nvidia/driver modprobe nvidia-peermem; then
         if [ -f /sys/module/nvidia_peermem/refcnt ]; then
             echo "successfully loaded nvidia-peermem module, now waiting for signal"
@@ -569,7 +579,7 @@ reload_nvidia_peermem() {
 
 # probe by gpu-opertor for liveness/startup checks for nvidia-peermem module to be loaded when MOFED drivers are ready
 probe_nvidia_peermem() {
-    if grep ib_register_peer_memory_client /proc/kallsyms > /dev/null 2>&1; then
+    if lsmod | grep mlx5_core > /dev/null 2>&1; then
         if [ ! -f /sys/module/nvidia_peermem/refcnt ]; then
             echo "nvidia-peermem module is not loaded"
             return 1
