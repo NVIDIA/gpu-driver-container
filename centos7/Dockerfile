@@ -2,23 +2,20 @@ FROM nvidia/cuda:11.4.1-base-centos7
 
 ENV NVIDIA_VISIBLE_DEVICES=void
 
-RUN yum install -y \
-        ca-certificates \
-        curl \
-        gcc \
-        glibc.i686 \
-        make \
-        kmod && \
-    rm -rf /var/cache/yum/*
-
-RUN curl -fsSL -o /usr/local/bin/donkey https://github.com/3XX0/donkey/releases/download/v1.1.0/donkey && \
-    curl -fsSL -o /usr/local/bin/extract-vmlinux https://raw.githubusercontent.com/torvalds/linux/master/scripts/extract-vmlinux && \
-    chmod +x /usr/local/bin/donkey /usr/local/bin/extract-vmlinux
-
 #ARG BASE_URL=http://us.download.nvidia.com/XFree86/Linux-x86_64
 ARG BASE_URL=https://us.download.nvidia.com/tesla
 ARG DRIVER_VERSION
 ENV DRIVER_VERSION=$DRIVER_VERSION
+ARG DRIVER_ARCH=x86_64
+ENV DRIVER_ARCH=$DRIVER_ARCH
+
+ADD install.sh /tmp/
+
+RUN sh /tmp/install.sh depinstall && \
+    sh /tmp/install.sh nvswitch_depinstall && \
+    curl -fsSL -o /usr/local/bin/donkey https://github.com/3XX0/donkey/releases/download/v1.1.0/donkey && \
+    curl -fsSL -o /usr/local/bin/extract-vmlinux https://raw.githubusercontent.com/torvalds/linux/master/scripts/extract-vmlinux && \
+    chmod +x /usr/local/bin/donkey /usr/local/bin/extract-vmlinux
 
 # Install the userspace components and copy the kernel module sources.
 RUN cd /tmp && \
