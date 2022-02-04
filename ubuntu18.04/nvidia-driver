@@ -7,6 +7,9 @@ RUN_DIR=/run/nvidia
 PID_FILE=${RUN_DIR}/${0##*/}.pid
 DRIVER_VERSION=${DRIVER_VERSION:?"Missing driver version"}
 KERNEL_UPDATE_HOOK=/run/kernel/postinst.d/update-nvidia-driver
+NVIDIA_MODULE_PARAMS=()
+NVIDIA_UVM_MODULE_PARAMS=()
+NVIDIA_MODESET_MODULE_PARAMS=()
 
 export DEBIAN_FRONTEND=noninteractive
 
@@ -157,13 +160,56 @@ _assert_nvswitch_system() {
     return 0
 }
 
+# For each kernel module configuration file mounted into the container,
+# parse the file contents and extract the custom module parameters that
+# are to be passed as input to 'modprobe'.
+#
+# Assumptions:
+# - Configuration files are named <module-name>.conf (i.e. nvidia.conf, nvidia-uvm.conf).
+# - Configuration files are mounted inside the container at /drivers.
+# - Each line in the file contains at least one parameter, where parameters on the same line
+#   are space delimited. It is up to the user to properly format the file to ensure
+#   the correct set of parameters are passed to 'modprobe'.
+_get_module_params() {
+    local base_path="/drivers"
+    # nvidia
+    if [ -f "${base_path}/nvidia.conf" ]; then
+       while IFS="" read -r param || [ -n "$param" ]; do
+           NVIDIA_MODULE_PARAMS+=("$param")
+       done <"${base_path}/nvidia.conf"
+       echo "Module parameters provided for nvidia: ${NVIDIA_MODULE_PARAMS[@]}"
+    fi
+    # nvidia-uvm
+    if [ -f "${base_path}/nvidia-uvm.conf" ]; then
+       while IFS="" read -r param || [ -n "$param" ]; do
+           NVIDIA_UVM_MODULE_PARAMS+=("$param")
+       done <"${base_path}/nvidia-uvm.conf"
+       echo "Module parameters provided for nvidia-uvm: ${NVIDIA_UVM_MODULE_PARAMS[@]}"
+    fi
+    # nvidia-modeset
+    if [ -f "${base_path}/nvidia-modeset.conf" ]; then
+       while IFS="" read -r param || [ -n "$param" ]; do
+           NVIDIA_MODESET_MODULE_PARAMS+=("$param")
+       done <"${base_path}/nvidia-modeset.conf"
+       echo "Module parameters provided for nvidia-modeset: ${NVIDIA_MODESET_MODULE_PARAMS[@]}"
+    fi
+}
+
 # Load the kernel modules and start persistenced.
 _load_driver() {
+    echo "Parsing kernel module parameters..."
+    _get_module_params
+
     echo "Loading ipmi and i2c_core kernel modules..."
     modprobe -a i2c_core ipmi_msghandler ipmi_devintf
 
     echo "Loading NVIDIA driver kernel modules..."
-    modprobe -a nvidia nvidia-uvm nvidia-modeset
+    set -o xtrace +o nounset
+    modprobe nvidia "${NVIDIA_MODULE_PARAMS[@]}"
+    modprobe nvidia-uvm "${NVIDIA_UVM_MODULE_PARAMS[@]}"
+    modprobe nvidia-modeset "${NVIDIA_MODESET_MODULE_PARAMS[@]}"
+    set +o xtrace -o nounset
+
 
     echo "Starting NVIDIA persistence daemon..."
     nvidia-persistenced --persistence-mode
