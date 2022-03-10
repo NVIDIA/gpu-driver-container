@@ -5,13 +5,16 @@ set -eu
 
 RUN_DIR=/run/nvidia
 PID_FILE=${RUN_DIR}/${0##*/}.pid
-DRIVER_VERSION=${DRIVER_VERSION:?"Missing driver version"}
+DRIVER_VERSION=${DRIVER_VERSION:?"Missing DRIVER_VERSION env"}
 KERNEL_UPDATE_HOOK=/run/kernel/postinst.d/update-nvidia-driver
 NUM_VGPU_DEVICES=0
-RESOLVE_OCP_VERSION=${RESOLVE_OCP_VERSION:="false"}
 NVIDIA_MODULE_PARAMS=()
 NVIDIA_UVM_MODULE_PARAMS=()
 NVIDIA_MODESET_MODULE_PARAMS=()
+TARGETARCH=${TARGETARCH:?"Missing TARGETARCH env"}
+
+DRIVER_ARCH=${TARGETARCH/amd64/x86_64} && DRIVER_ARCH=${DRIVER_ARCH/arm64/aarch64}
+echo "DRIVER_ARCH is $DRIVER_ARCH"
 
 _update_package_cache() {
     if [ "${PACKAGE_TAG:-}" != "builtin" ]; then
@@ -29,21 +32,6 @@ _cleanup_package_cache() {
         echo "Cleaning up the package cache..."
         rm -rf /var/cache/yum/*
     fi
-}
-
-_resolve_ocp_version() {
-    if [ "${RESOLVE_OCP_VERSION}" = "true" ]; then
-        local version=$(kubectl get clusterversion -o json | jq ".items[].status.desired.version" |
-            sed -e 's/^"//' -e 's/"$//' | awk -F. '{printf("%d.%d\n", $1, $2)}')
-        echo "Resolving OpenShift version..."
-        if [ -z "${version}" ]; then
-            echo "Could not resolve OpenShift version" >&2
-            return 1
-        fi
-        OPENSHIFT_VERSION="${version}"
-        echo "Proceeding with OpenShift version ${OPENSHIFT_VERSION}"
-    fi
-    return 0
 }
 
 _resolve_rhel_version() {
@@ -89,7 +77,7 @@ _install_prerequisites() (
     cd ${tmp_dir}
 
     echo "Installing elfutils..."
-    if ! dnf install -q -y elfutils-libelf.x86_64 elfutils-libelf-devel.x86_64; then
+    if ! dnf install -q -y elfutils-libelf.$DRIVER_ARCH elfutils-libelf-devel.$DRIVER_ARCH; then
         echo "FATAL: failed to install elfutils packages. RHEL entitlement may be improperly deployed."
         exit 1
     fi
@@ -98,14 +86,14 @@ _install_prerequisites() (
     mkdir -p /lib/modules/${KERNEL_VERSION}/proc
 
     echo "Enabling RHOCP and EUS RPM repos..."
-    dnf config-manager --set-enabled rhocp-${OPENSHIFT_VERSION}-for-rhel-8-x86_64-rpms || true
+    dnf config-manager --set-enabled rhocp-${OPENSHIFT_VERSION}-for-rhel-8-$DRIVER_ARCH-rpms || true
     if ! dnf makecache --releasever=${RHEL_VERSION}; then
-    	dnf config-manager --set-disabled rhocp-${OPENSHIFT_VERSION}-for-rhel-8-x86_64-rpms || true
+    	dnf config-manager --set-disabled rhocp-${OPENSHIFT_VERSION}-for-rhel-8-$DRIVER_ARCH-rpms || true
     fi
 
-    dnf config-manager --set-enabled rhel-8-for-x86_64-baseos-eus-rpms  || true
+    dnf config-manager --set-enabled rhel-8-for-$DRIVER_ARCH-baseos-eus-rpms  || true
     if ! dnf makecache --releasever=${RHEL_VERSION}; then
-    	dnf config-manager --set-disabled rhel-8-for-x86_64-baseos-eus-rpms || true
+    	dnf config-manager --set-disabled rhel-8-for-$DRIVER_ARCH-baseos-eus-rpms || true
     fi
 
     echo "Installing Linux kernel headers..."
@@ -667,6 +655,5 @@ if [ $# -ne 0 ]; then
 fi
 
 _resolve_rhel_version || exit 1
-_resolve_ocp_version || exit 1
 
 $command
