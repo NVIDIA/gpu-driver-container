@@ -1,5 +1,8 @@
 #!/bin/bash
 
+DRIVER_ARCH=${TARGETARCH/amd64/x86_64} && DRIVER_ARCH=${DRIVER_ARCH/arm64/aarch64}
+echo "DRIVER_ARCH is $DRIVER_ARCH"
+
 dep_installer () {
   if [ "$DRIVER_ARCH" = "x86_64" ]; then
     dnf install -y \
@@ -23,6 +26,17 @@ dep_installer () {
         cpio \
         kmod \
         jq
+  elif [ "$DRIVER_ARCH" = "aarch64" ]; then
+    dnf install -y \
+        libglvnd-glx \
+        ca-certificates \
+        curl \
+        gcc \
+        glibc \
+        make \
+        cpio \
+        kmod \
+        jq
   fi
   rm -rf /var/cache/yum/*
 }
@@ -31,7 +45,7 @@ nvidia_installer () {
   if [ "$DRIVER_ARCH" = "x86_64" ]; then
     ./nvidia-installer --silent \
                        --no-kernel-module \
-      		     --install-compat32-libs \
+                       --install-compat32-libs \
                        --no-nouveau-check \
                        --no-nvidia-modprobe \
                        --no-rpms \
@@ -44,6 +58,20 @@ nvidia_installer () {
                        --x-library-path=/tmp/null \
                        --x-sysconfig-path=/tmp/null
   elif [ "$DRIVER_ARCH" = "ppc64le" ]; then
+    ./nvidia-installer --silent \
+                       --no-kernel-module \
+                       --no-nouveau-check \
+                       --no-nvidia-modprobe \
+                       --no-rpms \
+                       --no-backup \
+                       --no-check-for-alternate-installs \
+                       --no-libglx-indirect \
+                       --no-install-libglvnd \
+                       --x-prefix=/tmp/null \
+                       --x-module-path=/tmp/null \
+                       --x-library-path=/tmp/null \
+                       --x-sysconfig-path=/tmp/null
+  elif [ "$DRIVER_ARCH" = "aarch64" ]; then
     ./nvidia-installer --silent \
                        --no-kernel-module \
                        --no-nouveau-check \
