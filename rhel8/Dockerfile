@@ -1,10 +1,18 @@
-FROM nvidia/cuda:11.4.1-base-ubi8 as build
+FROM nvidia/cuda:11.6.0-base-ubi8 as build
+
+ARG TARGETARCH
+
+SHELL ["/bin/bash", "-c"]
 
 RUN dnf install -y git wget
 
-ENV GOLANG_VERSION 1.15.5
-RUN wget -nv -O - https://storage.googleapis.com/golang/go${GOLANG_VERSION}.linux-amd64.tar.gz \
+ENV GOLANG_VERSION=1.17
+
+# download appropriate binary based on the target architecture for multi-arch builds
+RUN OS_ARCH=${TARGETARCH/x86_64/amd64} && OS_ARCH=${OS_ARCH/aarch64/arm64} && \
+    curl https://storage.googleapis.com/golang/go${GOLANG_VERSION}.linux-${OS_ARCH}.tar.gz \
     | tar -C /usr/local -xz
+
 ENV PATH /usr/local/go/bin:$PATH
 
 WORKDIR /work
@@ -14,14 +22,17 @@ RUN git clone https://gitlab.com/nvidia/container-images/driver && \
     go build -o vgpu-util && \
     mv vgpu-util /work
 
-FROM nvidia/cuda:11.4.1-base-ubi8
+FROM nvidia/cuda:11.6.0-base-ubi8
+
+ARG TARGETARCH
+ENV TARGETARCH=$TARGETARCH
+
+SHELL ["/bin/bash", "-c"]
 
 #ARG BASE_URL=http://us.download.nvidia.com/XFree86/Linux-x86_64
 ARG BASE_URL=https://us.download.nvidia.com/tesla
 ARG DRIVER_VERSION
 ENV DRIVER_VERSION=$DRIVER_VERSION
-ARG DRIVER_ARCH=x86_64
-ENV DRIVER_ARCH=$DRIVER_ARCH
 
 # Arg to indicate if driver type is either of passthrough/baremetal or vgpu
 ARG DRIVER_TYPE=passthrough
@@ -42,14 +53,10 @@ RUN sh /tmp/install.sh depinstall && \
     chmod +x /usr/local/bin/donkey /usr/local/bin/extract-vmlinux && \
     ln -s /sbin/ldconfig /sbin/ldconfig.real
 
-# Install K8s client to fetch node resources, cluster version etc
-RUN curl -o /usr/bin/kubectl -L "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl";
-RUN chmod a+x /usr/bin/kubectl
-
 ADD drivers drivers/
 
 # Fetch the installer automatically for passthrough/baremetal types
-RUN if [ "$DRIVER_TYPE" != "vgpu" ]; then \
+RUN if [ "$DRIVER_TYPE" != "vgpu" ] && [ "$TARGETARCH" != "arm64" ]; then \
     versionArray=(${DRIVER_VERSION//./ }); \
     DRIVER_BRANCH=${versionArray[0]}; \
     if [ ${versionArray[0]} -ge 470 ] || ([ ${versionArray[0]} == 460 ] && [ ${versionArray[1]} -ge 91 ]); then \
@@ -59,6 +66,7 @@ RUN if [ "$DRIVER_TYPE" != "vgpu" ]; then \
     fi; \
     nscqPackage=libnvidia-nscq-${DRIVER_BRANCH}-${DRIVER_VERSION}-1; \
     cd drivers && \
+    DRIVER_ARCH=${TARGETARCH/amd64/x86_64} && DRIVER_ARCH=${DRIVER_ARCH/arm64/aarch64} && \
     curl -fSsl -O $BASE_URL/$DRIVER_VERSION/NVIDIA-Linux-$DRIVER_ARCH-$DRIVER_VERSION.run && \
     chmod +x  NVIDIA-Linux-$DRIVER_ARCH-$DRIVER_VERSION.run && \
     dnf module enable -y nvidia-driver:${DRIVER_BRANCH} && \
