@@ -21,7 +21,6 @@ nv-ctr-run-with-dtk() {
            /usr/local/bin/ocp_dtk_entrypoint \
            /usr/local/bin/nvidia-driver \
            /usr/local/bin/extract-vmlinux \
-           /usr/bin/kubectl \
            /usr/local/bin/vgpu-util \
            /drivers \
            /licenses \
@@ -108,6 +107,9 @@ dtk-build-driver() {
     set -o allexport
     source "${DRIVER_TOOLKIT_SHARED_DIR}/env"
     set +o allexport;
+
+    DRIVER_ARCH=${TARGETARCH/amd64/x86_64} && DRIVER_ARCH=${DRIVER_ARCH/arm64/aarch64}
+    echo "DRIVER_ARCH is $DRIVER_ARCH"
 
     # if this directory already exists,
     # NVIDIA-Linux-$DRIVER_ARCH-$DRIVER_VERSION.run fails to run
