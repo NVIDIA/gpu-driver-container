@@ -1,4 +1,8 @@
-FROM ubuntu:20.04 as build
+FROM nvidia/cuda:11.6.0-base-ubuntu20.04 as build
+
+ARG TARGETARCH
+
+SHELL ["/bin/bash", "-c"]
 
 RUN echo 'debconf debconf/frontend select Noninteractive' | debconf-set-selections
 
@@ -10,9 +14,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         git && \
     rm -rf /var/lib/apt/lists/*
 
-ENV GOLANG_VERSION 1.15.5
-RUN curl -fsSL https://storage.googleapis.com/golang/go${GOLANG_VERSION}.linux-amd64.tar.gz \
+ENV GOLANG_VERSION=1.17
+
+# download appropriate binary based on the target architecture for multi-arch builds
+RUN OS_ARCH=${TARGETARCH/x86_64/amd64} && OS_ARCH=${OS_ARCH/aarch64/arm64} && \
+    curl https://storage.googleapis.com/golang/go${GOLANG_VERSION}.linux-${OS_ARCH}.tar.gz \
     | tar -C /usr/local -xz
+
 ENV PATH /usr/local/go/bin:$PATH
 
 WORKDIR /work
@@ -22,10 +30,13 @@ RUN git clone https://gitlab.com/nvidia/container-images/driver && \
     go build -o vgpu-util && \
     mv vgpu-util /work
 
-FROM nvidia/cuda:11.4.1-base-ubuntu20.04
+FROM nvidia/cuda:11.6.0-base-ubuntu20.04
 
-#ARG BASE_URL=http://us.download.nvidia.com/XFree86/Linux-x86_64
+SHELL ["/bin/bash", "-c"]
+
 ARG BASE_URL=https://us.download.nvidia.com/tesla
+ARG TARGETARCH
+ENV TARGETARCH=$TARGETARCH
 ARG DRIVER_VERSION
 ENV DRIVER_VERSION=$DRIVER_VERSION
 ENV DEBIAN_FRONTEND=noninteractive
@@ -33,7 +44,7 @@ ENV DEBIAN_FRONTEND=noninteractive
 # Arg to indicate if driver type is either of passthrough(baremetal) or vgpu
 ARG DRIVER_TYPE=passthrough
 ENV DRIVER_TYPE=$DRIVER_TYPE
-ARG DRIVER_BRANCH=460
+ARG DRIVER_BRANCH=510
 ENV DRIVER_BRANCH=$DRIVER_BRANCH
 ARG VGPU_LICENSE_SERVER_TYPE=FNE
 ENV VGPU_LICENSE_SERVER_TYPE=$VGPU_LICENSE_SERVER_TYPE
@@ -44,25 +55,12 @@ ENV NVIDIA_VISIBLE_DEVICES=void
 
 RUN echo 'debconf debconf/frontend select Noninteractive' | debconf-set-selections
 
-RUN dpkg --add-architecture i386 && \
-    apt-get update && apt-get install -y --no-install-recommends \
-        apt-utils \
-        build-essential \
-        ca-certificates \
-        curl \
-        kmod \
-        file \
-        libelf-dev \
-        libglvnd-dev \
-        pkg-config && \
-    rm -rf /var/lib/apt/lists/*
+RUN echo "TARGETARCH=$TARGETARCH"
 
-RUN echo "deb [arch=amd64] http://archive.ubuntu.com/ubuntu/ focal main universe" > /etc/apt/sources.list && \
-    echo "deb [arch=amd64] http://archive.ubuntu.com/ubuntu/ focal-updates main universe" >> /etc/apt/sources.list && \
-    echo "deb [arch=amd64] http://archive.ubuntu.com/ubuntu/ focal-security main universe" >> /etc/apt/sources.list && \
-    usermod -o -u 0 -g 0 _apt
+ADD install.sh /tmp
 
-RUN curl -fsSL -o /usr/local/bin/donkey https://github.com/3XX0/donkey/releases/download/v1.1.0/donkey && \
+RUN /tmp/install.sh reposetup && /tmp/install.sh depinstall && \
+    curl -fsSL -o /usr/local/bin/donkey https://github.com/3XX0/donkey/releases/download/v1.1.0/donkey && \
     chmod +x /usr/local/bin/donkey
 
 COPY nvidia-driver /usr/local/bin
@@ -74,8 +72,10 @@ ADD drivers drivers/
 # Fetch the installer automatically for passthrough/baremetal types
 RUN if [ "$DRIVER_TYPE" != "vgpu" ]; then \
     cd drivers && \
-    curl -fSsl -O $BASE_URL/$DRIVER_VERSION/NVIDIA-Linux-x86_64-$DRIVER_VERSION.run && \
-    chmod +x  NVIDIA-Linux-x86_64-$DRIVER_VERSION.run && \
+    /tmp/install.sh download_installer; fi
+
+# Fabric manager packages are not available for arm64
+RUN if [ "$DRIVER_TYPE" != "vgpu" ] && [ "$TARGETARCH" != "arm64" ]; then \
     apt-get update && \
     apt-get install -y --no-install-recommends nvidia-fabricmanager-${DRIVER_BRANCH}=${DRIVER_VERSION}-1 \
     libnvidia-nscq-${DRIVER_BRANCH}=${DRIVER_VERSION}-1; fi
