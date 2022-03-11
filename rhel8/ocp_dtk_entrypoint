@@ -7,6 +7,9 @@ DRIVER_TOOLKIT_SHARED_DIR=/mnt/shared-nvidia-driver-toolkit
 
 echo "Running $*"
 
+SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
+source $SCRIPT_DIR/common.sh
+
 nv-ctr-run-with-dtk() {
     set -x
 
@@ -20,6 +23,7 @@ nv-ctr-run-with-dtk() {
            /tmp/install.sh \
            /usr/local/bin/ocp_dtk_entrypoint \
            /usr/local/bin/nvidia-driver \
+           /usr/local/bin/common.sh \
            /usr/local/bin/extract-vmlinux \
            /usr/local/bin/vgpu-util \
            /drivers \
@@ -130,6 +134,7 @@ dtk-build-driver() {
 
     cp -v \
        "$DRIVER_TOOLKIT_SHARED_DIR/nvidia-driver" \
+       "$DRIVER_TOOLKIT_SHARED_DIR/common.sh" \
        "$DRIVER_TOOLKIT_SHARED_DIR/extract-vmlinux" \
        "$DRIVER_TOOLKIT_SHARED_DIR/vgpu-util" \
        "${DRIVER_TOOLKIT_SHARED_DIR}/bin"
@@ -164,7 +169,9 @@ dtk-build-driver() {
 
     modprobe -a i2c_core ipmi_msghandler ipmi_devintf --show-depends > ${MODULES_SHARED}/insmod_nvidia
     modprobe -a nvidia nvidia-uvm nvidia-modeset --show-depends >> ${MODULES_SHARED}/insmod_nvidia
-
+    if _gpu_direct_rdma_enabled; then
+        modprobe -a nvidia-peermem --show-depends >> ${MODULES_SHARED}/insmod_nvidia
+    fi
     set +x
 
     # copy the modules to the shared directory
