@@ -97,4 +97,11 @@ LABEL description="See summary"
 COPY LICENSE /licenses/LICENSE
 COPY DRIVER-LICENSE /licenses/DRIVER-LICENSE
 
+# Install / upgrade packages here that are required to resolve CVEs
+ARG CVE_UPDATES
+RUN if [ -n "${CVE_UPDATES}" ]; then \
+        yum update -y ${CVE_UPDATES} && \
+        rm -rf /var/cache/yum/*; \
+    fi
+
 ENTRYPOINT ["nvidia-driver", "init"]
