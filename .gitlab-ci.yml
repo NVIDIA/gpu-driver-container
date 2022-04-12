@@ -44,6 +44,11 @@ image-ubuntu20.04:
     - .image-build
     - .dist-ubuntu20.04
 
+image-signed-ubuntu20.04:
+  extends:
+    - .image-build
+    - .dist-signed-ubuntu20.04
+
 image-rhcos4.9:
   extends:
     - .image-build
