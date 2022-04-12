@@ -51,7 +51,7 @@ OUT_IMAGE_TAG = $(OUT_IMAGE_VERSION)-$(DIST)
 OUT_IMAGE = $(OUT_IMAGE_NAME):$(OUT_IMAGE_TAG)
 
 ##### Public rules #####
-DISTRIBUTIONS := ubuntu18.04 ubuntu20.04 rhcos4.9 rhcos4.10 centos7
+DISTRIBUTIONS := ubuntu18.04 ubuntu20.04 rhcos4.9 rhcos4.10 centos7 flatcar
 
 PUSH_TARGETS := $(patsubst %, push-%, $(DISTRIBUTIONS))
 DRIVER_PUSH_TARGETS := $(foreach push_target, $(PUSH_TARGETS), $(addprefix $(push_target)-, $(DRIVER_VERSIONS)))
