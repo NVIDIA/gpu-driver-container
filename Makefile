@@ -27,13 +27,15 @@ REGISTRY ?= nvidia
 IMAGE_NAME := $(REGISTRY)/driver
 endif
 
+DRIVER_TAG = $(DRIVER_VERSION)
+
 # VERSION indicates the version to tag the image with.
 # Production tags should be in the form <driver-version>-<dist>
 # Development tags should be in the form <commit-sha>-<driver-version>-<dist>
 ifeq ($(VERSION),)
-IMAGE_VERSION = $(DRIVER_VERSION)
+IMAGE_VERSION = $(DRIVER_TAG)
 else
-IMAGE_VERSION = $(VERSION)-$(DRIVER_VERSION)
+IMAGE_VERSION = $(VERSION)-$(DRIVER_TAG)
 endif
 
 IMAGE_TAG = $(IMAGE_VERSION)-$(DIST)
@@ -42,16 +44,16 @@ IMAGE = $(IMAGE_NAME):$(IMAGE_TAG)
 OUT_IMAGE_NAME ?= $(IMAGE_NAME)
 
 ifeq ($(OUT_VERSION),)
-OUT_IMAGE_VERSION = $(DRIVER_VERSION)
+OUT_IMAGE_VERSION = $(DRIVER_TAG)
 else
-OUT_IMAGE_VERSION = $(OUT_VERSION)-$(DRIVER_VERSION)
+OUT_IMAGE_VERSION = $(OUT_VERSION)-$(DRIVER_TAG)
 endif
 
 OUT_IMAGE_TAG = $(OUT_IMAGE_VERSION)-$(DIST)
 OUT_IMAGE = $(OUT_IMAGE_NAME):$(OUT_IMAGE_TAG)
 
 ##### Public rules #####
-DISTRIBUTIONS := ubuntu18.04 ubuntu20.04 rhcos4.9 rhcos4.10 centos7 flatcar
+DISTRIBUTIONS := ubuntu18.04 ubuntu20.04 signed_ubuntu20.04 rhcos4.9 rhcos4.10 centos7 flatcar
 
 PUSH_TARGETS := $(patsubst %, push-%, $(DISTRIBUTIONS))
 DRIVER_PUSH_TARGETS := $(foreach push_target, $(PUSH_TARGETS), $(addprefix $(push_target)-, $(DRIVER_VERSIONS)))
@@ -71,11 +73,14 @@ endif
 # Parse the target to set the required variables.
 push-%: DIST = $(word 2,$(subst -, ,$@))
 push-%: DRIVER_VERSION = $(word 3,$(subst -, ,$@))
+push-%: DRIVER_BRANCH = $(word 1,$(subst ., ,${DRIVER_VERSION}))
 
 # push-ubuntu20.04 pushes all driver images for ubuntu20.04
 # push-ubuntu20.04-$(DRIVER_VERSION) pushes an image for the specific $(DRIVER_VERSION)
 $(PUSH_TARGETS): %: $(foreach driver_version, $(DRIVER_VERSIONS), $(addprefix %-, $(driver_version)))
 
+push-signed_ubuntu20.04%: DIST = signed-ubuntu20.04
+push-signed_ubuntu20.04%: DRIVER_TAG = $(DRIVER_BRANCH)
 
 # $(DRIVER_BUILD_TARGETS) is in the form of build-$(DIST)-$(DRIVER_VERSION)
 # Parse the target to set the required variables.
@@ -104,3 +109,7 @@ $(DRIVER_BUILD_TARGETS):
 
 # Files for rhcos are in the rhel8 subdirectory
 build-rhcos%: SUBDIR = rhel8
+
+build-signed_ubuntu20.04%: DIST = signed-ubuntu20.04
+build-signed_ubuntu20.04%: SUBDIR = ubuntu20.04/precompiled
+build-signed_ubuntu20.04%: DRIVER_TAG = $(DRIVER_BRANCH)
