@@ -33,7 +33,7 @@ variables:
   DEVEL_RELEASE_IMAGE_VERSION: "devel"
   # Define the public staging registry
   STAGING_REGISTRY: registry.gitlab.com/nvidia/container-images/driver/staging
-  STAGING_VERSION: ${CI_COMMIT_SHORT_SHA}"
+  STAGING_VERSION: "${CI_COMMIT_SHORT_SHA}"
 
 .image-pull:
   # Perform for each DRIVER_VERSION
