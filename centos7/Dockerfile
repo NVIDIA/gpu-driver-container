@@ -1,4 +1,4 @@
-FROM nvidia/cuda:11.4.1-base-centos7
+FROM nvidia/cuda:11.6.0-base-centos7
 
 ENV NVIDIA_VISIBLE_DEVICES=void
 
