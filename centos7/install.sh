@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -eu
+
 dep_installer () {
   if [ "$DRIVER_ARCH" = "x86_64" ]; then
     yum install -y \
