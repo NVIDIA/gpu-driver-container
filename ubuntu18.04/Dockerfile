@@ -11,6 +11,10 @@ ENV NVIDIA_VISIBLE_DEVICES=void
 
 RUN echo 'debconf debconf/frontend select Noninteractive' | debconf-set-selections
 
+# Fetch GPG keys for CUDA repo
+RUN apt-key del 7fa2af80 && \
+    apt-key adv --fetch-keys "https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2004/x86_64/3bf863cc.pub"
+
 RUN dpkg --add-architecture i386 && \
     apt-get update && apt-get install -y --no-install-recommends \
         apt-utils \
@@ -72,5 +76,8 @@ RUN if [ -n "${CVE_UPDATES}" ]; then \
         apt-get update && apt-get upgrade -y ${CVE_UPDATES} && \
         rm -rf /var/lib/apt/lists/*; \
     fi
+
+# Remove cuda repository to avoid GPG errors
+RUN rm /etc/apt/sources.list.d/cuda.list
 
 ENTRYPOINT ["nvidia-driver", "init"]
