@@ -2,6 +2,10 @@ FROM nvidia/cuda:11.4.1-base-centos8
 
 ENV NVIDIA_VISIBLE_DEVICES=void
 
+RUN NVIDIA_GPGKEY_SUM=d0664fbbdb8c32356d45de36c5984617217b2d0bef41b93ccecd326ba3b80c87 && \
+    curl -fsSL https://developer.download.nvidia.com/compute/cuda/repos/rhel8/x86_64/D42D0685.pub | sed '/^Version/d' > /etc/pki/rpm-gpg/RPM-GPG-KEY-NVIDIA && \
+    echo "$NVIDIA_GPGKEY_SUM  /etc/pki/rpm-gpg/RPM-GPG-KEY-NVIDIA" | sha256sum -c --strict -
+
 RUN dnf install -y \
         ca-certificates \
         curl \
@@ -53,5 +57,8 @@ ARG PUBLIC_KEY=empty
 COPY ${PUBLIC_KEY} kernel/pubkey.x509
 
 ARG PRIVATE_KEY
+
+# Remove cuda repository to avoid GPG errors
+RUN rm -f /etc/yum.repos.d/cuda.repo
 
 ENTRYPOINT ["nvidia-driver", "init"]
