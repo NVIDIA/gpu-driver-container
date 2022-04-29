@@ -54,20 +54,49 @@ OUT_IMAGE = $(OUT_IMAGE_NAME):$(OUT_IMAGE_TAG)
 
 ##### Public rules #####
 DISTRIBUTIONS := ubuntu18.04 ubuntu20.04 signed_ubuntu20.04 rhcos4.9 rhcos4.10 centos7 flatcar
-
 PUSH_TARGETS := $(patsubst %, push-%, $(DISTRIBUTIONS))
 DRIVER_PUSH_TARGETS := $(foreach push_target, $(PUSH_TARGETS), $(addprefix $(push_target)-, $(DRIVER_VERSIONS)))
 BUILD_TARGETS := $(patsubst %, build-%, $(DISTRIBUTIONS))
 DRIVER_BUILD_TARGETS := $(foreach build_target, $(BUILD_TARGETS), $(addprefix $(build_target)-, $(DRIVER_VERSIONS)))
-TEST_TARGETS := $(patsubst %, build-%, $(DISTRIBUTIONS))
+TEST_TARGETS := $(patsubst %, test-%, $(DISTRIBUTIONS))
+PULL_TARGETS := $(patsubst %, pull-%, $(DISTRIBUTIONS))
+DRIVER_PULL_TARGETS := $(foreach pull_target, $(PULL_TARGETS), $(addprefix $(pull_target)-, $(DRIVER_VERSIONS)))
+ARCHIVE_TARGETS := $(patsubst %, archive-%, $(DISTRIBUTIONS))
+DRIVER_ARCHIVE_TARGETS := $(foreach archive_target, $(ARCHIVE_TARGETS), $(addprefix $(archive_target)-, $(DRIVER_VERSIONS)))
 
-PHONY: $(DISTRIBUTIONS) $(PUSH_TARGETS) $(BUILD_TARGETS) $(TEST_TARGETS) $(DRIVER_BUILD_TARGETS)
+
+PHONY: $(DISTRIBUTIONS) $(PUSH_TARGETS) $(BUILD_TARGETS) $(TEST_TARGETS) $(PULL_TARGETS) $(ARCHIVE_TARGETS) $(DRIVER_PUSH_TARGETS) $(DRIVER_BUILD_TARGETS) $(DRIVER_PULL_TARGETS) $(DRIVER_ARCHIVE_TARGETS)
 
 ifeq ($(BUILD_MULTI_ARCH_IMAGES),true)
 include $(CURDIR)/multi-arch.mk
 else
 include $(CURDIR)/native-only.mk
 endif
+
+pull-%: DIST = $(word 2,$(subst -, ,$@))
+pull-%: DRIVER_VERSION = $(word 3,$(subst -, ,$@))
+pull-%: DRIVER_BRANCH = $(word 1,$(subst ., ,${DRIVER_VERSION}))
+
+$(PULL_TARGETS): %: $(foreach driver_version, $(DRIVER_VERSIONS), $(addprefix %-, $(driver_version)))
+
+pull-signed_ubuntu20.04%: DIST = signed-ubuntu20.04
+pull-signed_ubuntu20.04%: DRIVER_TAG = $(DRIVER_BRANCH)
+
+PLATFORM ?= linux/amd64
+$(DRIVER_PULL_TARGETS): pull-%:
+	$(DOCKER) pull "--platform=$(PLATFORM)" "$(IMAGE)"
+
+archive-%: DIST = $(word 2,$(subst -, ,$@))
+archive-%: DRIVER_VERSION = $(word 3,$(subst -, ,$@))
+archive-%: DRIVER_BRANCH = $(word 1,$(subst ., ,${DRIVER_VERSION}))
+
+$(ARCHIVE_TARGETS): %: $(foreach driver_version, $(DRIVER_VERSIONS), $(addprefix %-, $(driver_version)))
+
+archive-signed_ubuntu20.04%: DIST = signed-ubuntu20.04
+archive-signed_ubuntu20.04%: DRIVER_TAG = $(DRIVER_BRANCH)
+
+$(DRIVER_ARCHIVE_TARGETS): archive-%:
+	$(DOCKER) save "$(IMAGE)" -o "archive.tar"
 
 # $(DRIVER_PUSH_TARGETS) is in the form of push-$(DIST)-$(DRIVER_VERSION)
 # Parse the target to set the required variables.
