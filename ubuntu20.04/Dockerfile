@@ -6,6 +6,9 @@ SHELL ["/bin/bash", "-c"]
 
 RUN echo 'debconf debconf/frontend select Noninteractive' | debconf-set-selections
 
+# Remove cuda repository to avoid GPG errors
+RUN rm /etc/apt/sources.list.d/cuda.list
+
 RUN apt-get update && apt-get install -y --no-install-recommends \
         apt-utils \
         build-essential \
@@ -59,6 +62,10 @@ RUN echo "TARGETARCH=$TARGETARCH"
 
 ADD install.sh /tmp
 
+# Fetch GPG keys for CUDA repo
+RUN apt-key del 7fa2af80 && OS_ARCH=${TARGETARCH/amd64/x86_64} && OS_ARCH=${OS_ARCH/arm64/sbsa} && \
+    apt-key adv --fetch-keys "https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2004/${OS_ARCH}/3bf863cc.pub"
+
 RUN /tmp/install.sh reposetup && /tmp/install.sh depinstall && \
     curl -fsSL -o /usr/local/bin/donkey https://github.com/3XX0/donkey/releases/download/v1.1.0/donkey && \
     chmod +x /usr/local/bin/donkey
@@ -91,5 +98,8 @@ RUN if [ -n "${CVE_UPDATES}" ]; then \
         apt-get update && apt-get upgrade -y ${CVE_UPDATES} && \
         rm -rf /var/lib/apt/lists/*; \
     fi
+
+# Remove cuda repository to avoid GPG errors
+RUN rm /etc/apt/sources.list.d/cuda.list
 
 ENTRYPOINT ["nvidia-driver", "init"]
