@@ -107,6 +107,7 @@ image-centos7:
   image: "${PULSE_IMAGE}"
   variables:
     IMAGE_NAME: "${CI_REGISTRY_IMAGE}"
+    VERSION: "${STAGING_VERSION}"
   except:
     variables:
     - $CI_COMMIT_MESSAGE =~ /\[skip[ _-]scans?\]/i
