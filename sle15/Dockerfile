@@ -55,7 +55,8 @@ RUN if [ "$DRIVER_TYPE" != "vgpu" ]; then \
     curl -fSsl -O $BASE_URL/$DRIVER_VERSION/NVIDIA-Linux-$DRIVER_ARCH-$DRIVER_VERSION.run && \
     chmod +x NVIDIA-Linux-$DRIVER_ARCH-$DRIVER_VERSION.run && \
     zypper --non-interactive addrepo https://developer.download.nvidia.com/compute/cuda/repos/sles15/$DRIVER_ARCH cuda-sles15 && \
-    zypper --gpg-auto-import-keys --non-interactive install -y ${fmPackage} ${nscqPackage} ; fi
+    zypper --gpg-auto-import-keys --non-interactive install -y ${fmPackage} ${nscqPackage} && \
+    zypper removerepo cuda-sles15; fi
 
 COPY nvidia-driver /usr/local/bin
 
