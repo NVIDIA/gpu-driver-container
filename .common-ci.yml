@@ -43,9 +43,17 @@ stages:
   variables:
     DIST: ubuntu20.04
 
+.dist-ubuntu22.04:
+  variables:
+    DIST: ubuntu22.04
+
 .dist-signed-ubuntu20.04:
   variables:
     DIST: signed_ubuntu20.04
+
+.dist-signed-ubuntu22.04:
+  variables:
+    DIST: signed_ubuntu22.04
 
 .dist-rhcos4.9:
   variables:
@@ -153,12 +161,26 @@ release:staging-ubuntu20.04:
   needs:
     - image-ubuntu20.04
 
+release:staging-ubuntu22.04:
+  extends:
+    - .release:staging
+    - .dist-ubuntu22.04
+  needs:
+    - image-ubuntu22.04
+
 release:staging-signed-ubuntu20.04:
   extends:
     - .release:staging
     - .dist-signed-ubuntu20.04
   needs:
     - image-signed-ubuntu20.04
+
+release:staging-signed-ubuntu22.04:
+  extends:
+    - .release:staging
+    - .dist-signed-ubuntu22.04
+  needs:
+    - image-signed-ubuntu22.04
 
 release:staging-rhcos4.9:
   extends:
