@@ -77,10 +77,20 @@ image-ubuntu20.04:
     - .image-pull
     - .dist-ubuntu20.04
 
+image-ubuntu22.04:
+  extends:
+    - .image-pull
+    - .dist-ubuntu22.04
+
 image-signed-ubuntu20.04:
   extends:
     - .image-pull
     - .dist-signed-ubuntu20.04
+
+image-signed-ubuntu22.04:
+  extends:
+    - .image-pull
+    - .dist-signed-ubuntu22.04
 
 image-rhcos4.9:
   extends:
@@ -161,6 +171,22 @@ scan-ubuntu20.04-arm64:
   needs:
     - image-ubuntu20.04
 
+scan-ubuntu22.04-amd64:
+  extends:
+    - .scan
+    - .dist-ubuntu22.04
+    - .platform-amd64
+  needs:
+    - image-ubuntu22.04
+
+scan-ubuntu22.04-arm64:
+  extends:
+    - .scan
+    - .dist-ubuntu22.04
+    - .platform-arm64
+  needs:
+    - image-ubuntu22.04
+
 scan-signed-ubuntu20.04-amd64:
   extends:
     - .scan
@@ -176,6 +202,22 @@ scan-signed-ubuntu20.04-arm64:
     - .platform-arm64
   needs:
     - image-signed-ubuntu20.04
+
+scan-signed-ubuntu22.04-amd64:
+  extends:
+    - .scan
+    - .dist-signed-ubuntu22.04
+    - .platform-amd64
+  needs:
+    - image-signed-ubuntu22.04
+
+scan-signed-ubuntu22.04-arm64:
+  extends:
+    - .scan
+    - .dist-signed-ubuntu22.04
+    - .platform-arm64
+  needs:
+    - image-signed-ubuntu22.04
 
 scan-rhcos4.9-amd64:
   extends:
@@ -239,10 +281,20 @@ release:ngc-ubuntu20.04:
     - .release:ngc
     - .dist-ubuntu20.04
 
+release:ngc-ubuntu22.04:
+  extends:
+    - .release:ngc
+    - .dist-ubuntu22.04
+
 release:ngc-signed-ubuntu20.04:
   extends:
     - .release:ngc
     - .dist-signed-ubuntu20.04
+
+release:ngc-signed-ubuntu22.04:
+  extends:
+    - .release:ngc
+    - .dist-signed-ubuntu22.04
 
 release:ngc-rhcos4.9:
   extends:
