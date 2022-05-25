@@ -53,7 +53,7 @@ OUT_IMAGE_TAG = $(OUT_IMAGE_VERSION)-$(DIST)
 OUT_IMAGE = $(OUT_IMAGE_NAME):$(OUT_IMAGE_TAG)
 
 ##### Public rules #####
-DISTRIBUTIONS := ubuntu18.04 ubuntu20.04 signed_ubuntu20.04 rhcos4.9 rhcos4.10 centos7 flatcar
+DISTRIBUTIONS := ubuntu18.04 ubuntu20.04 ubuntu22.04 signed_ubuntu20.04 signed_ubuntu22.04 rhcos4.9 rhcos4.10 centos7 flatcar
 PUSH_TARGETS := $(patsubst %, push-%, $(DISTRIBUTIONS))
 DRIVER_PUSH_TARGETS := $(foreach push_target, $(PUSH_TARGETS), $(addprefix $(push_target)-, $(DRIVER_VERSIONS)))
 BUILD_TARGETS := $(patsubst %, build-%, $(DISTRIBUTIONS))
@@ -82,6 +82,9 @@ $(PULL_TARGETS): %: $(foreach driver_version, $(DRIVER_VERSIONS), $(addprefix %-
 pull-signed_ubuntu20.04%: DIST = signed-ubuntu20.04
 pull-signed_ubuntu20.04%: DRIVER_TAG = $(DRIVER_BRANCH)
 
+pull-signed_ubuntu22.04%: DIST = signed-ubuntu22.04
+pull-signed_ubuntu22.04%: DRIVER_TAG = $(DRIVER_BRANCH)
+
 PLATFORM ?= linux/amd64
 $(DRIVER_PULL_TARGETS): pull-%:
 	$(DOCKER) pull "--platform=$(PLATFORM)" "$(IMAGE)"
@@ -94,6 +97,9 @@ $(ARCHIVE_TARGETS): %: $(foreach driver_version, $(DRIVER_VERSIONS), $(addprefix
 
 archive-signed_ubuntu20.04%: DIST = signed-ubuntu20.04
 archive-signed_ubuntu20.04%: DRIVER_TAG = $(DRIVER_BRANCH)
+
+archive-signed_ubuntu22.04%: DIST = signed-ubuntu22.04
+archive-signed_ubuntu22.04%: DRIVER_TAG = $(DRIVER_BRANCH)
 
 $(DRIVER_ARCHIVE_TARGETS): archive-%:
 	$(DOCKER) save "$(IMAGE)" -o "archive.tar"
@@ -110,6 +116,11 @@ $(PUSH_TARGETS): %: $(foreach driver_version, $(DRIVER_VERSIONS), $(addprefix %-
 
 push-signed_ubuntu20.04%: DIST = signed-ubuntu20.04
 push-signed_ubuntu20.04%: DRIVER_TAG = $(DRIVER_BRANCH)
+
+# push-ubuntu22.04 pushes all driver images for ubuntu22.04
+# push-ubuntu22.04-$(DRIVER_VERSION) pushes an image for the specific $(DRIVER_VERSION)
+push-signed_ubuntu22.04%: DIST = signed-ubuntu22.04
+push-signed_ubuntu22.04%: DRIVER_TAG = $(DRIVER_BRANCH)
 
 # $(DRIVER_BUILD_TARGETS) is in the form of build-$(DIST)-$(DRIVER_VERSION)
 # Parse the target to set the required variables.
@@ -142,3 +153,8 @@ build-rhcos%: SUBDIR = rhel8
 build-signed_ubuntu20.04%: DIST = signed-ubuntu20.04
 build-signed_ubuntu20.04%: SUBDIR = ubuntu20.04/precompiled
 build-signed_ubuntu20.04%: DRIVER_TAG = $(DRIVER_BRANCH)
+
+build-signed_ubuntu22.04%: DIST = signed-ubuntu22.04
+build-signed_ubuntu22.04%: SUBDIR = ubuntu22.04/precompiled
+build-signed_ubuntu22.04%: DRIVER_TAG = $(DRIVER_BRANCH)
+
