@@ -1,4 +1,5 @@
-FROM nvidia/cuda:11.6.0-base-ubuntu20.04 as build
+ARG CUDA_VERSION
+FROM nvidia/cuda:${CUDA_VERSION}-base-ubuntu20.04 as build
 
 ARG TARGETARCH
 
@@ -33,7 +34,7 @@ RUN git clone https://gitlab.com/nvidia/container-images/driver && \
     go build -o vgpu-util && \
     mv vgpu-util /work
 
-FROM nvidia/cuda:11.6.0-base-ubuntu20.04
+FROM nvidia/cuda:${CUDA_VERSION}-base-ubuntu20.04
 
 SHELL ["/bin/bash", "-c"]
 
