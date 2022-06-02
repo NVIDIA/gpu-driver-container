@@ -1,4 +1,5 @@
-FROM nvidia/cuda:11.6.0-base-ubuntu20.04
+ARG CUDA_VERSION
+FROM nvidia/cuda:${CUDA_VERSION}-base-ubuntu20.04
 
 ENV DEBIAN_FRONTEND=noninteractive
 
