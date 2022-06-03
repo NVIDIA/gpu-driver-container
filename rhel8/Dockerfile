@@ -1,4 +1,5 @@
-FROM nvidia/cuda:11.6.0-base-ubi8 as build
+ARG CUDA_VERSION
+FROM nvidia/cuda:${CUDA_VERSION}-base-ubi8 as build
 
 ARG TARGETARCH
 
@@ -22,7 +23,7 @@ RUN git clone https://gitlab.com/nvidia/container-images/driver && \
     go build -o vgpu-util && \
     mv vgpu-util /work
 
-FROM nvidia/cuda:11.6.0-base-ubi8
+FROM nvidia/cuda:${CUDA_VERSION}-base-ubi8
 
 ARG TARGETARCH
 ENV TARGETARCH=$TARGETARCH
