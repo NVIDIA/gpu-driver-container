@@ -10,6 +10,8 @@ KERNEL_UPDATE_HOOK=/run/kernel/postinst.d/update-nvidia-driver
 NVIDIA_MODULE_PARAMS=()
 NVIDIA_UVM_MODULE_PARAMS=()
 NVIDIA_MODESET_MODULE_PARAMS=()
+NVIDIA_PEERMEM_MODULE_PARAMS=()
+USE_HOST_MOFED="${USE_HOST_MOFED:-false}"
 GPU_DIRECT_RDMA_ENABLED="${GPU_DIRECT_RDMA_ENABLED:-false}"
 
 _update_package_cache() {
@@ -90,7 +92,7 @@ _kernel_requires_package() {
     proc_mount_arg="--proc-mount-point /lib/modules/${KERNEL_VERSION}/proc"
     #fi
     for pkg_name in $(ls -d -1 precompiled/** 2> /dev/null); do
-	is_match=$(../mkprecompiled --match ${pkg_name} ${proc_mount_arg})
+        is_match=$(../mkprecompiled --match ${pkg_name} ${proc_mount_arg})
         if [ "${is_match}" == "kernel interface matches." ]; then
             echo "Found NVIDIA driver package ${pkg_name##*/}"
             return 1
@@ -113,6 +115,17 @@ _create_driver_package() (
 
     if _gpu_direct_rdma_enabled; then
         ln -s /run/mellanox/drivers/usr/src/ofa_kernel /usr/src/
+        # if arch directory exists(MOFED >=5.5) then create a symlink as expected by GPU driver installer
+        # This is required as currently GPU driver installer doesn't expect headers in x86_64 folder, but only in either default or kernel-version folder.
+        # ls -ltr /usr/src/ofa_kernel/
+        # lrwxrwxrwx 1 root root   36 Dec  8 20:10 default -> /etc/alternatives/ofa_kernel_headers
+        # drwxr-xr-x 4 root root 4096 Dec  8 20:14 x86_64
+        # lrwxrwxrwx 1 root root   44 Dec  9 19:05 5.4.0-90-generic -> /usr/src/ofa_kernel/x86_64/5.4.0-90-generic/
+        if [[ -d "/run/mellanox/drivers/usr/src/ofa_kernel/x86_64/$(uname -r)" ]]; then
+            if [[ ! -e "/usr/src/ofa_kernel/$(uname -r)" ]]; then
+                ln -s "/run/mellanox/drivers/usr/src/ofa_kernel/x86_64/$(uname -r)" /usr/src/ofa_kernel/
+            fi
+        fi
     fi
 
     export IGNORE_CC_MISMATCH=1
@@ -205,21 +218,28 @@ _get_module_params() {
        while IFS="" read -r param || [ -n "$param" ]; do
            NVIDIA_MODULE_PARAMS+=("$param")
        done <"${base_path}/nvidia.conf"
-       echo "Module parameters provided for nvidia: ${NVIDIA_MODULE_PARAMS[@]}"
+       echo "Module parameters provided for nvidia: ${NVIDIA_MODULE_PARAMS[*]}"
     fi
     # nvidia-uvm
     if [ -f "${base_path}/nvidia-uvm.conf" ]; then
        while IFS="" read -r param || [ -n "$param" ]; do
            NVIDIA_UVM_MODULE_PARAMS+=("$param")
        done <"${base_path}/nvidia-uvm.conf"
-       echo "Module parameters provided for nvidia-uvm: ${NVIDIA_UVM_MODULE_PARAMS[@]}"
+       echo "Module parameters provided for nvidia-uvm: ${NVIDIA_UVM_MODULE_PARAMS[*]}"
     fi
     # nvidia-modeset
     if [ -f "${base_path}/nvidia-modeset.conf" ]; then
        while IFS="" read -r param || [ -n "$param" ]; do
            NVIDIA_MODESET_MODULE_PARAMS+=("$param")
        done <"${base_path}/nvidia-modeset.conf"
-       echo "Module parameters provided for nvidia-modeset: ${NVIDIA_MODESET_MODULE_PARAMS[@]}"
+       echo "Module parameters provided for nvidia-modeset: ${NVIDIA_MODESET_MODULE_PARAMS[*]}"
+    fi
+    # nvidia-peermem
+    if [ -f "${base_path}/nvidia-peermem.conf" ]; then
+       while IFS="" read -r param || [ -n "$param" ]; do
+           NVIDIA_PEERMEM_MODULE_PARAMS+=("$param")
+       done <"${base_path}/nvidia-peermem.conf"
+       echo "Module parameters provided for nvidia-peermem: ${NVIDIA_PEERMEM_MODULE_PARAMS[*]}"
     fi
 }
 
@@ -240,7 +260,9 @@ _load_driver() {
 
     if _gpu_direct_rdma_enabled; then
         echo "Loading NVIDIA Peer Memory kernel module..."
-        modprobe -a nvidia-peermem
+        set -o xtrace +o nounset
+        modprobe -a nvidia-peermem "${NVIDIA_PEERMEM_MODULE_PARAMS[@]}"
+        set +o xtrace -o nounset
     fi
 
     echo "Starting NVIDIA persistence daemon..."
@@ -311,7 +333,7 @@ _unload_driver() {
         nvidia_refs=$(< /sys/module/nvidia/refcnt)
         rmmod_args+=("nvidia")
     fi
-    if [ ${nvidia_refs} -gt ${nvidia_deps} ] || [ ${nvidia_uvm_refs} -gt 0 ] || [ ${nvidia_modeset_refs} -gt 0 ] || [ ${nvidia_peermem_refs} -gt 0 ]; then
+    if [ "${nvidia_refs}" -gt "${nvidia_deps}" ] || [ "${nvidia_uvm_refs}" -gt 0 ] || [ "${nvidia_modeset_refs}" -gt 0 ] || [ "${nvidia_peermem_refs}" -gt 0 ]; then
         # run lsmod to debug module usage
         lsmod | grep nvidia
         echo "Could not unload NVIDIA driver kernel modules, driver is in use" >&2
@@ -319,7 +341,7 @@ _unload_driver() {
     fi
 
     if [ ${#rmmod_args[@]} -gt 0 ]; then
-        rmmod ${rmmod_args[@]}
+        rmmod "${rmmod_args[@]}"
     fi
     return 0
 }
@@ -461,12 +483,23 @@ update() {
 
 # Wait for MOFED drivers to be loaded and load nvidia-peermem whenever it gets unloaded during MOFED driver updates
 reload_nvidia_peermem() {
-    until  grep ib_register_peer_memory_client /proc/kallsyms > /dev/null 2>&1 && [ -f /sys/module/nvidia/refcnt ];
-    do
-        echo "waiting for mellanox ofed and nvidia drivers to be installed"
-        sleep 10
-    done
-    if chroot /run/nvidia/driver modprobe nvidia-peermem; then
+    if [ "$USE_HOST_MOFED" = "true" ]; then
+        until lsmod | grep mlx5_core > /dev/null 2>&1 && [ -f /sys/module/nvidia/refcnt ];
+        do
+            echo "waiting for mellanox ofed and nvidia drivers to be installed"
+            sleep 10
+        done
+    else
+        # use driver readiness flag created by MOFED container
+        until [ -f /run/mellanox/drivers/.driver-ready ] && [ -f /sys/module/nvidia/refcnt ];
+        do
+            echo "waiting for mellanox ofed and nvidia drivers to be installed"
+            sleep 10
+        done
+    fi
+    # get any parameters provided for nvidia-peermem
+    _get_module_params && set +o nounset
+    if chroot /run/nvidia/driver modprobe nvidia-peermem "${NVIDIA_PEERMEM_MODULE_PARAMS[@]}"; then
         if [ -f /sys/module/nvidia_peermem/refcnt ]; then
             echo "successfully loaded nvidia-peermem module, now waiting for signal"
             sleep inf
@@ -479,7 +512,7 @@ reload_nvidia_peermem() {
 
 # probe by gpu-opertor for liveness/startup checks for nvidia-peermem module to be loaded when MOFED drivers are ready
 probe_nvidia_peermem() {
-    if grep ib_register_peer_memory_client /proc/kallsyms > /dev/null 2>&1; then
+    if lsmod | grep mlx5_core > /dev/null 2>&1; then
         if [ ! -f /sys/module/nvidia_peermem/refcnt ]; then
             echo "nvidia-peermem module is not loaded"
             return 1
