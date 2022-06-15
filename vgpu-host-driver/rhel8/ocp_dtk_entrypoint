@@ -1,0 +1,151 @@
+#!/usr/bin/env bash
+# Copyright (c) 2022, NVIDIA CORPORATION. All rights reserved.
+
+set -eu
+
+DRIVER_TOOLKIT_SHARED_DIR=/mnt/shared-nvidia-driver-toolkit
+
+nv-ctr-run-with-dtk() {
+    set -x
+
+    if [[ "${RHCOS_IMAGE_MISSING:-}" == "true" ]]; then
+        echo "WARNING: RHCOS '${RHCOS_VERSION:-}' imagetag missing"
+        exit 1
+        # TODO: use entitlement based fallback
+        #exec bash -x nvidia-driver init
+    fi
+
+    if [[ ! -f "$DRIVER_TOOLKIT_SHARED_DIR/dir_prepared" ]]; then
+        cp -r \
+           /usr/local/bin/ocp_dtk_entrypoint \
+           /usr/local/bin/nvidia-driver \
+           /driver \
+           "$DRIVER_TOOLKIT_SHARED_DIR/"
+
+        env | sed 's/=/="/' | sed 's/$/"/' > "$DRIVER_TOOLKIT_SHARED_DIR/env"
+
+        touch "$DRIVER_TOOLKIT_SHARED_DIR/dir_prepared"
+    fi
+
+    set +x
+    while [[ ! -f "$DRIVER_TOOLKIT_SHARED_DIR/driver_build_started" ]]; do
+        if [[ -f "$DRIVER_TOOLKIT_SHARED_DIR/driver_toolkit_broken" ]]; then
+            echo "WARNING: broken driver toolkit detected"
+            exit 1
+            # TODO: use entitlement based fallback
+            #exec bash -x nvidia-driver init
+        fi
+        echo "$(date) Waiting for openshift-driver-toolkit-ctr container to start ..."
+        sleep 15
+    done
+
+    echo "$(date) openshift-driver-toolkit-ctr started."
+
+    # TODO: Currently dtk-build-driver will actually install and load the driver as well.
+    #       Uncomment the following if/when dtk-build-driver only builds precompiled driver.
+    #while [[ ! -f "$DRIVER_TOOLKIT_SHARED_DIR/driver_built" ]]; do
+    #    echo "$(date) Waiting for openshift-driver-toolkit-ctr container to build the precompiled driver ..."
+    #    sleep 15
+    #done
+
+    #echo "$(date) openshift-driver-toolkit-ctr finished building driver."
+    set -x
+    sleep infinity
+}
+
+dtk-build-driver() {
+    if [[ "${RHCOS_IMAGE_MISSING:-}" == "true" ]]; then
+        echo "WARNING: 'istag/driver-toolkit:${RHCOS_VERSION} -n openshift' missing, nothing to do in openshift-driver-toolkit-ctr container"
+        sleep +inf
+    fi
+
+    if ! [[ -f "/lib/modules/$(uname -r)/vmlinuz" ]]; then
+        echo "WARNING: broken Driver Toolkit image detected:"
+        echo "- Node kernel:    $(uname -r)"
+        echo "- Kernel package: $(rpm -q --qf "%{VERSION}-%{RELEASE}.%{ARCH}" kernel-core)"
+
+        # TODO: log entitlement based fallback
+        #echo "INFO: informing nvidia-driver-ctr to fallback on entitled-build."
+        touch "$DRIVER_TOOLKIT_SHARED_DIR/driver_toolkit_broken"
+        echo "INFO: nothing else to do in openshift-driver-toolkit-ctr container, sleeping forever."
+        sleep +inf
+    fi
+
+    # Shared directory is prepared before entering this script. See
+    # 'until [ -f /mnt/shared-nvidia-driver-toolkit/dir_prepared ] ...'
+    # in the Pod command/args
+
+    touch "$DRIVER_TOOLKIT_SHARED_DIR/driver_build_started"
+
+    set -x
+    set -o allexport
+    source "${DRIVER_TOOLKIT_SHARED_DIR}/env"
+    set +o allexport;
+
+    # if this directory already exists,
+    # NVIDIA-Linux-$DRIVER_ARCH-$DRIVER_VERSION.run fails to run
+    # and doesn't create its files. This may happen when the
+    # container fails and restart its execution, leading to
+    # hard-to-understand "unrelated" errors in the following of the script execution
+
+    rm -rf "${DRIVER_TOOLKIT_SHARED_DIR}/driver/NVIDIA-Linux-${DRIVER_ARCH}-${DRIVER_VERSION}";
+
+    mkdir "${DRIVER_TOOLKIT_SHARED_DIR}/bin" -p
+
+    cp -v \
+       "$DRIVER_TOOLKIT_SHARED_DIR/nvidia-driver" \
+       "${DRIVER_TOOLKIT_SHARED_DIR}/bin"
+
+    export PATH="${DRIVER_TOOLKIT_SHARED_DIR}/bin:$PATH";
+
+    # upon catching a signal, terminate child process to trigger driver cleanup
+    trap 'echo "Caught signal"; kill "${child_pid}"; wait "${child_pid}"; exit' HUP INT QUIT PIPE TERM
+    cd "${DRIVER_TOOLKIT_SHARED_DIR}/driver";
+    echo "#"
+    echo "# Executing nvidia-driver install script ..."
+    echo "#"
+    bash -x "${DRIVER_TOOLKIT_SHARED_DIR}/nvidia-driver" init &
+
+    child_pid="$!"
+    wait "${child_pid}"
+
+    # TODO: only build driver in the dtk, and let main container load.
+    # 'nvidia-driver init' will only exit if it fails
+    echo "Driver installation failed. Exiting ..."
+    exit 1
+}
+
+usage() {
+    cat >&2 <<EOF
+Usage: $0 COMMAND
+
+Commands:
+  dtk-build-driver
+  nv-ctr-run-with-dtk
+EOF
+    exit 1
+}
+if [ $# -eq 0 ]; then
+    usage
+fi
+command=$1; shift
+case "${command}" in
+    dtk-build-driver) options="" ;;
+    nv-ctr-run-with-dtk) options="" ;;
+    *) usage ;;
+esac
+if [ $? -ne 0 ]; then
+    usage
+fi
+eval set -- "${options}"
+
+if ! [ -d "${DRIVER_TOOLKIT_SHARED_DIR:-}" ]; then
+    echo "FATAL: DRIVER_TOOLKIT_SHARED_DIR env variable must be populated with a valid directory"
+    usage
+fi
+
+if [ $# -ne 0 ]; then
+    usage
+fi
+
+$command
