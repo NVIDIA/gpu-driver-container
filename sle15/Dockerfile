@@ -1,3 +1,6 @@
+ARG CUDA_VERSION=11.7.0
+FROM nvidia/cuda:$CUDA_VERSION-base-ubi8 as license
+
 FROM registry.suse.com/bci/golang:1.17 as build
 
 RUN zypper --non-interactive install -y git wget tar gzip
@@ -78,7 +81,7 @@ LABEL release="N/A"
 LABEL summary="Provision the NVIDIA driver through containers"
 LABEL description="See summary"
 
-COPY LICENSE /licenses/LICENSE
-COPY DRIVER-LICENSE /licenses/DRIVER-LICENSE
+# Add NGC DL license from the CUDA image
+COPY --from=license /NGC-DL-CONTAINER-LICENSE /licenses/NGC-DL-CONTAINER-LICENSE
 
 ENTRYPOINT ["nvidia-driver", "init"]

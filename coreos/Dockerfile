@@ -1,3 +1,6 @@
+ARG CUDA_VERSION=11.7.0
+FROM nvidia/cuda:$CUDA_VERSION-base-ubi8 as license
+
 # Build nvidia-container-runtime binary
 FROM golang:1.11.2 as build-runtime
 
@@ -84,5 +87,8 @@ WORKDIR /usr/src/nvidia-$DRIVER_VERSION
 
 ARG PUBLIC_KEY=empty
 COPY ${PUBLIC_KEY} kernel/pubkey.x509
+
+# Add NGC DL license
+COPY --from=license /NGC-DL-CONTAINER-LICENSE /licenses/NGC-DL-CONTAINER-LICENSE
 
 ENTRYPOINT ["nvidia-driver"]

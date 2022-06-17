@@ -81,4 +81,7 @@ RUN if [ -n "${CVE_UPDATES}" ]; then \
 # Remove cuda repository to avoid GPG errors
 RUN rm /etc/apt/sources.list.d/cuda.list
 
+# Add NGC DL license from the CUDA image
+RUN mkdir /licenses && mv /NGC-DL-CONTAINER-LICENSE /licenses/NGC-DL-CONTAINER-LICENSE
+
 ENTRYPOINT ["nvidia-driver", "init"]

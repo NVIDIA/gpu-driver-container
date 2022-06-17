@@ -71,4 +71,7 @@ RUN apt-get update && \
     done && \
     rm -rf /var/lib/apt/lists/*
 
+# Add NGC DL license from the CUDA image
+RUN mkdir /licenses && mv /NGC-DL-CONTAINER-LICENSE /licenses/NGC-DL-CONTAINER-LICENSE
+
 ENTRYPOINT ["nvidia-driver", "init"]
