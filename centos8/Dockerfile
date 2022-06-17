@@ -61,4 +61,7 @@ ARG PRIVATE_KEY
 # Remove cuda repository to avoid GPG errors
 RUN rm -f /etc/yum.repos.d/cuda.repo
 
+# Add NGC DL license from the CUDA image
+RUN mkdir /licenses && mv /NGC-DL-CONTAINER-LICENSE /licenses/NGC-DL-CONTAINER-LICENSE
+
 ENTRYPOINT ["nvidia-driver", "init"]
