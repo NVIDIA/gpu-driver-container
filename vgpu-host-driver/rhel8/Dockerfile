@@ -1,4 +1,5 @@
-FROM nvidia/cuda:11.7.0-base-ubi8
+ARG CUDA_VERSION
+FROM nvidia/cuda:${CUDA_VERSION}-base-ubi8
 
 ARG DRIVER_VERSION
 ENV DRIVER_VERSION=$DRIVER_VERSION
@@ -27,5 +28,8 @@ RUN if [ -n "${CVE_UPDATES}" ]; then \
         yum update -y ${CVE_UPDATES} && \
         rm -rf /var/cache/yum/*; \
     fi
+
+# Add NGC DL license from the CUDA image
+RUN mkdir /licenses && mv /NGC-DL-CONTAINER-LICENSE /licenses/NGC-DL-CONTAINER-LICENSE
 
 ENTRYPOINT ["nvidia-driver", "init"]

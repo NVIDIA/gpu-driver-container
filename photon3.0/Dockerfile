@@ -1,3 +1,6 @@
+ARG CUDA_VERSION=11.7.0
+FROM nvidia/cuda:$CUDA_VERSION-base-ubi8 as license
+
 FROM photon:3.0
 
 RUN tdnf install -y \
@@ -61,5 +64,8 @@ RUN tdnf makecache -y && \
         nvidia-driver update -k $version -t builtin ${PRIVATE_KEY:+"-s ${PRIVATE_KEY}"}; \
     done && \
     rm -rf /var/cache/tdnf/*
+
+# Add NGC DL license
+COPY --from=license /NGC-DL-CONTAINER-LICENSE /licenses/NGC-DL-CONTAINER-LICENSE
 
 ENTRYPOINT ["nvidia-driver", "init"]
