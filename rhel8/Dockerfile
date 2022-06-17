@@ -103,8 +103,8 @@ LABEL release="N/A"
 LABEL summary="Provision the NVIDIA driver through containers"
 LABEL description="See summary"
 
-COPY LICENSE /licenses/LICENSE
-COPY DRIVER-LICENSE /licenses/DRIVER-LICENSE
+# Add NGC DL license from the CUDA image
+RUN mkdir /licenses && mv /NGC-DL-CONTAINER-LICENSE /licenses/NGC-DL-CONTAINER-LICENSE
 
 # Install / upgrade packages here that are required to resolve CVEs
 ARG CVE_UPDATES

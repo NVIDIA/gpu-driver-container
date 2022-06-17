@@ -56,4 +56,7 @@ COPY ${PUBLIC_KEY} kernel/pubkey.x509
 ARG PRIVATE_KEY
 ARG KERNEL_VERSION=latest
 
+# Add NGC DL license from the CUDA image
+RUN mkdir /licenses && mv /NGC-DL-CONTAINER-LICENSE /licenses/NGC-DL-CONTAINER-LICENSE
+
 ENTRYPOINT ["nvidia-driver", "init"]
