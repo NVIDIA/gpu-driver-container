@@ -1,4 +1,8 @@
 ARG FEDORA_VERSION=32
+ARG CUDA_VERSION=11.7.0
+
+FROM nvidia/cuda:$CUDA_VERSION-base-ubi8 as license
+
 FROM fedora:$FEDORA_VERSION
 
 RUN dnf install -y \
@@ -64,7 +68,7 @@ LABEL release="N/A"
 LABEL summary="Provision the NVIDIA driver through containers"
 LABEL description="See summary"
 
-COPY LICENSE /licenses/LICENSE
-COPY DRIVER-LICENSE /licenses/DRIVER-LICENSE
+# Add NGC DL license
+COPY --from=license /NGC-DL-CONTAINER-LICENSE /licenses/NGC-DL-CONTAINER-LICENSE
 
 ENTRYPOINT ["nvidia-driver", "init"]

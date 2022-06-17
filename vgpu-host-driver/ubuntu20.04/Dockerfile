@@ -1,4 +1,5 @@
-FROM nvidia/cuda:11.7.0-base-ubuntu20.04
+ARG CUDA_VERSION
+FROM nvidia/cuda:${CUDA_VERSION}-base-ubuntu20.04
 
 ARG DRIVER_VERSION
 ENV DRIVER_VERSION=$DRIVER_VERSION
@@ -36,5 +37,8 @@ RUN if [ -n "${CVE_UPDATES}" ]; then \
         apt-get update && apt-get upgrade -y ${CVE_UPDATES} && \
         rm -rf /var/lib/apt/lists/*; \
     fi
+
+# Add NGC DL license from the CUDA image
+RUN mkdir /licenses && mv /NGC-DL-CONTAINER-LICENSE /licenses/NGC-DL-CONTAINER-LICENSE
 
 ENTRYPOINT ["nvidia-driver", "init"]
