@@ -73,3 +73,8 @@ image-centos7:
   extends:
     - .image-build
     - .dist-centos7
+
+image-fedora36:
+  extends:
+    - .image-build
+    - .dist-fedora36
