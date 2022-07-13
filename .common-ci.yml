@@ -67,6 +67,10 @@ stages:
   variables:
     DIST: centos7
 
+.dist-fedora36:
+  variables:
+    DIST: fedora36
+
 # Define the platform targets
 .platform-amd64:
   variables:
