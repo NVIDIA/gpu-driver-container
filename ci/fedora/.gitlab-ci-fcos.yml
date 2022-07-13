@@ -1,0 +1,326 @@
+# Copyright (c) 2022, NVIDIA CORPORATION.  All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# ******************************************************************************
+# Fedora CoreOS (FCOS) Specific CICD
+# ******************************************************************************
+
+# This CICD script is very bespoke to producing/releasing Fedora CoreOS container 
+# images with pre-built kernel packages to speed container start up times.
+# As such it presumes the existence of FCOS gitlab-runners tracking next, testing
+# and stable.  In this manner pre-built kernel packages can be created matching
+# the kernel versions running on the gitlab-runners at that particular time.
+# These gitlab runners need to be tagged: fcos-next, fcos-testing, fcos-stable.
+#
+# In terms of general operations if a repo is pointed to this CICD script then 
+# a branch without 'fedora' in its name will build one container image on a 
+# fcos-next runner for the latest targeted DRIVER_VERSION only, suffixing the
+# image tag with the git commit short SHA.  It will be pushed to the internal 
+# gitlab project container registry. The release stage will run but will again 
+# target the internal gitlab registry conditionally overwriting the tag (minus 
+# the commit sha).  This release stage is purely to test out the CICD release 
+# flow.
+#
+# The protected branch 'fedora' will cause container image builds on all three
+# fcos runner types and build ALL_DRIVER_VERSIONS.  The images will then be scan-
+# ned and providing there are no detected vulnerabilities will be pushed to the
+# remote repository defined by the CICD variables, e.g. docker.io/fifofonix/driver.
+# By default remote tags are not overwritten during daily scheduled pipelines.
+# However, a bespoke pipeline run setting OVERWRITE_REMOTE_TAGS can be used to
+# force overwrite remote tags.  Any gitlab tag suffixed 'fedora' will also trigger
+# this pipeline flow.
+#
+# Any other protected branch with the word fedora in it will do the same - build
+# all the NVIDIA driver versions on all the fcos releases - and scan them, but
+# will not publish them to the remote registry.
+#
+# It is possible to suppress compilation of driver kernel modules and build
+# of the kernel packages byy toggling COMPILE_KERNEL_MODULES.
+
+# Some notes on driver versions:
+#
+# Driver versions for Tesla-class GPUs, e.g. M60 that we use on AWS nodes, can be
+# established here: https://www.nvidia.com/Download/index.aspx
+# The driver versions are tied to specific CUDA versions, e.g.:
+# - M60 only supports # 11.4, 11.2, 11.0 ... (but not 11.3 for example?)
+#
+# CUDA 11.6 has a minimum kernel of Fedora 35 / 5.14.10
+# (https://docs.nvidia.com/cuda/archive/11.6.0/cuda-installation-guide-linux/index.html)
+# 5/27/22 - Current recommended Tesla / Linux driver version is 510.73.05 
+#
+# CUDA 11.4 has a minimum kernel of Fedora 35 / 5.10.13
+# (https://docs.nvidia.com/cuda/archive/11.4.0/cuda-installation-guide-linux/index.html)
+# 1/17/22 - Current recommended Tesla / Linux driver version is 470.82.01 
+#
+
+variables:
+  # Set these in your CICD variables if your gitlab-runner is behind a proxy.
+  HTTP_PROXY: ""
+  HTTPS_PROXY: ""
+  NO_PROXY: "docker"
+  # We set these from the capitalized versions to be sure to be sure...
+  http_proxy: ${HTTP_PROXY}
+  https_proxy: ${HTTPS_PROXY}
+  no_proxy: ${NO_PROXY}
+  # Project specific variables
+  DRIVER_VERSION: "515.48.07"
+  ALL_DRIVER_VERSIONS: "515.48.07"
+  DRIVER_VERSIONS: 515.48.07
+  BUILD_MULTI_ARCH_IMAGES: "true"
+  OVERWRITE_TAGS: 1
+  OVERWRITE_REMOTE_TAGS: 0
+  COMPILE_KERNEL_MODULES: 1 # Requires 16GB RAM on FCOS gitlab-runner
+  RELEASE_REGISTRY_PROJECT: ""
+  RELEASE_REGISTRY_USER: ""
+  RELEASE_REGISTRY_TOKEN: ""
+
+default:
+  image: docker:20.10.10-git
+  services:
+    - name: docker:20.10.10-dind
+
+stages:
+  - build
+  - test
+  - scan
+  - deploy
+  - release
+
+.common:
+  before_script:
+    - export FEDORA_VERSION=$(uname -r | sed -r "s/^.*fc([0-9][0-9]).*/\1/")
+    - export FEDORA_UNAME=$(uname -r)
+
+.build_push_fn-script: &build_push_fn-script
+    - |
+      function build_push_fn() {
+        local _driver_version=$1
+        local _overwrite_tag=$2
+        local _tag_suffix=$3
+        export DOCKER_IMAGE=${CI_REGISTRY_IMAGE}:${_driver_version}-fedora${FEDORA_VERSION}-${FEDORA_UNAME}${_tag_suffix}
+        docker build \
+          --build-arg FEDORA_VERSION=${FEDORA_VERSION} \
+          --build-arg DRIVER_VERSION=${_driver_version} \
+          --build-arg TARGETARCH=$(uname -m) \
+          --build-arg HTTP_PROXY=${HTTP_PROXY} \
+          --build-arg HTTPS_PROXY=${HTTPS_PROXY} \
+          -t ${DOCKER_IMAGE} fedora
+        if ! $(docker manifest inspect ${DOCKER_IMAGE} > /dev/null 2>&1) || [[ "${_overwrite_tag}" == "1" ]]; then
+          if [[ "${COMPILE_KERNEL_MODULES}" == "1" ]]; then
+            docker run --privileged --pid=host --name build-kernel-modules-${_driver_version} \
+              --entrypoint nvidia-driver ${DOCKER_IMAGE} update -t builtin
+            docker commit -m '"Compile Linux kernel modules version ${FEDORA_UNAME} for NVIDIA driver version ${_driver_version}"' \
+              --change='ENTRYPOINT ["nvidia-driver", "init"]' build-kernel-modules-${_driver_version} ${DOCKER_IMAGE}
+            echo "Pushing ${DOCKER_IMAGE} with compiled kernel modules."
+          else
+            echo "Pushing ${DOCKER_IMAGE} to internal gitlab repository."
+          fi
+          docker push -q ${DOCKER_IMAGE}
+        else
+            echo "Skipping push of ${DOCKER_IMAGE} to internal gitlab repository."
+        fi
+      }
+
+.build-push-script: &build-push-script
+    - *build_push_fn-script
+    - docker login -u "${CI_REGISTRY_USER}" -p "${CI_REGISTRY_PASSWORD}" "${CI_REGISTRY}"
+    - for driver_version in ${ALL_DRIVER_VERSIONS:-${DRIVER_VERSION}}; do build_push_fn ${driver_version} $OVERWRITE_TAGS;done
+
+build-push-next-one-only:
+  stage: build
+  extends: .common
+  script:
+    - *build_push_fn-script
+    - docker login -u "${CI_REGISTRY_USER}" -p "${CI_REGISTRY_PASSWORD}" "${CI_REGISTRY}"
+    # Here we pass in the short git sha which gets suffixed to the built image.
+    - for driver_version in ${DRIVER_VERSION}; do build_push_fn ${driver_version} $OVERWRITE_TAGS -${CI_COMMIT_SHORT_SHA}; done
+  tags:
+    - fcos-next
+  except:
+    - /fedora/
+
+.common-build:
+  stage: build
+  extends: .common
+  script:
+    - *build-push-script
+  only:
+    - /fedora/
+
+build-push-next:
+  stage: build
+  extends: .common-build
+  tags:
+    - fcos-next
+  only:
+    - /fedora/
+
+build-push-testing:
+  extends: .common-build
+  tags:
+    - fcos-testing
+  only:
+    - /fedora/
+
+build-push-stable:
+  extends: .common-build
+  tags:
+    - fcos-stable
+  only:
+    - /fedora/
+
+test:
+  stage: test
+  extends: .common
+  script:
+    - "true" # TODO: write a test!
+  tags:
+    - fcos-next
+
+.common-scan:
+  # Trivy, which is the gitlab default, does not supported fedora.
+  # image: registry.gitlab.com/security-products/container-scanning:4
+  image: registry.gitlab.com/security-products/container-scanning/grype:4
+  stage: scan
+  extends: .common
+  variables:
+    # https://docs.gitlab.com/ee/user/application_security/container_scanning/index.html#overriding-the-container-scanning-template
+    # https://docs.gitlab.com/ee/user/application_security/container_scanning/#vulnerability-allowlisting
+    GIT_STRATEGY: fetch
+    DOCKERFILE_PATH: '$CI_PROJECT_DIR/fedora/Dockerfile'
+  before_script:
+    - !reference [.common, before_script]
+    - echo ${DOCKERFILE_PATH}
+    - if ! [[ -z ${HTTP_PROXY} ]]; then sudo -- sh -c 'echo Acquire::http::Proxy \"'${HTTP_PROXY}'\"\; >> /etc/apt/apt.conf.d/proxy.conf'; fi
+    - if ! [[ -z ${HTTPS_PROXY} ]]; then sudo -- sh -c 'echo Acquire::https::Proxy \"'${HTTPS_PROXY}'\"\; >> /etc/apt/apt.conf.d/proxy.conf'; fi
+    - sudo apt-get -qy update > /dev/null
+    - sudo apt-get -qy install jq > /dev/null
+    - |
+      function scan_fn() {
+        local _driver_version=$1
+        export DOCKER_IMAGE=$CI_REGISTRY_IMAGE:${_driver_version}-fedora${FEDORA_VERSION}-${FEDORA_UNAME}
+        gtcs scan
+        cat gl-container-scanning-report.json | jq '.vulnerabilities[].severity' | sort | uniq -c
+        if [[ $(cat gl-container-scanning-report.json | jq '.vulnerabilities | any') == 'true' ]]; then
+          exit 1
+        fi
+      }
+  script:
+    - for driver_version in ${ALL_DRIVER_VERSIONS:-${DRIVER_VERSION}}; do scan_fn ${driver_version};done
+  artifacts:
+    reports:
+      container_scanning: gl-container-scanning-report.json
+    paths: [gl-container-scanning-report.json]
+  only:
+    - /fedora/
+
+scan-next:
+  extends: .common-scan
+  needs: ["build-push-next"]
+  tags:
+    - fcos-next
+
+scan-testing:
+  extends: .common-scan
+  needs: ["build-push-testing"]
+  tags:
+    - fcos-testing
+
+scan-stable:
+  extends: .common-scan
+  needs: ["build-push-stable"]
+  tags:
+    - fcos-stable
+
+.common-release-fn-script: &common-release-fn-script
+  - |
+    function release_fn() {
+      local _driver_version=$1
+      local _overwrite_remote_tag=${2:-${OVERWRITE_REMOTE_TAGS}}
+      local _tag_suffix=$3
+      export DOCKER_IMAGE=$CI_REGISTRY_IMAGE:${_driver_version}-fedora${FEDORA_VERSION}-${FEDORA_UNAME}${_tag_suffix}
+      docker pull -q ${DOCKER_IMAGE}
+      docker tag ${DOCKER_IMAGE} ${RELEASE_REGISTRY_PROJECT}:${_driver_version}-fedora${FEDORA_VERSION}-${FEDORA_UNAME}
+      if ! $(docker manifest inspect ${RELEASE_REGISTRY_PROJECT}:${_driver_version}-fedora${FEDORA_VERSION}-${FEDORA_UNAME} > /dev/null 2>&1) || [[ ${_overwrite_remote_tag} -eq 1 ]]; then
+        echo "Pushing ${RELEASE_REGISTRY_PROJECT}:${_driver_version}-fedora${FEDORA_VERSION}-${FEDORA_UNAME} to remote repository."
+        docker push -q ${RELEASE_REGISTRY_PROJECT}:${_driver_version}-fedora${FEDORA_VERSION}-${FEDORA_UNAME}
+      else
+        echo "Skipping push of ${RELEASE_REGISTRY_PROJECT}:${_driver_version}-fedora${FEDORA_VERSION}-${FEDORA_UNAME} to remote repository."
+      fi
+    }
+
+.common-release:
+  stage: release
+  extends: .common
+  variables:
+    RELEASE_REGISTRY_PROJECT: ${RELEASE_REGISTRY_PROJECT}
+    RELEASE_REGISTRY_USER: ${RELEASE_REGISTRY_USER}
+    RELEASE_REGISTRY_TOKEN: ${RELEASE_REGISTRY_TOKEN}
+  script:
+    - *common-release-fn-script
+    - docker login -u "${CI_REGISTRY_USER}" -p "${CI_REGISTRY_PASSWORD}" "${CI_REGISTRY}"
+    - docker login -u "${RELEASE_REGISTRY_USER}" -p "${RELEASE_REGISTRY_TOKEN}" "${RELEASE_REGISTRY}"
+    - for driver_version in ${ALL_DRIVER_VERSIONS:-${DRIVER_VERSION}}; do release_fn ${driver_version};done
+  rules:
+    - if: $CI_COMMIT_TAG =~ /fedora$/ || $CI_COMMIT_REF_NAME == 'fedora'
+
+release-next-one-only:
+  stage: release
+  extends: .common
+  variables:
+    # Here we create a circular reference defining the 'remote' registry to in
+    # fact be this repo's registry.  This is purely for CICD testing purposes 
+    # in a non-protected branch...validating the release stage...
+    RELEASE_REGISTRY_PROJECT: ${CI_REGISTRY_IMAGE}
+    RELEASE_REGISTRY: ${CI_REGISTRY}
+    RELEASE_REGISTRY_USER: ${CI_REGISTRY_USER}
+    RELEASE_REGISTRY_TOKEN: ${CI_REGISTRY_PASSWORD}
+  before_script:
+    - !reference [.common, before_script]
+  script:
+    - *common-release-fn-script
+    - docker login -u "${CI_REGISTRY_USER}" -p "${CI_REGISTRY_PASSWORD}" "${CI_REGISTRY}"
+    - docker login -u "${RELEASE_REGISTRY_USER}" -p "${RELEASE_REGISTRY_TOKEN}" "${RELEASE_REGISTRY}"
+    - for driver_version in ${DRIVER_VERSION}; do release_fn ${driver_version} ${OVERWRITE_REMOTE_TAGS} -${CI_COMMIT_SHORT_SHA}; done
+  tags:
+    - fcos-next
+  except:
+    - /fedora/
+
+# The build will build/push N images to the local gitlab registry.  The scan
+# will scan each of them, and if any of the scans fail, none of the new images 
+# will get released...releases run for the fedora branch only.
+release-next:
+  extends: .common-release
+  before_script:
+    - !reference [.common, before_script]
+  needs: ["scan-next"]
+  tags:
+    - fcos-next
+
+release-testing:
+  extends: .common-release
+  before_script:
+    - !reference [.common, before_script]
+  needs: ["scan-testing"]
+  tags:
+    - fcos-testing
+
+release-stable:
+  extends: .common-release
+  before_script:
+    - !reference [.common, before_script]
+  needs: ["scan-stable"]
+  tags:
+    - fcos-stable

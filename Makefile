@@ -53,7 +53,7 @@ OUT_IMAGE_TAG = $(OUT_IMAGE_VERSION)-$(DIST)
 OUT_IMAGE = $(OUT_IMAGE_NAME):$(OUT_IMAGE_TAG)
 
 ##### Public rules #####
-DISTRIBUTIONS := ubuntu18.04 ubuntu20.04 ubuntu22.04 signed_ubuntu20.04 signed_ubuntu22.04 rhcos4.9 rhcos4.10 centos7 flatcar
+DISTRIBUTIONS := ubuntu18.04 ubuntu20.04 ubuntu22.04 signed_ubuntu20.04 signed_ubuntu22.04 rhcos4.9 rhcos4.10 centos7 flatcar fedora36
 PUSH_TARGETS := $(patsubst %, push-%, $(DISTRIBUTIONS))
 DRIVER_PUSH_TARGETS := $(foreach push_target, $(PUSH_TARGETS), $(addprefix $(push_target)-, $(DRIVER_VERSIONS)))
 BUILD_TARGETS := $(patsubst %, build-%, $(DISTRIBUTIONS))
@@ -149,6 +149,9 @@ $(DRIVER_BUILD_TARGETS):
 
 # Files for rhcos are in the rhel8 subdirectory
 build-rhcos%: SUBDIR = rhel8
+
+# Files for fcos are in the fedora subdirectory
+build-fedora%: SUBDIR = fedora
 
 build-signed_ubuntu20.04%: DIST = signed-ubuntu20.04
 build-signed_ubuntu20.04%: SUBDIR = ubuntu20.04/precompiled
