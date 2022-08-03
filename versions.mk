@@ -13,7 +13,7 @@
 # limitations under the License.
 
 # DRIVER_VERSIONS contains latest version in all active datacenter branches
-DRIVER_VERSIONS ?= 450.191.01 470.129.06 510.73.08 515.48.07
+DRIVER_VERSIONS ?= 450.203.03 470.141.03 510.85.02 515.65.01
 
 # TODO: update all Dockefiles refer to CUDA_VERSION
 CUDA_VERSION := 11.7.0
