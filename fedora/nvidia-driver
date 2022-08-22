@@ -499,11 +499,6 @@ EOF
 }
 
 _shutdown() {
-    if [ -f /var/log/nvidia-installer.log ]; then
-        echo ***
-        cat /var/log/nvidia-installer.log
-        echo ***
-    fi
     if _unload_driver; then
         _unmount_rootfs
         rm -f ${PID_FILE} ${KERNEL_UPDATE_HOOK}
