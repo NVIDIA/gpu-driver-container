@@ -27,10 +27,31 @@ _unmount_rootfs() {
     fi
 }
 
-_install_driver() {
-    local tmp_dir=$(mktemp -d)
+# Check if the kernel version requires a new precompiled driver packages.
+_kernel_requires_package() {
+    local proc_mount_arg=""
 
-    sh NVIDIA-Linux-${DRIVER_ARCH}-${DRIVER_VERSION}-vgpu-kvm.run --ui=none --no-questions --tmpdir ${tmp_dir} --no-systemd
+    echo "Checking NVIDIA driver packages..."
+
+    [[ ! -d "/usr/src/nvidia-${DRIVER_VERSION}/kernel" ]] && return 0
+    cd "/usr/src/nvidia-${DRIVER_VERSION}/kernel"
+
+    proc_mount_arg="--proc-mount-point /lib/modules/${KERNEL_VERSION}/proc"
+    for pkg_name in $(ls -d -1 precompiled/** 2> /dev/null); do
+        is_match=$(../mkprecompiled --match ${pkg_name} ${proc_mount_arg})
+        if [ "${is_match}" == "kernel interface matches." ]; then
+            echo "Found NVIDIA driver package ${pkg_name##*/}"
+            return 1
+        fi
+    done
+    return 0
+}
+
+_install_driver() {
+    local tmp_dir
+    tmp_dir=$(mktemp -d)
+
+    sh "NVIDIA-Linux-${DRIVER_ARCH}-${DRIVER_VERSION}-vgpu-kvm.run" --ui=none --no-questions --tmpdir "${tmp_dir}" --no-systemd
 }
 
 # Currently _install_driver() takes care of loading nvidia modules. Just need to start necessary vgpu daemons
@@ -128,8 +149,80 @@ _shutdown() {
     return 1
 }
 
+_prepare() {
+    if [ "${DRIVER_TYPE}" = "vgpu" ]; then
+        _find_vgpu_driver_version || exit 1
+    fi
+
+    # Install the userspace components and copy the kernel module sources.
+    sh "NVIDIA-Linux-$DRIVER_ARCH-$DRIVER_VERSION.run" -x && \
+        cd "NVIDIA-Linux-$DRIVER_ARCH-$DRIVER_VERSION" && \
+        sh /tmp/install.sh nvinstall && \
+        mkdir -p "/usr/src/nvidia-$DRIVER_VERSION" && \
+        mv LICENSE mkprecompiled kernel "/usr/src/nvidia-$DRIVER_VERSION" && \
+        sed '9,${/^\(kernel\|LICENSE\)/!d}' .manifest > "/usr/src/nvidia-$DRIVER_VERSION/.manifest"
+
+    echo -e "\\n========== NVIDIA Software Installer ==========\\n"
+    echo -e "Starting installation of NVIDIA driver version ${DRIVER_VERSION} for Linux kernel version ${KERNEL_VERSION}\\n"
+}
+
+_prepare_exclusive() {
+    _prepare
+
+    exec 3> ${PID_FILE}
+    if ! flock -n 3; then
+        echo "An instance of the NVIDIA driver is already running, aborting"
+        exit 1
+    fi
+    echo $$ >&3
+
+    trap "echo 'Caught signal'; exit 1" HUP INT QUIT PIPE TERM
+    trap "_shutdown" EXIT
+
+    _unload_driver || exit 1
+    _unmount_rootfs
+}
+
+_build() {
+    # Install dependencies
+    if _kernel_requires_package; then
+        _update_package_cache
+        _install_prerequisites
+        _create_driver_package
+        #_remove_prerequisites
+        _cleanup_package_cache
+    fi
+
+    # Build the driver
+    _install_driver
+}
+
+_load() {
+    _load_driver
+    _mount_rootfs
+    _write_kernel_update_hook
+
+    echo "Done, now waiting for signal"
+    sleep infinity &
+    # shellcheck disable=SC2064
+    trap "echo 'Caught signal'; _shutdown && { kill $!; exit 0; }" HUP INT QUIT PIPE TERM
+    trap - EXIT
+    while true; do wait $! || continue; done
+    exit 0
+}
+
+init() {
+    _prepare_exclusive
+
+    _build
+
+    _load
+}
+
 build() {
-  echo "build() not implemented"
+    _prepare
+
+    _build
 }
 
 load() {
