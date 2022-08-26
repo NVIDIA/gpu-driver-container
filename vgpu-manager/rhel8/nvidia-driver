@@ -6,6 +6,7 @@ set -xe
 DRIVER_VERSION=${DRIVER_VERSION:?"Missing driver version"}
 DRIVER_RESET_RETRIES=10
 RUN_DIR=/run/nvidia
+NVRUNFILE="NVIDIA-Linux-${DRIVER_ARCH}-${DRIVER_VERSION}-vgpu-kvm.run"
 
 # Mount the driver rootfs into the run directory with the exception of sysfs.
 _mount_rootfs() {
@@ -51,7 +52,7 @@ _install_driver() {
     local tmp_dir
     tmp_dir=$(mktemp -d)
 
-    sh "NVIDIA-Linux-${DRIVER_ARCH}-${DRIVER_VERSION}-vgpu-kvm.run" --ui=none --no-questions --tmpdir "${tmp_dir}" --no-systemd
+    sh "$NVRUNFILE" --ui=none --no-questions --tmpdir "${tmp_dir}" --no-systemd
 }
 
 # Currently _install_driver() takes care of loading nvidia modules. Just need to start necessary vgpu daemons
@@ -149,13 +150,47 @@ _shutdown() {
     return 1
 }
 
-_prepare() {
-    if [ "${DRIVER_TYPE}" = "vgpu" ]; then
-        _find_vgpu_driver_version || exit 1
+_find_vgpu_driver_version() {
+    local count=""
+    local version=""
+    local drivers_path="/drivers"
+
+    if [ "${DISABLE_VGPU_VERSION_CHECK}" = "true" ]; then
+        echo "vgpu version compatibility check is disabled"
+        return 0
     fi
+    # check if vgpu devices are present
+    count=$(vgpu-util count)
+    if [ $? -ne 0 ]; then
+         echo "cannot find vgpu devices on host, pleae check /var/log/vgpu-util.log for more details..."
+         return 0
+    fi
+    NUM_VGPU_DEVICES=$(echo "$count" | awk -F= '{print $2}')
+    if [ $NUM_VGPU_DEVICES -eq 0 ]; then
+        # no vgpu devices found, treat as passthrough
+        return 0
+    fi
+    echo "found $NUM_VGPU_DEVICES vgpu devices on host"
+
+    # find compatible guest driver using driver catalog
+    if [ -d "/mnt/shared-nvidia-driver-toolkit/drivers" ]; then
+        drivers_path="/mnt/shared-nvidia-driver-toolkit/drivers"
+    fi
+    version=$(vgpu-util match -i "${drivers_path}" -c "${drivers_path}/vgpuDriverCatalog.yaml")
+    if [ $? -ne 0 ]; then
+        echo "cannot find match for compatible vgpu driver from available list, please check /var/log/vgpu-util.log for more details..."
+        return 1
+    fi
+    DRIVER_VERSION=$(echo "$version" | awk -F= '{print $2}')
+    echo "vgpu driver version selected: ${DRIVER_VERSION}"
+    return 0
+}
+
+_prepare() {
+    _find_vgpu_driver_version || exit 1
 
     # Install the userspace components and copy the kernel module sources.
-    sh "NVIDIA-Linux-$DRIVER_ARCH-$DRIVER_VERSION.run" -x && \
+    sh "$NVRUNFILE" -x && \
         cd "NVIDIA-Linux-$DRIVER_ARCH-$DRIVER_VERSION" && \
         sh /tmp/install.sh nvinstall && \
         mkdir -p "/usr/src/nvidia-$DRIVER_VERSION" && \
