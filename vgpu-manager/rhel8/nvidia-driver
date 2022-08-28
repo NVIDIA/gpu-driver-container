@@ -6,6 +6,7 @@ set -xe
 DRIVER_VERSION=${DRIVER_VERSION:?"Missing driver version"}
 DRIVER_RESET_RETRIES=10
 RUN_DIR=/run/nvidia
+PID_FILE=/var/run/nvidia-vgpu-mgr/nvidia-vgpu-mgr.pid
 NVRUNFILE="NVIDIA-Linux-${DRIVER_ARCH}-${DRIVER_VERSION}-vgpu-kvm.run"
 
 # Mount the driver rootfs into the run directory with the exception of sysfs.
@@ -105,8 +106,8 @@ _unload_driver() {
     local nvidia_vgpu_vfio_refs=0
 
     echo "Stopping NVIDIA vGPU Manager..."
-    if [ -f /var/run/nvidia-vgpu-mgr/nvidia-vgpu-mgr.pid ]; then
-        local pid=$(< /var/run/nvidia-vgpu-mgr/nvidia-vgpu-mgr.pid)
+    if [ -f "$PID_FILE" ]; then
+        local pid=$(< "$PID_FILE")
 
         kill -TERM "${pid}"
         for i in $(seq 1 50); do
@@ -204,7 +205,7 @@ _prepare() {
 _prepare_exclusive() {
     _prepare
 
-    exec 3> ${PID_FILE}
+    exec 3> "${PID_FILE}"
     if ! flock -n 3; then
         echo "An instance of the NVIDIA driver is already running, aborting"
         exit 1
