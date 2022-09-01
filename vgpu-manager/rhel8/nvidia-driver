@@ -6,7 +6,7 @@ set -xe
 DRIVER_VERSION=${DRIVER_VERSION:?"Missing driver version"}
 DRIVER_RESET_RETRIES=10
 RUN_DIR=/run/nvidia
-PID_FILE=/var/run/nvidia-vgpu-mgr/nvidia-vgpu-mgr.pid
+VGPU_PID_FILE=/var/run/nvidia-vgpu-mgr/nvidia-vgpu-mgr.pid
 NVRUNFILE="NVIDIA-Linux-${DRIVER_ARCH}-${DRIVER_VERSION}-vgpu-kvm.run"
 
 # Mount the driver rootfs into the run directory with the exception of sysfs.
@@ -26,6 +26,134 @@ _unmount_rootfs() {
     echo "Unmounting NVIDIA driver rootfs..."
     if findmnt -r -o TARGET | grep "${RUN_DIR}/driver" > /dev/null; then
         umount -l -R ${RUN_DIR}/driver
+    fi
+}
+
+_update_package_cache() {
+    if [ "${PACKAGE_TAG:-}" != "builtin" ]; then
+        echo "Updating the package cache..."
+        if ! yum -q makecache; then
+            echo "FATAL: failed to reach RHEL package repositories. "\
+                 "Ensure that the cluster can access the proper networks."
+            exit 1
+        fi
+    fi
+}
+
+_cleanup_package_cache() {
+    if [ "${PACKAGE_TAG:-}" != "builtin" ]; then
+        echo "Cleaning up the package cache..."
+        rm -rf /var/cache/yum/*
+    fi
+}
+
+_resolve_rhel_version() {
+    if [ -f /host-etc/os-release ]; then
+        echo "Resolving RHEL version..."
+        local version=""
+        local id=$(cat /host-etc/os-release | grep ^ID= | awk -F= '{print $2}' | sed -e 's/^"//' -e 's/"$//')
+        if [ "${id}" = "rhcos" ]; then
+            version=$(cat /host-etc/os-release | grep RHEL_VERSION | awk -F= '{print $2}' | sed -e 's/^"//' -e 's/"$//')
+        elif [ "${id}" = "rhel" ]; then
+            version=$(cat /host-etc/os-release | grep VERSION_ID | awk -F= '{print $2}' | sed -e 's/^"//' -e 's/"$//')
+        fi
+        if [ -z "${version}" ]; then
+            echo "Could not resolve RHEL version" >&2
+            return 1
+        fi
+        RHEL_VERSION="${version}"
+        echo "Proceeding with RHEL version ${RHEL_VERSION}"
+    fi
+    return 0
+}
+
+# Resolve the kernel version to the form major.minor.patch-revision.
+_resolve_kernel_version() {
+    echo "Resolving Linux kernel version..."
+    local version=$(yum -q list available --showduplicates kernel-headers |
+      awk -v arch=$(uname -m) 'NR>1 {print $2"."arch}' | tac | grep -E -m1 "^${KERNEL_VERSION/latest/.*}")
+
+    if [ -z "${version}" ]; then
+        echo "Could not resolve Linux kernel version" >&2
+        return 1
+    fi
+    KERNEL_VERSION="${version}"
+    echo "Proceeding with Linux kernel version ${KERNEL_VERSION}"
+    return 0
+}
+
+# Install the kernel modules header/builtin/order files and generate the kernel version string.
+_install_prerequisites() (
+    local tmp_dir=$(mktemp -d)
+
+    trap "rm -rf ${tmp_dir}" EXIT
+    cd ${tmp_dir}
+
+    echo "Installing elfutils..."
+    if ! dnf install -q -y elfutils-libelf.$DRIVER_ARCH elfutils-libelf-devel.$DRIVER_ARCH; then
+        echo "FATAL: failed to install elfutils packages. RHEL entitlement may be improperly deployed."
+        exit 1
+    fi
+
+    rm -rf /lib/modules/${KERNEL_VERSION}
+    mkdir -p /lib/modules/${KERNEL_VERSION}/proc
+
+    echo "Enabling RHOCP and EUS RPM repos..."
+    if [ -n "${OPENSHIFT_VERSION:-}" ]; then
+        dnf config-manager --set-enabled rhocp-${OPENSHIFT_VERSION}-for-rhel-8-$DRIVER_ARCH-rpms || true
+        if ! dnf makecache --releasever=${RHEL_VERSION}; then
+            dnf config-manager --set-disabled rhocp-${OPENSHIFT_VERSION}-for-rhel-8-$DRIVER_ARCH-rpms || true
+        fi
+    fi
+
+    dnf config-manager --set-enabled rhel-8-for-$DRIVER_ARCH-baseos-eus-rpms  || true
+    if ! dnf makecache --releasever=${RHEL_VERSION}; then
+    	dnf config-manager --set-disabled rhel-8-for-$DRIVER_ARCH-baseos-eus-rpms || true
+    fi
+
+    echo "Installing Linux kernel headers..."
+    dnf -q -y --releasever=${RHEL_VERSION} install kernel-headers-${KERNEL_VERSION} kernel-devel-${KERNEL_VERSION} > /dev/null
+    ln -s /usr/src/kernels/${KERNEL_VERSION} /lib/modules/${KERNEL_VERSION}/build
+
+    echo "Installing Linux kernel module files..."
+    dnf -q -y --releasever=${RHEL_VERSION} install kernel-core-${KERNEL_VERSION} > /dev/null
+
+    # Prevent depmod from giving a WARNING about missing files
+    touch /lib/modules/${KERNEL_VERSION}/modules.order
+    touch /lib/modules/${KERNEL_VERSION}/modules.builtin
+
+    depmod ${KERNEL_VERSION}
+
+    echo "Generating Linux kernel version string..."
+    if [ "$TARGETARCH" = "arm64" ]; then
+        gunzip -c /lib/modules/${KERNEL_VERSION}/vmlinuz | strings | grep -E '^Linux version' | sed 's/^\(.*\)\s\+(.*)$/\1/' > version
+    else
+        extract-vmlinux /lib/modules/${KERNEL_VERSION}/vmlinuz | strings | grep -E '^Linux version' | sed 's/^\(.*\)\s\+(.*)$/\1/' > version
+    fi
+    if [ -z "$(<version)" ]; then
+        echo "Could not locate Linux kernel version string" >&2
+        return 1
+    fi
+    mv version /lib/modules/${KERNEL_VERSION}/proc
+
+    # Parse gcc version
+    # gcc_version is expected to match x.y.z
+    # current_gcc is expected to match 'gcc-x.y.z-rel.el8.x86_64
+    local gcc_version=$(cat /lib/modules/${KERNEL_VERSION}/proc/version | grep -Eo "gcc version ([0-9\.]+)" | grep -Eo "([0-9\.]+)")
+    local current_gcc=$(rpm -qa gcc)
+    echo "kernel requires gcc version: 'gcc-${gcc_version}', current gcc version is '${current_gcc}'"
+
+    if [[ "gcc-${gcc_version}" != "${current_gcc}"* ]]; then
+        dnf install -q -y --releasever=${RHEL_VERSION} "gcc-${gcc_version}"
+    fi
+)
+
+# Cleanup the prerequisites installed above.
+_remove_prerequisites() {
+    true
+    if [ "${PACKAGE_TAG:-}" != "builtin" ]; then
+        dnf -q -y remove kernel-headers-${KERNEL_VERSION} kernel-devel-${KERNEL_VERSION} > /dev/null
+        # TODO remove module files not matching an existing driver package.
     fi
 }
 
@@ -106,8 +234,8 @@ _unload_driver() {
     local nvidia_vgpu_vfio_refs=0
 
     echo "Stopping NVIDIA vGPU Manager..."
-    if [ -f "$PID_FILE" ]; then
-        local pid=$(< "$PID_FILE")
+    if [ -f "$VGPU_PID_FILE" ]; then
+        local pid=$(< "$VGPU_PID_FILE")
 
         kill -TERM "${pid}"
         for i in $(seq 1 50); do
@@ -202,23 +330,6 @@ _prepare() {
     echo -e "Starting installation of NVIDIA driver version ${DRIVER_VERSION} for Linux kernel version ${KERNEL_VERSION}\\n"
 }
 
-_prepare_exclusive() {
-    _prepare
-
-    exec 3> "${PID_FILE}"
-    if ! flock -n 3; then
-        echo "An instance of the NVIDIA driver is already running, aborting"
-        exit 1
-    fi
-    echo $$ >&3
-
-    trap "echo 'Caught signal'; exit 1" HUP INT QUIT PIPE TERM
-    trap "_shutdown" EXIT
-
-    _unload_driver || exit 1
-    _unmount_rootfs
-}
-
 _build() {
     # Install dependencies
     if _kernel_requires_package; then
@@ -247,14 +358,6 @@ _load() {
     exit 0
 }
 
-init() {
-    _prepare_exclusive
-
-    _build
-
-    _load
-}
-
 build() {
     _prepare
 
@@ -262,32 +365,36 @@ build() {
 }
 
 load() {
-  echo "load() not implemented"
+    _prepare
+
+    _load
 }
 
 update() {
-  echo "update() not implemented"
+    echo "update() not implemented"
 }
 
 init() {
-  trap "echo 'Caught signal'; exit 1" HUP INT QUIT PIPE TERM
-  trap "_shutdown" EXIT
+    _prepare
 
-  if ! _unload_driver; then
-    echo "Previous NVIDIA driver installation cannot be removed. Exiting"
-    exit 1
-  fi
-  _unmount_rootfs
+    trap "echo 'Caught signal'; exit 1" HUP INT QUIT PIPE TERM
+    trap "_shutdown" EXIT
 
-  _install_driver
-  _load_driver || exit 1
-  _mount_rootfs
-  _enable_vfs
+    if ! _unload_driver; then
+        echo "Previous NVIDIA driver installation cannot be removed. Exiting"
+        exit 1
+    fi
+    _unmount_rootfs
 
-  echo "Done, now waiting for signal"
-  trap "echo 'Caught signal'; _shutdown; trap - EXIT; exit" HUP INT QUIT PIPE TERM
+    _build
+    _load_driver || exit 1
+    _mount_rootfs
+    _enable_vfs
 
-  while true; do sleep 15 ; /usr/bin/pgrep nvidia-vgpu-mgr ; if [ $? -ne 0 ] ; then echo "nvidia-vgpu-mgr is not running" && exit 1; fi; done
+    echo "Done, now waiting for signal"
+    trap "echo 'Caught signal'; _shutdown; trap - EXIT; exit" HUP INT QUIT PIPE TERM
+
+    while true; do sleep 15 ; /usr/bin/pgrep nvidia-vgpu-mgr ; if [ $? -ne 0 ] ; then echo "nvidia-vgpu-mgr is not running" && exit 1; fi; done
 }
 
 
