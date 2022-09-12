@@ -279,57 +279,6 @@ _shutdown() {
     return 1
 }
 
-_find_vgpu_driver_version() {
-    local count=""
-    local version=""
-    local drivers_path="/drivers"
-
-    if [ "${DISABLE_VGPU_VERSION_CHECK}" = "true" ]; then
-        echo "vgpu version compatibility check is disabled"
-        return 0
-    fi
-    # check if vgpu devices are present
-    count=$(vgpu-util count)
-    if [ $? -ne 0 ]; then
-         echo "cannot find vgpu devices on host, pleae check /var/log/vgpu-util.log for more details..."
-         return 0
-    fi
-    NUM_VGPU_DEVICES=$(echo "$count" | awk -F= '{print $2}')
-    if [ $NUM_VGPU_DEVICES -eq 0 ]; then
-        # no vgpu devices found, treat as passthrough
-        return 0
-    fi
-    echo "found $NUM_VGPU_DEVICES vgpu devices on host"
-
-    # find compatible guest driver using driver catalog
-    if [ -d "/mnt/shared-nvidia-driver-toolkit/drivers" ]; then
-        drivers_path="/mnt/shared-nvidia-driver-toolkit/drivers"
-    fi
-    version=$(vgpu-util match -i "${drivers_path}" -c "${drivers_path}/vgpuDriverCatalog.yaml")
-    if [ $? -ne 0 ]; then
-        echo "cannot find match for compatible vgpu driver from available list, please check /var/log/vgpu-util.log for more details..."
-        return 1
-    fi
-    DRIVER_VERSION=$(echo "$version" | awk -F= '{print $2}')
-    echo "vgpu driver version selected: ${DRIVER_VERSION}"
-    return 0
-}
-
-_prepare() {
-    _find_vgpu_driver_version || exit 1
-
-    # Install the userspace components and copy the kernel module sources.
-    sh "$NVRUNFILE" -x && \
-        cd "NVIDIA-Linux-$DRIVER_ARCH-$DRIVER_VERSION" && \
-        sh /tmp/install.sh nvinstall && \
-        mkdir -p "/usr/src/nvidia-$DRIVER_VERSION" && \
-        mv LICENSE mkprecompiled kernel "/usr/src/nvidia-$DRIVER_VERSION" && \
-        sed '9,${/^\(kernel\|LICENSE\)/!d}' .manifest > "/usr/src/nvidia-$DRIVER_VERSION/.manifest"
-
-    echo -e "\\n========== NVIDIA Software Installer ==========\\n"
-    echo -e "Starting installation of NVIDIA driver version ${DRIVER_VERSION} for Linux kernel version ${KERNEL_VERSION}\\n"
-}
-
 _build() {
     # Install dependencies
     if _kernel_requires_package; then
@@ -359,14 +308,10 @@ _load() {
 }
 
 build() {
-    _prepare
-
     _build
 }
 
 load() {
-    _prepare
-
     _load
 }
 
@@ -375,8 +320,6 @@ update() {
 }
 
 init() {
-    _prepare
-
     trap "echo 'Caught signal'; exit 1" HUP INT QUIT PIPE TERM
     trap "_shutdown" EXIT
 
