@@ -95,6 +95,13 @@ _install_prerequisites() (
         exit 1
     fi
 
+    # kernel-module-extra contains pci-pf-stub which is required when enabling SR-IOV on a physical GPU
+    echo "Installing kernel-modules-extra..."
+    if ! dnf install -q -y kernel-modules-extra.$DRIVER_ARCH; then
+        echo "FATAL: failed to install kernel-module-extra package. RHEL entitlement may be improperly deployed."
+        exit 1
+    fi
+
     rm -rf /lib/modules/${KERNEL_VERSION}
     mkdir -p /lib/modules/${KERNEL_VERSION}/proc
 
@@ -143,7 +150,7 @@ _install_prerequisites() (
     local current_gcc=$(rpm -qa gcc)
     echo "kernel requires gcc version: 'gcc-${gcc_version}', current gcc version is '${current_gcc}'"
 
-    if [[ "gcc-${gcc_version}" != "${current_gcc}"* ]]; then
+    if [[ "${current_gcc}" == "" ]] || [[ "gcc-${gcc_version}" != "${current_gcc}"* ]]; then
         dnf install -q -y --releasever=${RHEL_VERSION} "gcc-${gcc_version}"
     fi
 )
@@ -284,19 +291,21 @@ _build() {
     if _kernel_requires_package; then
         _update_package_cache
         _install_prerequisites
-        _create_driver_package
+        #_create_driver_package
         #_remove_prerequisites
         _cleanup_package_cache
     fi
 
-    # Build the driver
+    # Build & install the driver
     _install_driver
+    _mount_rootfs
 }
 
 _load() {
     _load_driver
     _mount_rootfs
-    _write_kernel_update_hook
+    #_write_kernel_update_hook
+    _enable_vfs
 
     echo "Done, now waiting for signal"
     sleep infinity &

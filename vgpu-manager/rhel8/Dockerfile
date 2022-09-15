@@ -6,6 +6,15 @@ ENV DRIVER_VERSION=$DRIVER_VERSION
 ARG DRIVER_ARCH=x86_64
 ENV DRIVER_ARCH=$DRIVER_ARCH
 
+RUN dnf install -y \
+        binutils \
+        make \
+        pciutils \
+        kmod
+
+RUN curl -fsSL -o /usr/local/bin/extract-vmlinux https://raw.githubusercontent.com/torvalds/linux/master/scripts/extract-vmlinux && \
+    chmod +x /usr/local/bin/extract-vmlinux
+
 RUN mkdir -p /driver
 WORKDIR /driver
 COPY NVIDIA-Linux-${DRIVER_ARCH}-${DRIVER_VERSION}-vgpu-kvm.run .
