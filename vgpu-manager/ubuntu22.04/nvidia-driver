@@ -232,10 +232,19 @@ init() {
   _mount_rootfs
   _enable_vfs
 
+  # In certain scenarios, /sys/class/mdev_bus is not populated with the correct list of devices (PFs and possible VFs)  at this point.
+  # Re-run nvdidia-vgpud to ensure /sys/class/mdev_bus is populated correctly. And restart nvidia-vgpu-mgr if previously killed.
+  nvidia-vgpud &
+  pgrep nvidia-vgpu-mgr >/dev/null || (echo "Restarting nvidia-vgpu-mgr after previously killed" && nvidia-vgpu-mgr &)
+
+  set +x
   echo "Done, now waiting for signal"
   trap "echo 'Caught signal'; _shutdown; trap - EXIT; exit" HUP INT QUIT PIPE TERM
 
-  while true; do sleep 15 ; /usr/bin/pgrep nvidia-vgpu-mgr ; if [ $? -ne 0 ] ; then echo "nvidia-vgpu-mgr is not running" && exit 1; fi; done
+  while true; do
+      sleep 15
+      pgrep nvidia-vgpu-mgr >/dev/null || (echo "ERROR: nvidia-vgpu-mgr daemon is no longer running. Exiting." && exit 1)
+  done
 }
 
 
