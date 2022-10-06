@@ -19,8 +19,8 @@ default:
       command: ["--experimental"]
 
 variables:
-  DRIVER_VERSIONS: 450.203.03 470.141.03 510.85.02 515.65.01
-  BUILD_MULTI_ARCH_IMAGES: "true"
+  DRIVER_VERSIONS: 520.61.05
+  BUILD_MULTI_ARCH_IMAGES: "false"
 
 stages:
   - image-build
@@ -32,7 +32,7 @@ stages:
 .driver-versions:
   parallel:
     matrix:
-      - DRIVER_VERSION: [450.203.03, 470.141.03, 510.85.02, 515.65.01]
+      - DRIVER_VERSION: [520.61.05]
 
 # Define the distribution targets
 .dist-ubuntu18.04:
