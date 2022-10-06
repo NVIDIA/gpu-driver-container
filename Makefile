@@ -67,11 +67,13 @@ DRIVER_ARCHIVE_TARGETS := $(foreach archive_target, $(ARCHIVE_TARGETS), $(addpre
 
 PHONY: $(DISTRIBUTIONS) $(PUSH_TARGETS) $(BUILD_TARGETS) $(TEST_TARGETS) $(PULL_TARGETS) $(ARCHIVE_TARGETS) $(DRIVER_PUSH_TARGETS) $(DRIVER_BUILD_TARGETS) $(DRIVER_PULL_TARGETS) $(DRIVER_ARCHIVE_TARGETS)
 
-ifeq ($(BUILD_MULTI_ARCH_IMAGES),true)
+#ifeq ($(BUILD_MULTI_ARCH_IMAGES),true)
+#include $(CURDIR)/multi-arch.mk
+#else
+#include $(CURDIR)/native-only.mk
+#endif
+
 include $(CURDIR)/multi-arch.mk
-else
-include $(CURDIR)/native-only.mk
-endif
 
 pull-%: DIST = $(word 2,$(subst -, ,$@))
 pull-%: DRIVER_VERSION = $(word 3,$(subst -, ,$@))
