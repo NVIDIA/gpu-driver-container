@@ -49,8 +49,9 @@ variables:
     OUT_REGISTRY: "${CI_REGISTRY}"
     OUT_IMAGE_NAME: "${CI_REGISTRY_IMAGE}"
   # We delay the job start to allow the public pipeline to generate the required images.
-  when: delayed
-  start_in: 30 minutes
+  rules:
+    - when: delayed
+      start_in: 30 minutes
   timeout: 30 minutes
   retry:
     max: 2
@@ -118,10 +119,8 @@ image-centos7:
   variables:
     IMAGE_NAME: "${CI_REGISTRY_IMAGE}"
     VERSION: "${STAGING_VERSION}"
-  except:
-    variables:
-    - $CI_COMMIT_MESSAGE =~ /\[skip[ _-]scans?\]/i
-    - $SKIP_SCANS && $SKIP_SCANS == "yes"
+  rules:
+    - if: $SKIP_SCANS != "yes"
   before_script:
     # We ensure that the DRIVER_VERSION and PLATFORM are set
     - 'echo DRIVER_VERSION: ${DRIVER_VERSION} ; [[ -n "${DRIVER_VERSION}" ]] || exit 1'

@@ -28,6 +28,16 @@ stages:
   - scan
   - release
 
+.default-rules:
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"
+    - if: $CI_COMMIT_TAG && $CI_COMMIT_TAG != ""
+    - if: $SRC_DIR && $SRC_DIR != ""
+      changes:
+        - "${SRC_DIR}/*"
+    - if: $CI_PIPELINE_SOURCE == "web" || $CI_PIPELINE_SOURCE == "schedule"
+      when: manual
+
 # Define the driver versions for jobs that can be run in parallel
 .driver-versions:
   parallel:
@@ -38,38 +48,63 @@ stages:
 .dist-ubuntu18.04:
   variables:
     DIST: ubuntu18.04
+    SRC_DIR: ubuntu18.04
 
 .dist-ubuntu20.04:
+  rules:
+    - !reference [.default-rules, rules]
   variables:
     DIST: ubuntu20.04
+    SRC_DIR: ubuntu20.04
 
 .dist-ubuntu22.04:
+  rules:
+    - !reference [.default-rules, rules]
   variables:
     DIST: ubuntu22.04
+    SRC_DIR: ubuntu22.04
 
 .dist-signed-ubuntu20.04:
+  rules:
+    - !reference [.default-rules, rules]
   variables:
     DIST: signed_ubuntu20.04
+    SRC_DIR: ubuntu20.04/precompiled
 
 .dist-signed-ubuntu22.04:
+  rules:
+    - !reference [.default-rules, rules]
   variables:
     DIST: signed_ubuntu22.04
+    SRC_DIR: ubuntu22.04/precompiled
 
 .dist-rhcos4.9:
+  rules:
+    - !reference [.default-rules, rules]
   variables:
     DIST: rhcos4.9
+    SRC_DIR: rhel8
 
 .dist-rhcos4.10:
+  rules:
+    - !reference [.default-rules, rules]
   variables:
     DIST: rhcos4.10
+    SRC_DIR: rhel8
 
 .dist-centos7:
+  rules:
+    - !reference [.default-rules, rules]
   variables:
     DIST: centos7
+    SRC_DIR: centos7
 
 .dist-fedora36:
+  rules:
+    - !reference [.default-rules, rules]
   variables:
     DIST: fedora36
+    SRC_DIR: fedora
 
 # Define the platform targets
 .platform-amd64:
