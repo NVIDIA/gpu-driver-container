@@ -98,6 +98,11 @@ dtk-build-driver() {
 
     export PATH="${DRIVER_TOOLKIT_SHARED_DIR}/bin:$PATH";
 
+    # ensure lspci is installed, as 'sriov-manage' script requires it
+    if ! $(lspci >/dev/null); then
+      dnf install -y pciutils && rm -rf /var/cache/yum/*
+    fi
+
     # upon catching a signal, terminate child process to trigger driver cleanup
     trap 'echo "Caught signal"; kill "${child_pid}"; wait "${child_pid}"; exit' HUP INT QUIT PIPE TERM
     cd "${DRIVER_TOOLKIT_SHARED_DIR}/driver";
