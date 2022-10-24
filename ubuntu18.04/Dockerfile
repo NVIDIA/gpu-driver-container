@@ -26,9 +26,7 @@ RUN dpkg --add-architecture i386 && \
         libc6:i386 \
         libelf-dev \
         libglvnd-dev \
-        pkg-config \
-        nvidia-fabricmanager-${DRIVER_BRANCH}=${DRIVER_VERSION}-1 \
-        libnvidia-nscq-${DRIVER_BRANCH}=${DRIVER_VERSION}-1 && \
+        pkg-config && \
     rm -rf /var/lib/apt/lists/*
 
 RUN echo "deb [arch=amd64] http://archive.ubuntu.com/ubuntu/ bionic main universe" > /etc/apt/sources.list && \
