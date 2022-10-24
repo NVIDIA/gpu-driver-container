@@ -69,17 +69,17 @@ RUN if [ "$DRIVER_TYPE" != "vgpu" ]; then \
     chmod +x  NVIDIA-Linux-$DRIVER_ARCH-$DRIVER_VERSION.run; fi
 
 # Install fabric-manager packages
-RUN if [ "$DRIVER_TYPE" != "vgpu" ] && [ "$TARGETARCH" != "arm64" ]; then \
-    versionArray=(${DRIVER_VERSION//./ }); \
-    DRIVER_BRANCH=${versionArray[0]}; \
-    if [ ${versionArray[0]} -ge 470 ] || ([ ${versionArray[0]} == 460 ] && [ ${versionArray[1]} -ge 91 ]); then \
-      fmPackage=nvidia-fabric-manager-${DRIVER_VERSION}-1; \
-    else \
-      fmPackage=nvidia-fabricmanager-${DRIVER_BRANCH}-${DRIVER_VERSION}-1; \
-    fi; \
-    nscqPackage=libnvidia-nscq-${DRIVER_BRANCH}-${DRIVER_VERSION}-1; \
-    dnf module enable -y nvidia-driver:${DRIVER_BRANCH} && \
-    dnf install -y ${fmPackage} ${nscqPackage}; fi
+#RUN if [ "$DRIVER_TYPE" != "vgpu" ] && [ "$TARGETARCH" != "arm64" ]; then \
+#    versionArray=(${DRIVER_VERSION//./ }); \
+#    DRIVER_BRANCH=${versionArray[0]}; \
+#    if [ ${versionArray[0]} -ge 470 ] || ([ ${versionArray[0]} == 460 ] && [ ${versionArray[1]} -ge 91 ]); then \
+#      fmPackage=nvidia-fabric-manager-${DRIVER_VERSION}-1; \
+#    else \
+#      fmPackage=nvidia-fabricmanager-${DRIVER_BRANCH}-${DRIVER_VERSION}-1; \
+#    fi; \
+#    nscqPackage=libnvidia-nscq-${DRIVER_BRANCH}-${DRIVER_VERSION}-1; \
+#    dnf module enable -y nvidia-driver:${DRIVER_BRANCH} && \
+#    dnf install -y ${fmPackage} ${nscqPackage}; fi
 
 COPY nvidia-driver /usr/local/bin
 COPY ocp_dtk_entrypoint /usr/local/bin

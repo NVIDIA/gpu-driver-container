@@ -19,7 +19,7 @@ default:
       command: ["--experimental"]
 
 variables:
-  DRIVER_VERSIONS: 450.203.03 470.141.03 510.85.02 515.65.01
+  DRIVER_VERSIONS: 520.61.07
   BUILD_MULTI_ARCH_IMAGES: "true"
 
 stages:

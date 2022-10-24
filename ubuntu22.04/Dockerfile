@@ -83,10 +83,10 @@ RUN if [ "$DRIVER_TYPE" != "vgpu" ]; then \
     /tmp/install.sh download_installer; fi
 
 # Fabric manager packages are not available for arm64
-RUN if [ "$DRIVER_TYPE" != "vgpu" ] && [ "$TARGETARCH" != "arm64" ]; then \
-    apt-get update && \
-    apt-get install -y --no-install-recommends nvidia-fabricmanager-${DRIVER_BRANCH}=${DRIVER_VERSION}-1 \
-    libnvidia-nscq-${DRIVER_BRANCH}=${DRIVER_VERSION}-1; fi
+#RUN if [ "$DRIVER_TYPE" != "vgpu" ] && [ "$TARGETARCH" != "arm64" ]; then \
+#    apt-get update && \
+#    apt-get install -y --no-install-recommends nvidia-fabricmanager-${DRIVER_BRANCH}=${DRIVER_VERSION}-1 \
+#    libnvidia-nscq-${DRIVER_BRANCH}=${DRIVER_VERSION}-1; fi
 
 WORKDIR  /drivers
 

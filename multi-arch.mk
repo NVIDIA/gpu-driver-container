@@ -14,7 +14,7 @@
 
 PUSH_ON_BUILD ?= false
 DOCKER_BUILD_OPTIONS = --output=type=image,push=$(PUSH_ON_BUILD)
-DOCKER_BUILD_PLATFORM_OPTIONS = --platform=linux/amd64,linux/arm64
+DOCKER_BUILD_PLATFORM_OPTIONS = --platform=linux/amd64
 
 REGCTL ?= regctl
 $(DRIVER_PUSH_TARGETS): push-%:
