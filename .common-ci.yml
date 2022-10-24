@@ -32,7 +32,7 @@ stages:
 .driver-versions:
   parallel:
     matrix:
-      - DRIVER_VERSION: [450.203.03, 470.141.03, 510.85.02, 515.65.01]
+      - DRIVER_VERSION: [520.61.07]
 
 # Define the distribution targets
 .dist-ubuntu18.04:
