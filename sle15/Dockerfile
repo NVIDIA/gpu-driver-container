@@ -1,3 +1,4 @@
+ARG SLES_VERSION
 ARG CUDA_VERSION=11.7.0
 FROM nvidia/cuda:$CUDA_VERSION-base-ubi8 as license
 
@@ -12,7 +13,7 @@ RUN git clone https://gitlab.com/nvidia/container-images/driver && \
     go build -o vgpu-util && \
     mv vgpu-util /work
 
-FROM registry.suse.com/suse/sle15:latest
+FROM registry.suse.com/suse/sle15:$SLES_VERSION
 
 #ARG BASE_URL=http://us.download.nvidia.com/XFree86/Linux-x86_64
 ARG BASE_URL=https://us.download.nvidia.com/tesla
