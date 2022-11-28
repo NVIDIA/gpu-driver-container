@@ -53,7 +53,7 @@ OUT_IMAGE_TAG = $(OUT_IMAGE_VERSION)-$(DIST)
 OUT_IMAGE = $(OUT_IMAGE_NAME):$(OUT_IMAGE_TAG)
 
 ##### Public rules #####
-DISTRIBUTIONS := ubuntu18.04 ubuntu20.04 ubuntu22.04 signed_ubuntu20.04 signed_ubuntu22.04 rhcos4.9 rhcos4.10 centos7 flatcar fedora36
+DISTRIBUTIONS := ubuntu18.04 ubuntu20.04 ubuntu22.04 signed_ubuntu20.04 signed_ubuntu22.04 rhcos4.9 rhcos4.10 centos7 flatcar fedora36 sles15.3
 PUSH_TARGETS := $(patsubst %, push-%, $(DISTRIBUTIONS))
 DRIVER_PUSH_TARGETS := $(foreach push_target, $(PUSH_TARGETS), $(addprefix $(push_target)-, $(DRIVER_VERSIONS)))
 BUILD_TARGETS := $(patsubst %, build-%, $(DISTRIBUTIONS))
@@ -144,14 +144,17 @@ $(DRIVER_BUILD_TARGETS):
 				--build-arg DRIVER_BRANCH="$(DRIVER_BRANCH)" \
 				--build-arg CUDA_VERSION="$(CUDA_VERSION)" \
 				--build-arg CVE_UPDATES="$(CVE_UPDATES)" \
+				$(DOCKER_BUILD_ARGS) \
 				--file $(DOCKERFILE) \
 				$(CURDIR)/$(SUBDIR)
 
-# Files for rhcos are in the rhel8 subdirectory
+
 build-rhcos%: SUBDIR = rhel8
 
-# Files for fcos are in the fedora subdirectory
 build-fedora%: SUBDIR = fedora
+
+build-sles15%: SUBDIR = sle15
+build-sles%: DOCKER_BUILD_ARGS = --build-arg SLES_VERSION=$(subst sles,,$(word 2,$(subst -, ,$@)))
 
 build-signed_ubuntu20.04%: DIST = signed-ubuntu20.04
 build-signed_ubuntu20.04%: SUBDIR = ubuntu20.04/precompiled
