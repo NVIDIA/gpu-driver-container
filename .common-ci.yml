@@ -34,6 +34,10 @@ stages:
     matrix:
       - DRIVER_VERSION: [450.203.03, 470.141.03, 510.85.02, 515.65.01]
 
+.ubuntu22.04-rules:
+  rules:
+    - if: $DRIVER_VERSION !~ /(^450|^470|^510)/
+
 # Define the distribution targets
 .dist-ubuntu18.04:
   variables:
@@ -44,6 +48,8 @@ stages:
     DIST: ubuntu20.04
 
 .dist-ubuntu22.04:
+  extends:
+    - .ubuntu22.04-rules
   variables:
     DIST: ubuntu22.04
 
@@ -52,6 +58,8 @@ stages:
     DIST: signed_ubuntu20.04
 
 .dist-signed-ubuntu22.04:
+  extends:
+    - .ubuntu22.04-rules
   variables:
     DIST: signed_ubuntu22.04
 
