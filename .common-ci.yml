@@ -19,7 +19,7 @@ default:
       command: ["--experimental"]
 
 variables:
-  DRIVER_VERSIONS: 450.203.03 470.141.03 510.85.02 515.65.01
+  DRIVER_VERSIONS: 450.203.03 470.141.03 510.85.02 515.65.01 525.60.13
   BUILD_MULTI_ARCH_IMAGES: "true"
 
 stages:
@@ -32,7 +32,13 @@ stages:
 .driver-versions:
   parallel:
     matrix:
-      - DRIVER_VERSION: [450.203.03, 470.141.03, 510.85.02, 515.65.01]
+      - DRIVER_VERSION: [450.203.03, 470.141.03, 510.85.02, 515.65.01, 525.60.13]
+
+# Define the driver versions for jobs that can be run in parallel for ubuntu22.04
+.driver-versions-ubuntu22.04:
+  parallel:
+    matrix:
+      - DRIVER_VERSION: [515.65.01, 525.60.13]
 
 # Define the distribution targets
 .dist-ubuntu18.04:
@@ -46,6 +52,7 @@ stages:
 .dist-ubuntu22.04:
   variables:
     DIST: ubuntu22.04
+    DRIVER_VERSIONS: 515.65.01 525.60.13
 
 .dist-signed-ubuntu20.04:
   variables:
@@ -54,6 +61,7 @@ stages:
 .dist-signed-ubuntu22.04:
   variables:
     DIST: signed_ubuntu22.04
+    DRIVER_VERSIONS: 515.65.01 525.60.13
 
 .dist-rhcos4.9:
   variables:
@@ -103,10 +111,7 @@ stages:
     - chmod a+x bin/regctl
     - export PATH=$(pwd)/bin:${PATH}
 
-.release:
-  # Perform for each DRIVER_VERSION
-  extends:
-    - .driver-versions
+.release-generic:
   stage: release
   variables:
     # Define the source image for the release
@@ -125,6 +130,18 @@ stages:
     # Since OUT_IMAGE_NAME and OUT_VERSION are set, this will push the CI image to the target
     - make push-${DIST}-${DRIVER_VERSION}
 
+.release-ubuntu22.04:
+  # Perform for each DRIVER_VERSION
+  extends:
+    - .release-generic
+    - .driver-versions-ubuntu22.04
+
+.release:
+  # Perform for each DRIVER_VERSION
+  extends:
+    - .release-generic
+    - .driver-versions
+
 # Define a staging release step that pushes an image to an internal "staging" repository
 # This is triggered for all pipelines (i.e. not only tags) to test the pipeline steps
 # outside of the release process.
@@ -137,10 +154,32 @@ stages:
     OUT_REGISTRY: "${CI_REGISTRY}"
     OUT_IMAGE_NAME: "${CI_REGISTRY_IMAGE}/staging/driver"
 
+.release:staging-ubuntu22.04:
+  extends:
+    - .release-ubuntu22.04
+  variables:
+    OUT_REGISTRY_USER: "${CI_REGISTRY_USER}"
+    OUT_REGISTRY_TOKEN: "${CI_REGISTRY_PASSWORD}"
+    OUT_REGISTRY: "${CI_REGISTRY}"
+    OUT_IMAGE_NAME: "${CI_REGISTRY_IMAGE}/staging/driver"
+
 # Define an external release step that pushes an image to an external repository.
 .release:external:
   extends:
     - .release
+  rules:
+    - if: $CI_COMMIT_TAG
+      variables:
+        VERSION: "${CI_COMMIT_TAG}"
+        OUT_VERSION: ""
+    - if: $CI_COMMIT_BRANCH == $RELEASE_DEVEL_BRANCH
+      variables:
+        VERSION: "${RELEASE_DEVEL_TAG}"
+        OUT_VERSION: "${DEVEL_RELEASE_IMAGE_VERSION}"
+
+.release:external-ubuntu22.04:
+  extends:
+    - .release-ubuntu22.04
   rules:
     - if: $CI_COMMIT_TAG
       variables:
@@ -167,7 +206,7 @@ release:staging-ubuntu20.04:
 
 release:staging-ubuntu22.04:
   extends:
-    - .release:staging
+    - .release:staging-ubuntu22.04
     - .dist-ubuntu22.04
   needs:
     - image-ubuntu22.04
@@ -181,7 +220,7 @@ release:staging-signed-ubuntu20.04:
 
 release:staging-signed-ubuntu22.04:
   extends:
-    - .release:staging
+    - .release:staging-ubuntu22.04
     - .dist-signed-ubuntu22.04
   needs:
     - image-signed-ubuntu22.04
