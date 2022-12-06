@@ -1,5 +1,5 @@
 ARG CUDA_VERSION
-FROM nvidia/cuda:${CUDA_VERSION}-base-ubuntu20.04 as build
+FROM nvidia/cuda:${CUDA_VERSION}-base-ubuntu22.04 as build
 
 ARG TARGETARCH
 
@@ -8,7 +8,7 @@ SHELL ["/bin/bash", "-c"]
 RUN echo 'debconf debconf/frontend select Noninteractive' | debconf-set-selections
 
 # Remove cuda repository to avoid GPG errors
-RUN rm /etc/apt/sources.list.d/cuda.list
+RUN rm -f /etc/apt/sources.list.d/cuda*
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
         apt-utils \
@@ -34,7 +34,7 @@ RUN git clone https://gitlab.com/nvidia/container-images/driver && \
     go build -o vgpu-util && \
     mv vgpu-util /work
 
-FROM nvidia/cuda:${CUDA_VERSION}-base-ubuntu20.04
+FROM nvidia/cuda:${CUDA_VERSION}-base-ubuntu22.04
 
 SHELL ["/bin/bash", "-c"]
 
@@ -101,7 +101,7 @@ RUN if [ -n "${CVE_UPDATES}" ]; then \
     fi
 
 # Remove cuda repository to avoid GPG errors
-RUN rm /etc/apt/sources.list.d/cuda.list
+RUN rm -f /etc/apt/sources.list.d/cuda*
 
 # Add NGC DL license from the CUDA image
 RUN mkdir /licenses && mv /NGC-DL-CONTAINER-LICENSE /licenses/NGC-DL-CONTAINER-LICENSE
