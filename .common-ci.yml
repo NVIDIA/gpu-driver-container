@@ -53,6 +53,7 @@ stages:
   variables:
     DIST: ubuntu22.04
     DRIVER_VERSIONS: 515.86.01 525.60.13
+    CVE_UPDATES: "openssl"
 
 .dist-signed-ubuntu20.04:
   variables:
@@ -62,6 +63,7 @@ stages:
   variables:
     DIST: signed_ubuntu22.04
     DRIVER_VERSIONS: 515.86.01 525.60.13
+    CVE_UPDATES: "openssl"
 
 .dist-rhcos4.9:
   variables:
