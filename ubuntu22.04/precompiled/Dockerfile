@@ -1,5 +1,5 @@
 ARG CUDA_VERSION
-FROM nvidia/cuda:${CUDA_VERSION}-base-ubuntu20.04
+FROM nvidia/cuda:${CUDA_VERSION}-base-ubuntu22.04
 
 ENV DEBIAN_FRONTEND=noninteractive
 
@@ -49,6 +49,6 @@ RUN if [ -n "${CVE_UPDATES}" ]; then \
     fi
 
 # Remove cuda repository to avoid GPG errors
-RUN rm /etc/apt/sources.list.d/cuda.list
+RUN rm -f /etc/apt/sources.list.d/cuda*
 
 ENTRYPOINT ["nvidia-driver", "init"]
