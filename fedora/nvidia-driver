@@ -144,7 +144,7 @@ _install_prerequisites() (
     local gcc_version=$(cat /lib/modules/${KERNEL_VERSION}/proc/version | grep -Eo "Red Hat ([0-9\.-]+)"  | grep -Eo "([0-9\.-]+)").${KERNEL_OS_VERSION}.${KERNEL_RPM_ARCH}
     local current_gcc=$(rpm -qa gcc)
 
-    if [[ "gcc-${gcc_version}" != "${current_gcc}" ]]; then
+    if ! [[ "${current_gcc}" =~ "gcc-${gcc_version}"-.* ]]; then
         echo "kernel requires gcc version: 'gcc-${gcc_version}', current gcc version is '${current_gcc}'"
         # Sometimes there are -v differences in the x.y.z-v gcc versions available.
         # So we try, but allow failure of installation of precise gcc version.
