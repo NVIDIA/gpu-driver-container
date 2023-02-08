@@ -44,10 +44,12 @@ stages:
 .dist-ubuntu18.04:
   variables:
     DIST: ubuntu18.04
+    CVE_UPDATES: "openssl"
 
 .dist-ubuntu20.04:
   variables:
     DIST: ubuntu20.04
+    CVE_UPDATES: "openssl"
 
 .dist-ubuntu22.04:
   variables:
@@ -58,6 +60,7 @@ stages:
 .dist-signed-ubuntu20.04:
   variables:
     DIST: signed_ubuntu20.04
+    CVE_UPDATES: "openssl"
 
 .dist-signed-ubuntu22.04:
   variables:
