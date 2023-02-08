@@ -38,7 +38,7 @@ stages:
 .driver-versions-ubuntu22.04:
   parallel:
     matrix:
-      - DRIVER_VERSION: [515.86.01, 525.60.13]
+      - DRIVER_VERSION: [515.86.01, 525.85.12]
 
 # Define the distribution targets
 .dist-ubuntu18.04:
@@ -54,7 +54,6 @@ stages:
 .dist-ubuntu22.04:
   variables:
     DIST: ubuntu22.04
-    DRIVER_VERSIONS: 515.86.01 525.60.13
     CVE_UPDATES: "openssl"
 
 .dist-signed-ubuntu20.04:
@@ -65,7 +64,6 @@ stages:
 .dist-signed-ubuntu22.04:
   variables:
     DIST: signed_ubuntu22.04
-    DRIVER_VERSIONS: 515.86.01 525.60.13
     CVE_UPDATES: "openssl"
 
 .dist-rhcos4.9:
