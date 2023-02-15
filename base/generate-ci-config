@@ -1,0 +1,61 @@
+#!/bin/bash
+
+set -x
+set -e
+
+CI_CONFIG_FILE="/opt/precompiled/generated-ci-config.yaml"
+
+# Supported NVIDIA driver versions
+# DRIVER_VERSIONS="470.161.03 510.108.03 515.86.01 525.60.13"
+
+# Ubuntu  Flavors
+# Ubuntu focal = 20.04
+# Ubuntu Jammy = 22.04
+UBUNTU_FLAVORS="focal jammy"
+# Ubuntu LTS kernels currently are 5.13 and 5.13 
+# see https://ubuntu.com/about/release-cycle#ubuntu-kernel-release-cycle
+LTS_KERNEL="5.15"
+SUPPORTED_KERNELS=""
+
+flavor=$1
+if [ -z "$flavor" ]; then
+  echo "Error: flavor is missing" >&2
+  exit 1
+fi
+
+if [[ ! $UBUNTU_FLAVORS =~ (^|[[:space:]])$flavor($|[[:space:]]) ]]; then
+  echo "Error: flavor $flavor is not supported" >&2
+  exit 1
+fi 
+
+if [[ $flavor == "focal" ]] ; then
+  LTS_KERNEL="hwe-$LTS_KERNEL"
+fi
+
+apt update -y
+git ls-remote --tags https://git.launchpad.net/~ubuntu-kernel/ubuntu/+source/linux/+git/${flavor} \
+  |grep Ubuntu-${LTS_KERNEL} |grep -v {} |tail -5 |awk '{ print $2 }' > /tmp/${flavor}_tags.txt
+apt list linux-objects-nvidia-* > /tmp/linux-objects-nvidia-list.txt
+
+set +e
+for i in $(cat /tmp/${flavor}_tags.txt); do
+  if [[ $flavor == "focal" ]] ; then
+    kernel=$(echo $i | awk -F'-' '{print $4"-"$5}' |cut -c 1-9)
+  else
+    kernel=$(echo $i | awk -F'-' '{print $2"-"$3}' |cut -c 1-9)
+  fi
+  check=$(cat /tmp/linux-objects-nvidia-list.txt | grep $kernel)
+  if [ $? -ne 0 ]; then
+    echo "Error: $Kernel not supported" >&2
+    continue
+  fi
+  echo "Kernel $kernel is supported"
+  if [[ $SUPPORTED_KERNELS == "" ]]; then
+    SUPPORTED_KERNELS="$kernel"
+  else
+    SUPPORTED_KERNELS="$SUPPORTED_KERNELS, $kernel"
+  fi
+done
+
+# Edit CI_CONFIG_FILE KERNEL_VERSION to add new kernels from SUPPORTED_KERNELS in between []
+sed -i "s/KERNEL_VERSION:.*/KERNEL_VERSION: [$SUPPORTED_KERNELS]/" $CI_CONFIG_FILE

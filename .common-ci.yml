@@ -1,4 +1,4 @@
-# Copyright (c) 2022, NVIDIA CORPORATION.  All rights reserved.
+# Copyright (c) NVIDIA CORPORATION.  All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -23,63 +23,69 @@ variables:
   BUILD_MULTI_ARCH_IMAGES: "true"
 
 stages:
+  - generate
   - image-build
-  - test
-  - scan
-  - release
+#  - test
+#  - scan
+#  - release
 
-# Define the driver versions for jobs that can be run in parallel
-.driver-versions:
+.base-flavors:
   parallel:
     matrix:
-      - DRIVER_VERSION: [450.216.04, 470.161.03, 510.108.03, 515.86.01, 525.60.13]
+      - BASE_TARGET: [jammy, focal]
 
-# Define the driver versions for jobs that can be run in parallel for ubuntu22.04
-.driver-versions-ubuntu22.04:
-  parallel:
-    matrix:
-      - DRIVER_VERSION: [515.86.01, 525.60.13]
-
-# Define the distribution targets
-.dist-ubuntu18.04:
-  variables:
-    DIST: ubuntu18.04
-
-.dist-ubuntu20.04:
-  variables:
-    DIST: ubuntu20.04
-
-.dist-ubuntu22.04:
-  variables:
-    DIST: ubuntu22.04
-    DRIVER_VERSIONS: 515.86.01 525.60.13
-    CVE_UPDATES: "openssl"
-
-.dist-signed-ubuntu20.04:
-  variables:
-    DIST: signed_ubuntu20.04
-
-.dist-signed-ubuntu22.04:
-  variables:
-    DIST: signed_ubuntu22.04
-    DRIVER_VERSIONS: 515.86.01 525.60.13
-    CVE_UPDATES: "openssl"
-
-.dist-rhcos4.9:
-  variables:
-    DIST: rhcos4.9
-
-.dist-rhcos4.10:
-  variables:
-    DIST: rhcos4.10
-
-.dist-centos7:
-  variables:
-    DIST: centos7
-
-.dist-fedora36:
-  variables:
-    DIST: fedora36
+## Define the driver versions for jobs that can be run in parallel
+#.driver-versions:
+#  parallel:
+#    matrix:
+#      - DRIVER_VERSION: [450.216.04, 470.161.03, 510.108.03, 515.86.01, 525.60.13]
+#
+## Define the driver versions for jobs that can be run in parallel for ubuntu22.04
+#.driver-versions-ubuntu22.04:
+#  parallel:
+#    matrix:
+#      - DRIVER_VERSION: [515.86.01, 525.60.13]
+ 
+## Define the distribution targets
+#.dist-ubuntu18.04:
+#  variables:
+#    DIST: ubuntu18.04
+#
+#.dist-ubuntu20.04:
+#  variables:
+#    DIST: ubuntu20.04
+#
+#.dist-ubuntu22.04:
+#  variables:
+#    DIST: ubuntu22.04
+#    DRIVER_VERSIONS: 515.86.01 525.60.13
+#    CVE_UPDATES: "openssl"
+#
+#.dist-signed-ubuntu20.04:
+#  variables:
+#    DIST: signed_ubuntu20.04
+#
+#.dist-signed-ubuntu22.04:
+#  variables:
+#    DIST: signed_ubuntu22.04
+#    DRIVER_VERSIONS: 515.86.01 525.60.13
+#    CVE_UPDATES: "openssl"
+#
+#.dist-rhcos4.9:
+#  variables:
+#    DIST: rhcos4.9
+#
+#.dist-rhcos4.10:
+#  variables:
+#    DIST: rhcos4.10
+#
+#.dist-centos7:
+#  variables:
+#    DIST: centos7
+#
+#.dist-fedora36:
+#  variables:
+#    DIST: fedora36
 
 # Define the platform targets
 .platform-amd64:
@@ -103,147 +109,147 @@ stages:
 
     -  '[[ -n "${SKIP_QEMU_SETUP}" ]] || docker run --rm --privileged multiarch/qemu-user-static --reset -p yes'
 
-# Download the regctl binary for use in the release steps
-.regctl-setup:
-  before_script:
-    - export REGCTL_VERSION=v0.3.10
-    - apk add --no-cache curl
-    - mkdir -p bin
-    - curl -sSLo bin/regctl https://github.com/regclient/regclient/releases/download/${REGCTL_VERSION}/regctl-linux-amd64
-    - chmod a+x bin/regctl
-    - export PATH=$(pwd)/bin:${PATH}
-
-.release-generic:
-  stage: release
-  variables:
-    # Define the source image for the release
-    IMAGE_NAME: "${CI_REGISTRY_IMAGE}"
-    VERSION: "${CI_COMMIT_SHORT_SHA}"
-    # OUT_VERSION is overridden for external releases
-    OUT_VERSION: "${CI_COMMIT_SHORT_SHA}"
-  before_script:
-    - !reference [.regctl-setup, before_script]
-    - apk add --no-cache make bash
-  script:
-    - 'echo "Logging in to CI registry ${CI_REGISTRY}"'
-    - regctl registry login "${CI_REGISTRY}" -u "${CI_REGISTRY_USER}" -p "${CI_REGISTRY_PASSWORD}"
-    - '[ ${CI_REGISTRY} = ${OUT_REGISTRY} ] || echo "Logging in to output registry ${OUT_REGISTRY}"'
-    - '[ ${CI_REGISTRY} = ${OUT_REGISTRY} ] || regctl registry login "${OUT_REGISTRY}" -u "${OUT_REGISTRY_USER}" -p "${OUT_REGISTRY_TOKEN}"'
-    # Since OUT_IMAGE_NAME and OUT_VERSION are set, this will push the CI image to the target
-    - make push-${DIST}-${DRIVER_VERSION}
-
-.release-ubuntu22.04:
-  # Perform for each DRIVER_VERSION
-  extends:
-    - .release-generic
-    - .driver-versions-ubuntu22.04
-
-.release:
-  # Perform for each DRIVER_VERSION
-  extends:
-    - .release-generic
-    - .driver-versions
-
-# Define a staging release step that pushes an image to an internal "staging" repository
-# This is triggered for all pipelines (i.e. not only tags) to test the pipeline steps
-# outside of the release process.
-.release:staging:
-  extends:
-    - .release
-  variables:
-    OUT_REGISTRY_USER: "${CI_REGISTRY_USER}"
-    OUT_REGISTRY_TOKEN: "${CI_REGISTRY_PASSWORD}"
-    OUT_REGISTRY: "${CI_REGISTRY}"
-    OUT_IMAGE_NAME: "${CI_REGISTRY_IMAGE}/staging/driver"
-
-.release:staging-ubuntu22.04:
-  extends:
-    - .release-ubuntu22.04
-  variables:
-    OUT_REGISTRY_USER: "${CI_REGISTRY_USER}"
-    OUT_REGISTRY_TOKEN: "${CI_REGISTRY_PASSWORD}"
-    OUT_REGISTRY: "${CI_REGISTRY}"
-    OUT_IMAGE_NAME: "${CI_REGISTRY_IMAGE}/staging/driver"
-
-# Define an external release step that pushes an image to an external repository.
-.release:external:
-  extends:
-    - .release
-  rules:
-    - if: $CI_COMMIT_TAG
-      variables:
-        VERSION: "${CI_COMMIT_TAG}"
-        OUT_VERSION: ""
-    - if: $CI_COMMIT_BRANCH == $RELEASE_DEVEL_BRANCH
-      variables:
-        VERSION: "${RELEASE_DEVEL_TAG}"
-        OUT_VERSION: "${DEVEL_RELEASE_IMAGE_VERSION}"
-
-.release:external-ubuntu22.04:
-  extends:
-    - .release-ubuntu22.04
-  rules:
-    - if: $CI_COMMIT_TAG
-      variables:
-        VERSION: "${CI_COMMIT_TAG}"
-        OUT_VERSION: ""
-    - if: $CI_COMMIT_BRANCH == $RELEASE_DEVEL_BRANCH
-      variables:
-        VERSION: "${RELEASE_DEVEL_TAG}"
-        OUT_VERSION: "${DEVEL_RELEASE_IMAGE_VERSION}"
-
-release:staging-ubuntu18.04:
-  extends:
-    - .release:staging
-    - .dist-ubuntu18.04
-  needs:
-    - image-ubuntu18.04
-
-release:staging-ubuntu20.04:
-  extends:
-    - .release:staging
-    - .dist-ubuntu20.04
-  needs:
-    - image-ubuntu20.04
-
-release:staging-ubuntu22.04:
-  extends:
-    - .release:staging-ubuntu22.04
-    - .dist-ubuntu22.04
-  needs:
-    - image-ubuntu22.04
-
-release:staging-signed-ubuntu20.04:
-  extends:
-    - .release:staging
-    - .dist-signed-ubuntu20.04
-  needs:
-    - image-signed-ubuntu20.04
-
-release:staging-signed-ubuntu22.04:
-  extends:
-    - .release:staging-ubuntu22.04
-    - .dist-signed-ubuntu22.04
-  needs:
-    - image-signed-ubuntu22.04
-
-release:staging-rhcos4.9:
-  extends:
-    - .release:staging
-    - .dist-rhcos4.9
-  needs:
-    - image-rhcos4.9
-
-release:staging-rhcos4.10:
-  extends:
-    - .release:staging
-    - .dist-rhcos4.10
-  needs:
-    - image-rhcos4.10
-
-release:staging-centos7:
-  extends:
-    - .release:staging
-    - .dist-centos7
-  needs:
-    - image-centos7
+## Download the regctl binary for use in the release steps
+#.regctl-setup:
+#  before_script:
+#    - export REGCTL_VERSION=v0.3.10
+#    - apk add --no-cache curl
+#    - mkdir -p bin
+#    - curl -sSLo bin/regctl https://github.com/regclient/regclient/releases/download/${REGCTL_VERSION}/regctl-linux-amd64
+#    - chmod a+x bin/regctl
+#    - export PATH=$(pwd)/bin:${PATH}
+#
+#.release-generic:
+#  stage: release
+#  variables:
+#    # Define the source image for the release
+#    IMAGE_NAME: "${CI_REGISTRY_IMAGE}"
+#    VERSION: "${CI_COMMIT_SHORT_SHA}"
+#    # OUT_VERSION is overridden for external releases
+#    OUT_VERSION: "${CI_COMMIT_SHORT_SHA}"
+#  before_script:
+#    - !reference [.regctl-setup, before_script]
+#    - apk add --no-cache make bash
+#  script:
+#    - 'echo "Logging in to CI registry ${CI_REGISTRY}"'
+#    - regctl registry login "${CI_REGISTRY}" -u "${CI_REGISTRY_USER}" -p "${CI_REGISTRY_PASSWORD}"
+#    - '[ ${CI_REGISTRY} = ${OUT_REGISTRY} ] || echo "Logging in to output registry ${OUT_REGISTRY}"'
+#    - '[ ${CI_REGISTRY} = ${OUT_REGISTRY} ] || regctl registry login "${OUT_REGISTRY}" -u "${OUT_REGISTRY_USER}" -p "${OUT_REGISTRY_TOKEN}"'
+#    # Since OUT_IMAGE_NAME and OUT_VERSION are set, this will push the CI image to the target
+#    - make push-${DIST}-${DRIVER_VERSION}
+#
+#.release-ubuntu22.04:
+#  # Perform for each DRIVER_VERSION
+#  extends:
+#    - .release-generic
+#    - .driver-versions-ubuntu22.04
+#
+#.release:
+#  # Perform for each DRIVER_VERSION
+#  extends:
+#    - .release-generic
+#    - .driver-versions
+#
+## Define a staging release step that pushes an image to an internal "staging" repository
+## This is triggered for all pipelines (i.e. not only tags) to test the pipeline steps
+## outside of the release process.
+#.release:staging:
+#  extends:
+#    - .release
+#  variables:
+#    OUT_REGISTRY_USER: "${CI_REGISTRY_USER}"
+#    OUT_REGISTRY_TOKEN: "${CI_REGISTRY_PASSWORD}"
+#    OUT_REGISTRY: "${CI_REGISTRY}"
+#    OUT_IMAGE_NAME: "${CI_REGISTRY_IMAGE}/staging/driver"
+#
+#.release:staging-ubuntu22.04:
+#  extends:
+#    - .release-ubuntu22.04
+#  variables:
+#    OUT_REGISTRY_USER: "${CI_REGISTRY_USER}"
+#    OUT_REGISTRY_TOKEN: "${CI_REGISTRY_PASSWORD}"
+#    OUT_REGISTRY: "${CI_REGISTRY}"
+#    OUT_IMAGE_NAME: "${CI_REGISTRY_IMAGE}/staging/driver"
+#
+## Define an external release step that pushes an image to an external repository.
+#.release:external:
+#  extends:
+#    - .release
+#  rules:
+#    - if: $CI_COMMIT_TAG
+#      variables:
+#        VERSION: "${CI_COMMIT_TAG}"
+#        OUT_VERSION: ""
+#    - if: $CI_COMMIT_BRANCH == $RELEASE_DEVEL_BRANCH
+#      variables:
+#        VERSION: "${RELEASE_DEVEL_TAG}"
+#        OUT_VERSION: "${DEVEL_RELEASE_IMAGE_VERSION}"
+#
+#.release:external-ubuntu22.04:
+#  extends:
+#    - .release-ubuntu22.04
+#  rules:
+#    - if: $CI_COMMIT_TAG
+#      variables:
+#        VERSION: "${CI_COMMIT_TAG}"
+#        OUT_VERSION: ""
+#    - if: $CI_COMMIT_BRANCH == $RELEASE_DEVEL_BRANCH
+#      variables:
+#        VERSION: "${RELEASE_DEVEL_TAG}"
+#        OUT_VERSION: "${DEVEL_RELEASE_IMAGE_VERSION}"
+#
+##release:staging-ubuntu18.04:
+#  extends:
+#    - .release:staging
+#    - .dist-ubuntu18.04
+#  needs:
+#    - image-ubuntu18.04
+#
+#release:staging-ubuntu20.04:
+#  extends:
+#    - .release:staging
+#    - .dist-ubuntu20.04
+#  needs:
+#    - image-ubuntu20.04
+#
+#release:staging-ubuntu22.04:
+#  extends:
+#    - .release:staging-ubuntu22.04
+#    - .dist-ubuntu22.04
+#  needs:
+#    - image-ubuntu22.04
+#
+#release:staging-signed-ubuntu20.04:
+#  extends:
+#    - .release:staging
+#    - .dist-signed-ubuntu20.04
+#  needs:
+#    - image-signed-ubuntu20.04
+#
+#release:staging-signed-ubuntu22.04:
+#  extends:
+#    - .release:staging-ubuntu22.04
+#    - .dist-signed-ubuntu22.04
+#  needs:
+#    - image-signed-ubuntu22.04
+#
+#release:staging-rhcos4.9:
+#  extends:
+#    - .release:staging
+#    - .dist-rhcos4.9
+#  needs:
+#    - image-rhcos4.9
+#
+#release:staging-rhcos4.10:
+#  extends:
+#    - .release:staging
+#    - .dist-rhcos4.10
+#  needs:
+#    - image-rhcos4.10
+#
+#release:staging-centos7:
+#  extends:
+#    - .release:staging
+#    - .dist-centos7
+#  needs:
+#    - image-centos7
