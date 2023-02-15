@@ -44,7 +44,11 @@ include:
     - apk add --no-cache bash make
     - make base-${BASE_TARGET}
   script:
-    - docker run --rm --security-opt seccomp=unconfined registry.gitlab.com/nvidia/container-images/driver:base-${BASE_TARGET} 
+    - docker run --rm  -v $(pwd):/tmp/ --security-opt seccomp=unconfined ${CI_REGISTRY_IMAGE}:base-${BASE_TARGET}
+    - cat .${BASE_TARGET}_ci_config.yaml
+  artifacts:
+    paths:
+      - .${BASE_TARGET}_ci_config.yaml
 
 generate-precompiled-ci-config:
   extends:

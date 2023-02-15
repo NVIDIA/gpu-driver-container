@@ -59,3 +59,4 @@ done
 
 # Edit CI_CONFIG_FILE KERNEL_VERSION to add new kernels from SUPPORTED_KERNELS in between []
 sed -i "s/KERNEL_VERSION:.*/KERNEL_VERSION: [$SUPPORTED_KERNELS]/" $CI_CONFIG_FILE
+cat $CI_CONFIG_FILE > /tmp/.${flavor}_ci_config.yaml
