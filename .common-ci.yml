@@ -39,7 +39,13 @@ stages:
 #  parallel:
 #    matrix:
 #      - DRIVER_VERSION: [450.216.04, 470.161.03, 510.108.03, 515.86.01, 525.60.13]
-#
+
+# Define the driver versions for jobs that can be run in parallel for ubuntu22.04
+.driver-versions-precompiled-ubuntu:
+  parallel:
+    matrix:
+      - DRIVER_VERSION: [470.161.03, 510.108.03, 515.86.01, 525.60.13]
+
 ## Define the driver versions for jobs that can be run in parallel for ubuntu22.04
 #.driver-versions-ubuntu22.04:
 #  parallel:

@@ -16,3 +16,10 @@
   parallel:
     matrix:
       - KERNEL_VERSION:
+        DRIVER_VERSION: [470.161.03, 510.108.03, 515.86.01, 525.60.13]
+
+build:
+  stage: build
+  script:
+    - echo "Building $DRIVER_VERSION on $KERNEL_VERSION"
+  parallel: !reference [.kernel-versions,parallel]

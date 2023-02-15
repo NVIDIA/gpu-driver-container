@@ -47,6 +47,7 @@ include:
     - docker run --rm  -v $(pwd):/tmp/ --security-opt seccomp=unconfined ${CI_REGISTRY_IMAGE}:base-${BASE_TARGET}
     - cat .${BASE_TARGET}_ci_config.yaml
   artifacts:
+    expire_in: 1 week
     paths:
       - .${BASE_TARGET}_ci_config.yaml
 
@@ -54,6 +55,16 @@ generate-precompiled-ci-config:
   extends:
     - .generate-precompiled-ci-config
     - .base-flavors
+
+image-precompiled-ubuntu20.04:
+  stage: image-build
+  trigger:
+    include:
+      - artifact: .focal_ci_config.yaml
+        job: "generate-precompiled-ci-config: [focal]"
+    strategy: depend
+  variables:
+    PARENT_PIPELINE_ID: $CI_PIPELINE_ID
 
 #.image-build:
 #  # Perform for each DRIVER_VERSION
