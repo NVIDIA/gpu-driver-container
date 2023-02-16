@@ -12,68 +12,94 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-include:
-    - local: '.common-ci.yml'
+default:
+  image: docker:stable
+  services:
+    - name: docker:stable-dind
+      command: ["--experimental"]
 
-# Define the image build targets
-.image-build-generic:
-  stage: image-build
-  variables:
-    IMAGE_NAME: "${CI_REGISTRY_IMAGE}"
-    VERSION: "${CI_COMMIT_SHORT_SHA}"
-    OUT_VERSION: "${CI_COMMIT_SHORT_SHA}"
-    PUSH_ON_BUILD: "true"
-  before_script:
-    - !reference [.buildx-setup, before_script]
-    - apk add --no-cache bash make
-    - 'echo "Logging in to CI registry ${CI_REGISTRY}"'
-    - docker login -u "${CI_REGISTRY_USER}" -p "${CI_REGISTRY_PASSWORD}" "${CI_REGISTRY}"
-  script:
-    - make build-${DIST}-${DRIVER_VERSION}
+stages:
+  - generate
+  - build
+#include:
+#    - local: '.common-ci.yml'
+variables:
+  DYNAMIC_APP_VERSION: ./variables.txt
 
-# Define the image build targets
-.generate-precompiled-ci-config:
+get-version:
   stage: generate
-  variables:
-    IMAGE_NAME: "${CI_REGISTRY_IMAGE}"
-    VERSION: "${CI_COMMIT_SHORT_SHA}"
-    OUT_VERSION: "${CI_COMMIT_SHORT_SHA}"
-    PUSH_ON_BUILD: "true"
-  before_script:
-    - !reference [.buildx-setup, before_script]
-    - apk add --no-cache bash make
-    - make base-${BASE_TARGET}
   script:
-    - docker run --rm  -v $(pwd):/tmp/ --security-opt seccomp=unconfined ${CI_REGISTRY_IMAGE}:base-${BASE_TARGET}
-  artifacts:
-    expire_in: 1 week
-    paths:
-      - .${BASE_TARGET}_ci_config.yml
+    - APP_VERSION="[foo, bar]"
+    - DYNAMIC_APP_VERSION=$APP_VERSION
 
-generate-precompiled-ci-config:
-  extends:
-    - .generate-precompiled-ci-config
-    - .base-flavors
-
-image-precompiled-ubuntu20.04:
-  stage: image-build
-  trigger:
-    include:
-      - artifact: .focal_ci_config.yml
-        job: "generate-precompiled-ci-config: [focal]"
-    strategy: depend
-  variables:
-    PARENT_PIPELINE_ID: $CI_PIPELINE_ID
-
-image-precompiled-ubuntu22.04:
-  stage: image-build
-  trigger:
-    include:
-      - artifact: .jammy_ci_config.yml
-        job: "generate-precompiled-ci-config: [jammy]"
-    strategy: depend
-  variables:
-    PARENT_PIPELINE_ID: $CI_PIPELINE_ID
+print-version:
+  stage: build
+  script:
+    - echo $APP_VERSION
+  parallel:
+    matrix:
+      - APP_VERSION: $DYNAMIC_APP_VERSION
+  needs:
+    - get-version
+## Define the image build targets
+#.image-build-generic:
+#  stage: image-build
+#  variables:
+#    IMAGE_NAME: "${CI_REGISTRY_IMAGE}"
+#    VERSION: "${CI_COMMIT_SHORT_SHA}"
+#    OUT_VERSION: "${CI_COMMIT_SHORT_SHA}"
+#    PUSH_ON_BUILD: "true"
+#  before_script:
+#    - !reference [.buildx-setup, before_script]
+#    - apk add --no-cache bash make
+#    - 'echo "Logging in to CI registry ${CI_REGISTRY}"'
+#    - docker login -u "${CI_REGISTRY_USER}" -p "${CI_REGISTRY_PASSWORD}" "${CI_REGISTRY}"
+#  script:
+#    - make build-${DIST}-${DRIVER_VERSION}
+#
+## Define the image build targets
+#.generate-precompiled-ci-config:
+#  stage: generate
+#  variables:
+#    IMAGE_NAME: "${CI_REGISTRY_IMAGE}"
+#    VERSION: "${CI_COMMIT_SHORT_SHA}"
+#    OUT_VERSION: "${CI_COMMIT_SHORT_SHA}"
+#    PUSH_ON_BUILD: "true"
+#  before_script:
+#    - !reference [.buildx-setup, before_script]
+#    - apk add --no-cache bash make
+#    - make base-${BASE_TARGET}
+#  script:
+#    - docker run --rm  -v $(pwd):/tmp/ --security-opt seccomp=unconfined ${CI_REGISTRY_IMAGE}:base-${BASE_TARGET}
+#  artifacts:
+#    expire_in: 1 week
+#    paths:
+#      - .${BASE_TARGET}_ci_config.yml
+#
+#generate-precompiled-ci-config:
+#  extends:
+#    - .generate-precompiled-ci-config
+#    - .base-flavors
+#
+#image-precompiled-ubuntu20.04:
+#  stage: image-build
+#  trigger:
+#    include:
+#      - artifact: .focal_ci_config.yml
+#        job: "generate-precompiled-ci-config: [focal]"
+#    strategy: depend
+#  variables:
+#    PARENT_PIPELINE_ID: $CI_PIPELINE_ID
+#
+#image-precompiled-ubuntu22.04:
+#  stage: image-build
+#  trigger:
+#    include:
+#      - artifact: .jammy_ci_config.yml
+#        job: "generate-precompiled-ci-config: [jammy]"
+#    strategy: depend
+#  variables:
+#    PARENT_PIPELINE_ID: $CI_PIPELINE_ID
 
 #.image-build:
 #  # Perform for each DRIVER_VERSION
