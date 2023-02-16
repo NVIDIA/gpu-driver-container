@@ -22,7 +22,7 @@ RUN echo "deb [arch=amd64] http://archive.ubuntu.com/ubuntu/ jammy main universe
     usermod -o -u 0 -g 0 _apt
 
 COPY generate-ci-config /usr/local/bin/generate-ci-config
-COPY generated-ci-config.yaml /opt/precompiled/generated-ci-config.yaml
+COPY *_ci_config.yml /opt/precompiled/
 
 RUN chmod +x /usr/local/bin/generate-ci-config
 
@@ -51,7 +51,7 @@ RUN echo "deb [arch=amd64] http://archive.ubuntu.com/ubuntu/ focal main universe
     usermod -o -u 0 -g 0 _apt
 
 COPY generate-ci-config /usr/local/bin/generate-ci-config
-COPY generated-ci-config.yaml /opt/precompiled/generated-ci-config.yaml
+COPY *_ci_config.yml /opt/precompiled/
 
 RUN chmod +x /usr/local/bin/generate-ci-config
 

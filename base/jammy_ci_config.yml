@@ -12,14 +12,27 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-.kernel-versions:
+include:
+    - local: '.common-ci.yml'
+    - local: '.gitlab-ci.yml'
+
+.supported-versions:
   parallel:
     matrix:
       - KERNEL_VERSION:
-        DRIVER_VERSION: [470.161.03, 510.108.03, 515.86.01, 525.60.13]
+        DRIVER_VERSION: [515.86.01, 525.60.13]
 
-build:
-  stage: build
-  script:
-    - echo "Building $DRIVER_VERSION on $KERNEL_VERSION"
-  parallel: !reference [.kernel-versions,parallel]
+.image-build:
+  extends:
+    - .supported-versions
+    - .image-build-generic
+
+.dist-signed-ubuntu22.04:
+  variables:
+    DIST: signed_ubuntu22.04
+    CVE_UPDATES: "openssl"
+
+image-signed-ubuntu22.04:
+  extends:
+    - .dist-signed-ubuntu22.04
+    - .image-build

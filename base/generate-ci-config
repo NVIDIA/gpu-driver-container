@@ -3,8 +3,6 @@
 set -x
 set -e
 
-CI_CONFIG_FILE="/opt/precompiled/generated-ci-config.yaml"
-
 # Supported NVIDIA driver versions
 # DRIVER_VERSIONS="470.161.03 510.108.03 515.86.01 525.60.13"
 
@@ -51,12 +49,12 @@ for i in $(cat /tmp/${flavor}_tags.txt); do
   fi
   echo "Kernel $kernel is supported"
   if [[ $SUPPORTED_KERNELS == "" ]]; then
-    SUPPORTED_KERNELS="$kernel"
+    SUPPORTED_KERNELS="$kernel-generic"
   else
-    SUPPORTED_KERNELS="$SUPPORTED_KERNELS, $kernel"
+    SUPPORTED_KERNELS="$SUPPORTED_KERNELS, $kernel-generic"
   fi
 done
 
-# Edit CI_CONFIG_FILE KERNEL_VERSION to add new kernels from SUPPORTED_KERNELS in between []
-sed -i "s/KERNEL_VERSION:.*/KERNEL_VERSION: [$SUPPORTED_KERNELS]/" $CI_CONFIG_FILE
-cat $CI_CONFIG_FILE > /tmp/.${flavor}_ci_config.yaml
+## Update the CI config file
+sed -i "s/KERNEL_VERSION:.*/KERNEL_VERSION: [$SUPPORTED_KERNELS]/" /opt/precompiled/${flavor}_ci_config.yml
+cp /opt/precompiled/${flavor}_ci_config.yml /tmp/.${flavor}_ci_config.yml
