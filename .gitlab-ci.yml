@@ -66,6 +66,16 @@ image-precompiled-ubuntu20.04:
   variables:
     PARENT_PIPELINE_ID: $CI_PIPELINE_ID
 
+image-precompiled-ubuntu22.04:
+  stage: image-build
+  trigger:
+    include:
+      - artifact: .jammy_ci_config.yaml
+        job: "generate-precompiled-ci-config: [jammy]"
+    strategy: depend
+  variables:
+    PARENT_PIPELINE_ID: $CI_PIPELINE_ID
+
 #.image-build:
 #  # Perform for each DRIVER_VERSION
 #  extends:
