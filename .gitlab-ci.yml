@@ -67,15 +67,20 @@ image-signed-ubuntu20.04:
     - .image-build
     - .dist-signed-ubuntu20.04
 
-image-rhcos4.9:
-  extends:
-    - .image-build
-    - .dist-rhcos4.9
-
 image-rhcos4.10:
   extends:
     - .image-build
     - .dist-rhcos4.10
+
+image-rhcos4.11:
+  extends:
+    - .image-build
+    - .dist-rhcos4.11
+
+image-rhcos4.12:
+  extends:
+    - .image-build
+    - .dist-rhcos4.12
 
 image-centos7:
   extends:

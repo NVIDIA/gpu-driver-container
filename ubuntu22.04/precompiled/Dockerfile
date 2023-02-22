@@ -40,14 +40,13 @@ RUN echo "deb [arch=amd64] http://archive.ubuntu.com/ubuntu/ jammy main universe
 RUN curl -fsSL -o /usr/local/bin/donkey https://github.com/3XX0/donkey/releases/download/v1.1.0/donkey && \
     chmod +x /usr/local/bin/donkey
 
-# update pkg cache, install driver pkgs for kernel,
+# update pkg cache and download pkgs for driver installation during init
 RUN apt-get update && apt-get install --download-only --no-install-recommends -y linux-objects-nvidia-${DRIVER_BRANCH}-server-${KERNEL_VERSION} \
 		linux-signatures-nvidia-${KERNEL_VERSION} \
 		linux-modules-nvidia-${DRIVER_BRANCH}-server-${KERNEL_VERSION} \
 		nvidia-utils-${DRIVER_BRANCH}-server \
 		nvidia-compute-utils-${DRIVER_BRANCH}-server \
-		libnvidia-cfg1-${DRIVER_BRANCH}-server && \
-	rm -rf /var/lib/apt/lists/*
+		libnvidia-cfg1-${DRIVER_BRANCH}-server
 
 COPY nvidia-driver /usr/local/bin
 

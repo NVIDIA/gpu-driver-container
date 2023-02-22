@@ -19,7 +19,9 @@
     - make base-${BASE_TARGET}
     - docker run --rm  -v $(pwd)/output:/tmp/ --security-opt seccomp=unconfined ${CI_REGISTRY_IMAGE}:base-${BASE_TARGET}
   script:
-    - source output/kernel_version.txt && make build-${DIST}-${DRIVER_VERSION}
+    - source output/kernel_version.txt 
+    - IMG_EXIST=$(docker pull "${CI_REGISTRY_IMAGE}:$(DRIVER_VERSION)-$(KERNEL_VERSION)-$(DIST)" > /dev/null &&  echo "exists" || echo "not-exists")
+    - if [ "$IMG_EXIST" = "not-exists" ]; then make build-${DIST}-${DRIVER_VERSION}; else echo "Image already exists ${DRIVER_VERSION}-${KERNEL_VERSION}-${DIST}"; fi
   artifacts:
     expire_in: 1 week
     paths: [output/]
@@ -66,7 +68,7 @@ release:staging-precompiled-ubuntu22.04:
     - '[ ${CI_REGISTRY} = ${OUT_REGISTRY} ] || regctl registry login "${OUT_REGISTRY}" -u "${OUT_REGISTRY_USER}" -p "${OUT_REGISTRY_TOKEN}"'
     # Since OUT_IMAGE_NAME and OUT_VERSION are set, this will push the CI image to the target
     - IMG_EXIST=$(docker pull "${CI_REGISTRY_IMAGE}:$(DRIVER_VERSION)-$(KERNEL_VERSION)-$(DIST)" > /dev/null &&  echo "exists" || echo "not-exists")
-    - if [ "$IMG_EXIST" = "not-exists" ]; then make push-${DIST}-${DRIVER_VERSION}; fi
+    - if [ "$IMG_EXIST" = "not-exists" ]; then make push-${DIST}-${DRIVER_VERSION}; else echo "Image  already exists ${DRIVER_VERSION}-${KERNEL_VERSION}-${DIST}"; fi
   artifacts:
     expire_in: 1 week
     paths: [output/]
