@@ -156,11 +156,15 @@ build-fedora%: SUBDIR = fedora
 build-sles15%: SUBDIR = sle15
 build-sles%: DOCKER_BUILD_ARGS = --build-arg SLES_VERSION=$(subst sles,,$(word 2,$(subst -, ,$@)))
 
+# ubuntu20.04 Precompiled Driver
 build-signed_ubuntu20.04%: DIST = signed-ubuntu20.04
 build-signed_ubuntu20.04%: SUBDIR = ubuntu20.04/precompiled
 build-signed_ubuntu20.04%: DRIVER_TAG = $(DRIVER_BRANCH)
 
+# ubuntu22.04 Precompiled Driver
 build-signed_ubuntu22.04%: DIST = signed-ubuntu22.04
 build-signed_ubuntu22.04%: SUBDIR = ubuntu22.04/precompiled
 build-signed_ubuntu22.04%: DRIVER_TAG = $(DRIVER_BRANCH)
+build-signed_ubuntu22.04%: IMAGE_TAG = $(IMAGE_VERSION)-$(DIST)-$(KERNEL_VERSION)
+build-signed_ubuntu22.04%: DOCKER_BUILD_ARGS =  --build-arg KERNEL_VERSION="$(KERNEL_VERSION)"
 

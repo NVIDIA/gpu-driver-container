@@ -23,6 +23,7 @@ variables:
   BUILD_MULTI_ARCH_IMAGES: "true"
 
 stages:
+  - precompiled
   - image-build
   - test
   - scan
