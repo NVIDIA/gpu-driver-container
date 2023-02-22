@@ -242,7 +242,6 @@ _unmount_rootfs() {
 }
 
 init() {
-
     echo -e "\n========== NVIDIA Software Installer ==========\n"
     echo -e "Starting installation of NVIDIA driver branch ${DRIVER_BRANCH} for Linux kernel version ${KERNEL_VERSION}\n"
 

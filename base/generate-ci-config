@@ -1,0 +1,60 @@
+#!/bin/bash
+set -e
+
+# Supported NVIDIA driver versions
+DRIVER_BRANCH="${DRIVER_BRANCH:-525}"
+
+# Ubuntu  Flavors
+# Ubuntu Jammy = 22.04
+UBUNTU_FLAVORS="jammy"
+# Ubuntu LTS kernels currently are 5.13 and 5.13 
+# see https://ubuntu.com/about/release-cycle#ubuntu-kernel-release-cycle
+LTS_KERNEL="${LTS_KERNEL:-5.15}"
+SUPPORTED_KERNELS=""
+
+flavor=$1
+if [ -z "$flavor" ]; then
+  echo "Error: flavor is not specified" >&2
+  exit 1
+fi
+
+if [[ ! $UBUNTU_FLAVORS =~ (^|[[:space:]])$flavor($|[[:space:]]) ]]; then
+  echo "Error: flavor $flavor is not supported" >&2
+  exit 1
+fi 
+
+# Silent apt update
+export DEBIAN_FRONTEND=noninteractive
+apt-get update -y -qq > /dev/null
+git ls-remote --tags https://git.launchpad.net/~ubuntu-kernel/ubuntu/+source/linux/+git/${flavor} \
+  |grep Ubuntu-${LTS_KERNEL} |grep -v {} |tail -5 |awk '{ print $2 }' > /tmp/${flavor}_tags.txt
+apt-cache search linux-objects-nvidia-${DRIVER_BRANCH}-server* > /tmp/linux-objects-nvidia-list.txt
+
+set +e
+for i in $(cat /tmp/${flavor}_tags.txt); do
+  if [[ $flavor == "focal" ]] ; then
+    kernel=$(echo $i | awk -F'-' '{print $4"-"$5}' |cut -c 1-9)
+  else
+    kernel=$(echo $i | awk -F'-' '{print $2"-"$3}' |cut -c 1-9)
+  fi
+  check=$(cat /tmp/linux-objects-nvidia-list.txt | grep $kernel)
+  if [ $? -ne 0 ]; then
+    continue
+  fi
+  if [[ $SUPPORTED_KERNELS == "" ]]; then
+    SUPPORTED_KERNELS="$kernel-generic"
+  else
+    SUPPORTED_KERNELS="$SUPPORTED_KERNELS, $kernel-generic"
+  fi
+done
+
+# Grab Driver Version of nvidia-utils-525-server
+DRIVER_VERSION=$(apt-cache show nvidia-utils-525-server |grep Version |awk '{print $2}' | cut -d'-' -f1 | head -n 1)
+
+# Latest supported kernel
+SK=$(echo $SUPPORTED_KERNELS | awk '{print $NF}')
+
+echo "export KERNEL_VERSION=$SK" > /tmp/kernel_version.txt
+echo "export DRIVER_VERSION=$DRIVER_VERSION" >> /tmp/kernel_version.txt
+# Override versions.mk DRIVER_VERSIONS 
+echo "export DRIVER_VERSIONS=$DRIVER_VERSION" >> /tmp/kernel_version.txt
