@@ -395,7 +395,11 @@ _install_driver() {
 
     echo "Installing NVIDIA driver kernel modules..."
     cd /usr/src/nvidia-${DRIVER_VERSION}
-    rm -rf /lib/modules/${KERNEL_VERSION}/video
+    if [ -d /lib/modules/${KERNEL_VERSION}/kernel/drivers/video ]; then
+        rm -rf /lib/modules/${KERNEL_VERSION}/kernel/drivers/video
+    else
+        rm -rf /lib/modules/${KERNEL_VERSION}/video
+    fi
 
     if [ "${ACCEPT_LICENSE}" = "yes" ]; then
         install_args+=("--accept-license")
