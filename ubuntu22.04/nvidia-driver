@@ -36,6 +36,12 @@ _cleanup_package_cache() {
     fi
 }
 
+_update_ca_certificates() {
+    if [ ! -z "$(ls -A /usr/local/share/ca-certificates)" ]; then
+        update-ca-certificates
+    fi
+}
+
 # Resolve the kernel version to the form major.minor.patch-revision-flavor where flavor defaults to generic.
 _resolve_kernel_version() {
     local version=$(apt-cache show "linux-headers-${KERNEL_VERSION}" 2> /dev/null | \
@@ -530,6 +536,7 @@ init() {
     _unmount_rootfs
 
     if _kernel_requires_package; then
+        _update_ca_certificates
         _update_package_cache
         _resolve_kernel_version || exit 1
         _install_prerequisites
