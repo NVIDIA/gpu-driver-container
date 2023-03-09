@@ -1,4 +1,5 @@
 #!/bin/bash
+# Copyright (c) 2021-2023, NVIDIA CORPORATION. All rights reserved.
 
 DRIVER_ARCH=${TARGETARCH/amd64/x86_64} && DRIVER_ARCH=${DRIVER_ARCH/arm64/aarch64}
 echo "DRIVER_ARCH is $DRIVER_ARCH"
@@ -97,4 +98,3 @@ elif [ "$1" = "depinstall" ]; then
 else
   echo "Unknown function: $1"
 fi
-
