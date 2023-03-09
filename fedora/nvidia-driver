@@ -217,8 +217,8 @@ _create_driver_package() (
         fi
     fi
 
-    IGNORE_CC_MISMATCH=1 make -s -j SYSSRC=/lib/modules/${KERNEL_VERSION}/build nv-linux.o nv-modeset-linux.o > /dev/null
-    
+    IGNORE_CC_MISMATCH=1 make -s -e NV_EXCLUDE_KERNEL_MODULES=nvidia-drm -j SYSSRC=/lib/modules/${KERNEL_VERSION}/build nv-linux.o nv-modeset-linux.o > /dev/null
+
     echo "Relinking NVIDIA driver kernel modules..."
     rm -f nvidia.ko nvidia-modeset.ko
     ld -d -r -o nvidia.ko ./nv-linux.o ./nvidia/nv-kernel.o_binary
@@ -450,6 +450,7 @@ _install_driver() {
     if [ "${ACCEPT_LICENSE}" = "yes" ]; then
         install_args+=("--accept-license")
     fi
+
     IGNORE_CC_MISMATCH=1 nvidia-installer --kernel-module-only --no-drm --ui=none --no-nouveau-check ${install_args[@]+"${install_args[@]}"}
     # May need to add no-cc-check for Rhel, otherwise it complains about cc missing in path
     # /proc/version and lib/modules/KERNEL_VERSION/proc are different, by default installer looks at /proc/ so, added the proc-mount-point
