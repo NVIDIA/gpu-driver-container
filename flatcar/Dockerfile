@@ -1,4 +1,4 @@
-FROM nvidia/cuda:11.4.1-base-ubuntu18.04
+FROM nvidia/cuda:11.7.1-base-ubuntu22.04
 
 ENV NVIDIA_VISIBLE_DEVICES=void
 
@@ -19,13 +19,13 @@ RUN dpkg --add-architecture i386 && \
         libc6:i386 \
         libelf-dev \
         libssl-dev \
-        module-init-tools \
+        fdisk \
         software-properties-common && \
     rm -rf /var/lib/apt/lists/*
 
-RUN echo "deb [arch=amd64] http://archive.ubuntu.com/ubuntu/ bionic main" > /etc/apt/sources.list && \
-    echo "deb [arch=amd64] http://archive.ubuntu.com/ubuntu/ bionic-updates main" >> /etc/apt/sources.list && \
-    echo "deb [arch=amd64] http://archive.ubuntu.com/ubuntu/ bionic-security main" >> /etc/apt/sources.list && \
+RUN echo "deb [arch=amd64] http://archive.ubuntu.com/ubuntu/ jammy main" > /etc/apt/sources.list && \
+    echo "deb [arch=amd64] http://archive.ubuntu.com/ubuntu/ jammy-updates main" >> /etc/apt/sources.list && \
+    echo "deb [arch=amd64] http://archive.ubuntu.com/ubuntu/ jammy-security main" >> /etc/apt/sources.list && \
     usermod -o -u 0 -g 0 _apt
 
 RUN curl -fsSL -o /usr/local/bin/donkey https://github.com/3XX0/donkey/releases/download/v1.1.0/donkey && \
