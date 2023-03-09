@@ -16,20 +16,20 @@
 # Fedora CoreOS (FCOS) Specific CICD
 # ******************************************************************************
 
-# This CICD script is very bespoke to producing/releasing Fedora CoreOS container 
+# This CICD script is very bespoke to producing/releasing Fedora CoreOS container
 # images with pre-built kernel packages to speed container start up times.
 # As such it presumes the existence of FCOS gitlab-runners tracking next, testing
 # and stable.  In this manner pre-built kernel packages can be created matching
 # the kernel versions running on the gitlab-runners at that particular time.
 # These gitlab runners need to be tagged: fcos-next, fcos-testing, fcos-stable.
 #
-# In terms of general operations if a repo is pointed to this CICD script then 
-# a branch without 'fedora' in its name will build one container image on a 
+# In terms of general operations if a repo is pointed to this CICD script then
+# a branch without 'fedora' in its name will build one container image on a
 # fcos-next runner for the latest targeted DRIVER_VERSION only, suffixing the
-# image tag with the git commit short SHA.  It will be pushed to the internal 
-# gitlab project container registry. The release stage will run but will again 
-# target the internal gitlab registry conditionally overwriting the tag (minus 
-# the commit sha).  This release stage is purely to test out the CICD release 
+# image tag with the git commit short SHA.  It will be pushed to the internal
+# gitlab project container registry. The release stage will run but will again
+# target the internal gitlab registry conditionally overwriting the tag (minus
+# the commit sha).  This release stage is purely to test out the CICD release
 # flow.
 #
 # The protected branch 'fedora' will cause container image builds on all three
@@ -57,11 +57,11 @@
 #
 # CUDA 11.6 has a minimum kernel of Fedora 35 / 5.14.10
 # (https://docs.nvidia.com/cuda/archive/11.6.0/cuda-installation-guide-linux/index.html)
-# 5/27/22 - Current recommended Tesla / Linux driver version is 510.73.05 
+# 5/27/22 - Current recommended Tesla / Linux driver version is 510.73.05
 #
 # CUDA 11.4 has a minimum kernel of Fedora 35 / 5.10.13
 # (https://docs.nvidia.com/cuda/archive/11.4.0/cuda-installation-guide-linux/index.html)
-# 1/17/22 - Current recommended Tesla / Linux driver version is 470.82.01 
+# 1/17/22 - Current recommended Tesla / Linux driver version is 470.82.01
 #
 
 variables:
@@ -74,9 +74,10 @@ variables:
   https_proxy: ${HTTPS_PROXY}
   no_proxy: ${NO_PROXY}
   # Project specific variables
-  DRIVER_VERSION: "515.48.07"
-  ALL_DRIVER_VERSIONS: "515.48.07"
-  DRIVER_VERSIONS: 515.48.07
+  DRIVER_VERSION: "515.86.01"
+  ALL_DRIVER_VERSIONS: "515.86.01"
+  DRIVER_VERSIONS: 515.86.01
+
   BUILD_MULTI_ARCH_IMAGES: "true"
   OVERWRITE_TAGS: 1
   OVERWRITE_REMOTE_TAGS: 0
@@ -280,7 +281,7 @@ release-next-one-only:
   extends: .common
   variables:
     # Here we create a circular reference defining the 'remote' registry to in
-    # fact be this repo's registry.  This is purely for CICD testing purposes 
+    # fact be this repo's registry.  This is purely for CICD testing purposes
     # in a non-protected branch...validating the release stage...
     RELEASE_REGISTRY_PROJECT: ${CI_REGISTRY_IMAGE}
     RELEASE_REGISTRY: ${CI_REGISTRY}
@@ -299,7 +300,7 @@ release-next-one-only:
     - /fedora/
 
 # The build will build/push N images to the local gitlab registry.  The scan
-# will scan each of them, and if any of the scans fail, none of the new images 
+# will scan each of them, and if any of the scans fail, none of the new images
 # will get released...releases run for the fedora branch only.
 release-next:
   extends: .common-release
