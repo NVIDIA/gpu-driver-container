@@ -3,8 +3,11 @@ FROM nvidia/cuda:${CUDA_VERSION}-base-ubuntu22.04
 
 ENV DEBIAN_FRONTEND=noninteractive
 
-ARG DRIVER_BRANCH=470
+ARG DRIVER_BRANCH=525
 ENV DRIVER_BRANCH=$DRIVER_BRANCH
+
+ARG KERNEL_VERSION=5.15.0-60-generic
+ENV KERNEL_VERSION=$KERNEL_VERSION
 
 ENV NVIDIA_VISIBLE_DEVICES=void
 
@@ -36,6 +39,14 @@ RUN echo "deb [arch=amd64] http://archive.ubuntu.com/ubuntu/ jammy main universe
 
 RUN curl -fsSL -o /usr/local/bin/donkey https://github.com/3XX0/donkey/releases/download/v1.1.0/donkey && \
     chmod +x /usr/local/bin/donkey
+
+# update pkg cache and download pkgs for driver installation during init
+RUN apt-get update && apt-get install --download-only --no-install-recommends -y linux-objects-nvidia-${DRIVER_BRANCH}-server-${KERNEL_VERSION} \
+		linux-signatures-nvidia-${KERNEL_VERSION} \
+		linux-modules-nvidia-${DRIVER_BRANCH}-server-${KERNEL_VERSION} \
+		nvidia-utils-${DRIVER_BRANCH}-server \
+		nvidia-compute-utils-${DRIVER_BRANCH}-server \
+		libnvidia-cfg1-${DRIVER_BRANCH}-server
 
 COPY nvidia-driver /usr/local/bin
 
