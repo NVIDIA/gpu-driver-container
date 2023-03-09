@@ -23,6 +23,7 @@ variables:
   BUILD_MULTI_ARCH_IMAGES: "true"
 
 stages:
+  - precompiled
   - image-build
   - test
   - scan
@@ -66,13 +67,17 @@ stages:
     DIST: signed_ubuntu22.04
     CVE_UPDATES: "openssl"
 
-.dist-rhcos4.9:
-  variables:
-    DIST: rhcos4.9
-
 .dist-rhcos4.10:
   variables:
     DIST: rhcos4.10
+
+.dist-rhcos4.11:
+  variables:
+    DIST: rhcos4.11
+
+.dist-rhcos4.12:
+  variables:
+    DIST: rhcos4.12
 
 .dist-centos7:
   variables:
@@ -221,26 +226,26 @@ release:staging-signed-ubuntu20.04:
   needs:
     - image-signed-ubuntu20.04
 
-release:staging-signed-ubuntu22.04:
-  extends:
-    - .release:staging-ubuntu22.04
-    - .dist-signed-ubuntu22.04
-  needs:
-    - image-signed-ubuntu22.04
-
-release:staging-rhcos4.9:
-  extends:
-    - .release:staging
-    - .dist-rhcos4.9
-  needs:
-    - image-rhcos4.9
-
 release:staging-rhcos4.10:
   extends:
     - .release:staging
     - .dist-rhcos4.10
   needs:
     - image-rhcos4.10
+
+release:staging-rhcos4.11:
+  extends:
+    - .release:staging
+    - .dist-rhcos4.11
+  needs:
+    - image-rhcos4.11
+
+release:staging-rhcos4.12:
+  extends:
+    - .release:staging
+    - .dist-rhcos4.12
+  needs:
+    - image-rhcos4.12
 
 release:staging-centos7:
   extends:
