@@ -124,11 +124,7 @@ _load_driver() {
 
     DRIVER_VERSION=$(nvidia-smi -q | grep "Driver Version" | awk -F: '{print $2}' | xargs)
     if _assert_nvswitch_system; then
-        echo "Installing NVIDIA fabric manager packages..."
-        apt-get update && \
-        apt-get install -y --no-install-recommends nvidia-fabricmanager-${DRIVER_BRANCH}=${DRIVER_VERSION}-1 \
-        libnvidia-nscq-${DRIVER_BRANCH}=${DRIVER_VERSION}-1
-
+ 
         echo "Starting NVIDIA fabric manager daemon..."
         nv-fabricmanager -c /usr/share/nvidia/nvswitch/fabricmanager.cfg
     fi
@@ -218,10 +214,7 @@ _install_driver() {
     echo "Installing NVIDIA driver kernel modules..."
     apt-get install --no-install-recommends -y linux-objects-nvidia-${DRIVER_BRANCH}-server-${KERNEL_VERSION} \
     linux-signatures-nvidia-${KERNEL_VERSION} \
-    linux-modules-nvidia-${DRIVER_BRANCH}-server-${KERNEL_VERSION} \
-    nvidia-utils-${DRIVER_BRANCH}-server \
-    nvidia-compute-utils-${DRIVER_BRANCH}-server \
-    libnvidia-cfg1-${DRIVER_BRANCH}-server
+	linux-modules-nvidia-${DRIVER_BRANCH}-server-${KERNEL_VERSION}
 }
 
 # Mount the driver rootfs into the run directory with the exception of sysfs.
