@@ -312,26 +312,7 @@ _unmount_rootfs() {
     fi
 }
 
-# Write a kernel postinst.d script to automatically precompile packages on kernel update (similar to DKMS).
-_write_kernel_update_hook() {
-    if [ ! -d ${KERNEL_UPDATE_HOOK%/*} ]; then
-        return
-    fi
 
-    echo "Writing kernel update hook..."
-    cat > ${KERNEL_UPDATE_HOOK} <<'EOF'
-#!/bin/bash
-
-set -eu
-trap 'echo "ERROR: Failed to update the NVIDIA driver" >&2; exit 0' ERR
-
-NVIDIA_DRIVER_PID=$(< /run/nvidia/nvidia-driver.pid)
-
-export "$(grep -z DRIVER_VERSION /proc/${NVIDIA_DRIVER_PID}/environ)"
-nsenter -t "${NVIDIA_DRIVER_PID}" -m -- nvidia-driver update --kernel "$1"
-EOF
-    chmod +x ${KERNEL_UPDATE_HOOK}
-}
 
 _shutdown() {
     if _unload_driver; then
@@ -342,86 +323,9 @@ _shutdown() {
     return 1
 }
 
-_find_vgpu_driver_version() {
-    local count=""
-    local version=""
-    local drivers_path="/drivers"
-
-    if [ "${DISABLE_VGPU_VERSION_CHECK}" = "true" ]; then
-        echo "vgpu version compatibility check is disabled"
-        return 0
-    fi
-    # check if vgpu devices are present
-    count=$(vgpu-util count)
-    if [ $? -ne 0 ]; then
-         echo "cannot find vgpu devices on host, pleae check /var/log/vgpu-util.log for more details..."
-         return 0
-    fi
-    NUM_VGPU_DEVICES=$(echo "$count" | awk -F= '{print $2}')
-    if [ $NUM_VGPU_DEVICES -eq 0 ]; then
-        # no vgpu devices found, treat as passthrough
-        return 0
-    fi
-    echo "found $NUM_VGPU_DEVICES vgpu devices on host"
-
-    # find compatible guest driver using driver catalog
-    if [ -d "/mnt/shared-nvidia-driver-toolkit/drivers" ]; then
-        drivers_path="/mnt/shared-nvidia-driver-toolkit/drivers"
-    fi
-    version=$(vgpu-util match -i "${drivers_path}" -c "${drivers_path}/vgpuDriverCatalog.yaml")
-    if [ $? -ne 0 ]; then
-        echo "cannot find match for compatible vgpu driver from available list, please check /var/log/vgpu-util.log for more details..."
-        return 1
-    fi
-    DRIVER_VERSION=$(echo "$version" | awk -F= '{print $2}')
-    echo "vgpu driver version selected: ${DRIVER_VERSION}"
-    return 0
-}
-
-_start_vgpu_topology_daemon() {
-    type nvidia-topologyd > /dev/null 2>&1 || return 0
-    echo "Starting nvidia-topologyd.."
-    nvidia-topologyd
-}
-
-_prepare() {
-    if [ "${DRIVER_TYPE}" = "vgpu" ]; then
-        _find_vgpu_driver_version || exit 1
-    fi
-
-    # Install the userspace components and copy the kernel module sources.
-    sh NVIDIA-Linux-$DRIVER_ARCH-$DRIVER_VERSION.run -x && \
-        cd NVIDIA-Linux-$DRIVER_ARCH-$DRIVER_VERSION && \
-        sh /tmp/install.sh nvinstall && \
-        mkdir -p /usr/src/nvidia-$DRIVER_VERSION && \
-        mv LICENSE mkprecompiled kernel /usr/src/nvidia-$DRIVER_VERSION && \
-        sed '9,${/^\(kernel\|LICENSE\)/!d}' .manifest > /usr/src/nvidia-$DRIVER_VERSION/.manifest
-
-    echo -e "\n========== NVIDIA Software Installer ==========\n"
-    echo -e "Starting installation of NVIDIA driver version ${DRIVER_VERSION} for Linux kernel version ${KERNEL_VERSION}\n"
-}
-
-_prepare_exclusive() {
-    _prepare
-
-    exec 3> ${PID_FILE}
-    if ! flock -n 3; then
-        echo "An instance of the NVIDIA driver is already running, aborting"
-        exit 1
-    fi
-    echo $$ >&3
-
-    trap "echo 'Caught signal'; exit 1" HUP INT QUIT PIPE TERM
-    trap "_shutdown" EXIT
-
-    _unload_driver || exit 1
-    _unmount_rootfs
-}
-
 _load() {
     _load_driver
     _mount_rootfs
-    _write_kernel_update_hook
 
     echo "Done, now waiting for signal"
     sleep infinity &
@@ -432,16 +336,10 @@ _load() {
 }
 
 init() {
-    _prepare_exclusive
-
-    _build
-
     _load
 }
 
 load() {
-    _prepare_exclusive
-
     _load
 }
 
