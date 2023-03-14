@@ -103,15 +103,10 @@ image-signed-ubuntu22.04:
     - .image-pull-ubuntu22.04
     - .dist-signed-ubuntu22.04
 
-image-rhcos4.9:
+image-rhcos4.12:
   extends:
     - .image-pull
-    - .dist-rhcos4.9
-
-image-rhcos4.10:
-  extends:
-    - .image-pull
-    - .dist-rhcos4.10
+    - .dist-rhcos4.12
 
 image-centos7:
   extends:
@@ -239,37 +234,21 @@ scan-signed-ubuntu22.04-arm64:
   needs:
     - image-signed-ubuntu22.04
 
-scan-rhcos4.9-amd64:
+scan-rhcos4.12-amd64:
   extends:
     - .scan
-    - .dist-rhcos4.9
+    - .dist-rhcos4.12
     - .platform-amd64
   needs:
-    - image-rhcos4.9
+    - image-rhcos4.12
 
-scan-rhcos4.9-arm64:
+scan-rhcos4.12-arm64:
   extends:
     - .scan
-    - .dist-rhcos4.9
+    - .dist-rhcos4.12
     - .platform-arm64
   needs:
-    - image-rhcos4.9
-
-scan-rhcos4.10-amd64:
-  extends:
-    - .scan
-    - .dist-rhcos4.10
-    - .platform-amd64
-  needs:
-    - image-rhcos4.10
-
-scan-rhcos4.10-arm64:
-  extends:
-    - .scan
-    - .dist-rhcos4.10
-    - .platform-arm64
-  needs:
-    - image-rhcos4.10
+    - image-rhcos4.12
 
 scan-centos7-amd64:
   extends:
@@ -316,15 +295,10 @@ release:ngc-signed-ubuntu22.04:
     - .release:ngc
     - .dist-signed-ubuntu22.04
 
-release:ngc-rhcos4.9:
+release:ngc-rhcos4.12:
   extends:
     - .release:ngc
-    - .dist-rhcos4.9
-
-release:ngc-rhcos4.10:
-  extends:
-    - .release:ngc
-    - .dist-rhcos4.10
+    - .dist-rhcos4.12
 
 release:ngc-centos7:
   extends:
