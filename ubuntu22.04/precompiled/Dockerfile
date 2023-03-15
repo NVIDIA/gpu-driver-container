@@ -40,24 +40,34 @@ RUN echo "deb [arch=amd64] http://archive.ubuntu.com/ubuntu/ jammy main universe
 RUN curl -fsSL -o /usr/local/bin/donkey https://github.com/3XX0/donkey/releases/download/v1.1.0/donkey && \
     chmod +x /usr/local/bin/donkey
 
-# update pkg cache and download pkgs for driver installation during init
-RUN apt-get update && apt-get install --download-only --no-install-recommends -y linux-objects-nvidia-${DRIVER_BRANCH}-server-${KERNEL_VERSION} \
-		linux-signatures-nvidia-${KERNEL_VERSION} \
-		linux-modules-nvidia-${DRIVER_BRANCH}-server-${KERNEL_VERSION} \
-		nvidia-utils-${DRIVER_BRANCH}-server \
-		nvidia-compute-utils-${DRIVER_BRANCH}-server \
-		libnvidia-cfg1-${DRIVER_BRANCH}-server
-
-COPY nvidia-driver /usr/local/bin
-
-WORKDIR  /drivers
-
 # Install / upgrade packages here that are required to resolve CVEs
 ARG CVE_UPDATES
 RUN if [ -n "${CVE_UPDATES}" ]; then \
         apt-get update && apt-get upgrade -y ${CVE_UPDATES} && \
         rm -rf /var/lib/apt/lists/*; \
     fi
+
+# update pkg cache and install pkgs for userspace driver libs
+RUN apt-get update && apt-get install -y --no-install-recommends nvidia-driver-${DRIVER_BRANCH}-server \
+    nvidia-fabricmanager-${DRIVER_BRANCH} \
+    libnvidia-nscq-${DRIVER_BRANCH} && \
+    apt-get purge -y \
+    libnvidia-egl-wayland1 \
+    nvidia-dkms-525-server \
+    nvidia-kernel-source-525-server \
+    xserver-xorg-video-nvidia-525-server && \
+    rm -rf /var/lib/apt/lists/*;
+
+# update pkg cache and download pkgs for driver module installation during runtime.
+# this is done to avoid shiping .ko files.
+# avoid cleaning the cache after this to retain these packages during runtime.
+RUN apt-get update && apt-get install --download-only --no-install-recommends -y linux-objects-nvidia-${DRIVER_BRANCH}-server-${KERNEL_VERSION} \
+    linux-signatures-nvidia-${KERNEL_VERSION} \
+    linux-modules-nvidia-${DRIVER_BRANCH}-server-${KERNEL_VERSION}
+
+COPY nvidia-driver /usr/local/bin
+
+WORKDIR  /drivers
 
 # Remove cuda repository to avoid GPG errors
 RUN rm -f /etc/apt/sources.list.d/cuda*
