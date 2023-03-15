@@ -1,10 +1,7 @@
 .image-precompiled-ubuntu:
   stage: image-build
   rules:
-    - if: $CI_PIPELINE_SOURCE == "schedule"
-    - if: $CI_PIPELINE_SOURCE != "schedule"
-      when: manual
-      allow_failure: true
+    - !reference [.manual-only, rules]
   variables:
     IMAGE_NAME: "${CI_REGISTRY_IMAGE}"
     VERSION: "${CI_COMMIT_SHORT_SHA}"
@@ -28,11 +25,6 @@
 
 image-precompiled-ubuntu22.04:
   stage: image-build
-  rules:
-    - if: $CI_PIPELINE_SOURCE == "schedule"
-    - if: $CI_PIPELINE_SOURCE != "schedule"
-      when: manual
-      allow_failure: true
   variables:
     DRIVER_BRANCH: 525
     DIST: signed_ubuntu22.04

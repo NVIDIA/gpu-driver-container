@@ -19,8 +19,6 @@ include:
 # Define the image build targets
 .image-build-generic:
   stage: image-build
-  rules:
-    - if: $CI_PIPELINE_SOURCE != "schedule"
   variables:
     IMAGE_NAME: "${CI_REGISTRY_IMAGE}"
     VERSION: "${CI_COMMIT_SHORT_SHA}"
@@ -48,6 +46,8 @@ include:
     - .image-build-generic
 
 image-ubuntu18.04:
+  rules:
+    - !reference [.manual-only, rules]
   extends:
     - .image-build
     - .dist-ubuntu18.04
@@ -78,6 +78,8 @@ image-centos7:
     - .dist-centos7
 
 image-fedora36:
+  rules:
+    - !reference [.manual-only, rules]
   extends:
     - .image-build
     - .dist-fedora36
