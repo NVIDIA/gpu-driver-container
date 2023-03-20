@@ -26,8 +26,6 @@ COPY generate-ci-config /usr/local/bin/generate-ci-config
 
 RUN chmod +x /usr/local/bin/generate-ci-config
 
-ENTRYPOINT ["/usr/local/bin/generate-ci-config","jammy"]
-
 # Ubuntu 20.04
 FROM nvidia/cuda:${CUDA_VERSION}-base-ubuntu20.04 as focal
 
@@ -53,6 +51,4 @@ RUN echo "deb [arch=amd64] http://archive.ubuntu.com/ubuntu/ focal main universe
 
 COPY generate-ci-config /usr/local/bin/generate-ci-config
 
-RUN chmod +x /usr/local/bin/generate-ci-config
-
-ENTRYPOINT ["/usr/local/bin/generate-ci-config","focal"]
+RUN chmod +x /usr/local/bin/generate-ci-config 

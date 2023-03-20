@@ -54,8 +54,8 @@ OUT_IMAGE = $(OUT_IMAGE_NAME):$(OUT_IMAGE_TAG)
 
 ##### Public rules #####
 DISTRIBUTIONS := ubuntu18.04 ubuntu20.04 ubuntu22.04 signed_ubuntu20.04 signed_ubuntu22.04 rhcos4.12 centos7 flatcar fedora36 sles15.3
-PUSH_TARGETS := $(patsubst %, push-%, $(DISTRIBUTIONS))
 BASE_FROM := jammy focal
+PUSH_TARGETS := $(patsubst %, push-%, $(DISTRIBUTIONS))
 DRIVER_PUSH_TARGETS := $(foreach push_target, $(PUSH_TARGETS), $(addprefix $(push_target)-, $(DRIVER_VERSIONS)))
 BUILD_TARGETS := $(patsubst %, build-%, $(DISTRIBUTIONS))
 DRIVER_BUILD_TARGETS := $(foreach build_target, $(BUILD_TARGETS), $(addprefix $(build_target)-, $(DRIVER_VERSIONS)))
@@ -64,10 +64,12 @@ PULL_TARGETS := $(patsubst %, pull-%, $(DISTRIBUTIONS))
 DRIVER_PULL_TARGETS := $(foreach pull_target, $(PULL_TARGETS), $(addprefix $(pull_target)-, $(DRIVER_VERSIONS)))
 ARCHIVE_TARGETS := $(patsubst %, archive-%, $(DISTRIBUTIONS))
 DRIVER_ARCHIVE_TARGETS := $(foreach archive_target, $(ARCHIVE_TARGETS), $(addprefix $(archive_target)-, $(DRIVER_VERSIONS)))
-BASE_TARGETS := $(patsubst %, base-%, $(BASE_FROM))
-BASE_BUILD_TARGETS := $(foreach target,$(BASE_TARGETS),$(target))
+BASE_BUILD := $(patsubst %, build-base-%, $(BASE_FROM))
+BASE_PUSH := $(patsubst %, push-base-%, $(BASE_FROM))
+BASE_BUILD_TARGETS := $(foreach target,$(BASE_BUILD),$(target))
+BASE_PUSH_TARGETS := $(foreach target,$(BASE_PUSH),$(target))
 
-PHONY: $(BASE_TARGETS) $(DISTRIBUTIONS) $(PUSH_TARGETS) $(BUILD_TARGETS) $(TEST_TARGETS) $(PULL_TARGETS) $(ARCHIVE_TARGETS) $(DRIVER_PUSH_TARGETS) $(DRIVER_BUILD_TARGETS) $(DRIVER_PULL_TARGETS) $(DRIVER_ARCHIVE_TARGETS)
+PHONY: $(BASE_BUILD_TARGETS) $(BASE_PUSH_TARGETS) $(DISTRIBUTIONS) $(PUSH_TARGETS) $(BUILD_TARGETS) $(TEST_TARGETS) $(PULL_TARGETS) $(ARCHIVE_TARGETS) $(DRIVER_PUSH_TARGETS) $(DRIVER_BUILD_TARGETS) $(DRIVER_PULL_TARGETS) $(DRIVER_ARCHIVE_TARGETS)
 
 ifeq ($(BUILD_MULTI_ARCH_IMAGES),true)
 include $(CURDIR)/multi-arch.mk
@@ -84,8 +86,9 @@ $(PULL_TARGETS): %: $(foreach driver_version, $(DRIVER_VERSIONS), $(addprefix %-
 pull-signed_ubuntu20.04%: DIST = signed-ubuntu20.04
 pull-signed_ubuntu20.04%: DRIVER_TAG = $(DRIVER_BRANCH)
 
-pull-signed_ubuntu22.04%: DIST = signed-ubuntu22.04
+pull-signed_ubuntu22.04%: DIST = ubuntu22.04
 pull-signed_ubuntu22.04%: DRIVER_TAG = $(DRIVER_BRANCH)
+pull-signed_ubuntu22.04%: IMAGE_TAG = $(DRIVER_VERSION)-$(KERNEL_VERSION)-$(DIST)
 
 PLATFORM ?= linux/amd64
 $(DRIVER_PULL_TARGETS): pull-%:
@@ -100,8 +103,9 @@ $(ARCHIVE_TARGETS): %: $(foreach driver_version, $(DRIVER_VERSIONS), $(addprefix
 archive-signed_ubuntu20.04%: DIST = signed-ubuntu20.04
 archive-signed_ubuntu20.04%: DRIVER_TAG = $(DRIVER_BRANCH)
 
-archive-signed_ubuntu22.04%: DIST = signed-ubuntu22.04
+archive-signed_ubuntu22.04%: DIST = ubuntu22.04
 archive-signed_ubuntu22.04%: DRIVER_TAG = $(DRIVER_BRANCH)
+archive-signed_ubuntu22.04%: IMAGE_TAG = $(DRIVER_VERSION)-$(KERNEL_VERSION)-$(DIST)
 
 $(DRIVER_ARCHIVE_TARGETS): archive-%:
 	$(DOCKER) save "$(IMAGE)" -o "archive.tar"
@@ -119,9 +123,7 @@ $(PUSH_TARGETS): %: $(foreach driver_version, $(DRIVER_VERSIONS), $(addprefix %-
 push-signed_ubuntu20.04%: DIST = signed-ubuntu20.04
 push-signed_ubuntu20.04%: DRIVER_TAG = $(DRIVER_BRANCH)
 
-# push-ubuntu22.04 pushes all driver images for ubuntu22.04
-# push-ubuntu22.04-$(DRIVER_VERSION) pushes an image for the specific $(DRIVER_VERSION)
-push-signed_ubuntu22.04%: DIST = signed-ubuntu22.04
+push-signed_ubuntu22.04%: DIST = ubuntu22.04
 push-signed_ubuntu22.04%: DRIVER_TAG = $(DRIVER_BRANCH)
 push-signed_ubuntu22.04%: IMAGE_TAG = $(DRIVER_VERSION)-$(KERNEL_VERSION)-$(DIST)
 push-signed_ubuntu22.04%: OUT_IMAGE_TAG = $(DRIVER_VERSION)-$(KERNEL_VERSION)-$(DIST)
@@ -165,22 +167,27 @@ build-signed_ubuntu20.04%: SUBDIR = ubuntu20.04/precompiled
 build-signed_ubuntu20.04%: DRIVER_TAG = $(DRIVER_BRANCH)
 
 # ubuntu22.04 Precompiled Driver
-build-signed_ubuntu22.04%: DIST = signed-ubuntu22.04
+build-signed_ubuntu22.04%: DIST = ubuntu22.04
 build-signed_ubuntu22.04%: SUBDIR = ubuntu22.04/precompiled
 build-signed_ubuntu22.04%: DRIVER_TAG = $(DRIVER_BRANCH)
 build-signed_ubuntu22.04%: IMAGE_TAG = $(DRIVER_VERSION)-$(KERNEL_VERSION)-$(DIST)
 build-signed_ubuntu22.04%: DOCKER_BUILD_ARGS =  --build-arg KERNEL_VERSION="$(KERNEL_VERSION)"
 
 # base is an image used to poll Canonical for the latest kernel version
-base-%: DOCKERFILE = $(CURDIR)/base/Dockerfile
-base-%: TARGET = $(word 2,$(subst -, ,$@))
-base-%: IMAGE_TAG = base-$(word 2,$(subst -, ,$@))
+build-base-%: DOCKERFILE = $(CURDIR)/base/Dockerfile
+build-base-%: TARGET = $(word 3,$(subst -, ,$@))
+build-base-%: IMAGE_TAG = base-$(word 3,$(subst -, ,$@))
 $(BASE_BUILD_TARGETS):
 	DOCKER_BUILDKIT=1 \
-		$(DOCKER) $(BUILDX) build --pull \
-				--output=type=docker,push=false \
+		$(DOCKER) $(BUILDX) build --pull --no-cache \
 				--tag $(IMAGE)  \
 				--target $(TARGET) \
 				--build-arg CUDA_VERSION="$(CUDA_VERSION)" \
 				--file $(DOCKERFILE) \
 				$(CURDIR)/base
+
+push-base-%: TARGET = $(word 3,$(subst -, ,$@))
+push-base-%: IMAGE_TAG = base-$(word 3,$(subst -, ,$@))
+$(BASE_PUSH_TARGETS):
+	$(DOCKER) tag "$(IMAGE)" "$(OUT_IMAGE)"
+	$(DOCKER) push "$(OUT_IMAGE)"
