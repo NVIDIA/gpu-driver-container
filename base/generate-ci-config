@@ -55,9 +55,3 @@ SK=$(echo $SUPPORTED_KERNELS | awk '{print $NF}')
 # Write to file
 echo "export KERNEL_VERSION=$SK DRIVER_VERSION=$DRIVER_VERSION DRIVER_VERSIONS=$DRIVER_VERSION" > /var/kernel_version.txt
 echo "KERNEL_VERSION=$SK DRIVER_VERSION=$DRIVER_VERSION DRIVER_VERSIONS=$DRIVER_VERSION"
-echo "kernel_version.txt generated, waiting for container to be stopped"
-
-# sleep until the container is stopped
-while true; do
-  sleep 100
-done

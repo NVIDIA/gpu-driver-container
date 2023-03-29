@@ -46,9 +46,9 @@ variables:
     OUT_REGISTRY: "${CI_REGISTRY}"
     OUT_IMAGE_NAME: "${CI_REGISTRY_IMAGE}"
   # We delay the job start to allow the public pipeline to generate the required images.
-  when: delayed
-  start_in: 30 minutes
-  timeout: 30 minutes
+  #when: delayed
+  #start_in: 30 minutes
+  #timeout: 30 minutes
   retry:
     max: 2
     when:
@@ -61,7 +61,7 @@ variables:
     #- regctl manifest get ${IN_REGISTRY}/${IN_IMAGE_NAME}:${IN_VERSION}-${DRIVER_VERSION}-${DIST} --list > /dev/null && echo "${IN_REGISTRY}/${IN_IMAGE_NAME}:${IN_VERSION}-${DRIVER_VERSION}-${DIST}" || ( echo "${IN_REGISTRY}/${IN_IMAGE_NAME}:${IN_VERSION}-${DRIVER_VERSION}-${DIST} does not exist" && sleep infinity )
   script:
     - regctl registry login "${OUT_REGISTRY}" -u "${OUT_REGISTRY_USER}" -p "${OUT_REGISTRY_TOKEN}"
-    - if [[ "${PRECOMPILED}" == "true" ]]; then ./scripts/precompiled.sh push; else make IMAGE_NAME=${IN_REGISTRY}/${IN_IMAGE_NAME} VERSION=${IN_VERSION} OUT_VERSION=${IN_VERSION} push-${DIST}-${DRIVER_VERSION}; fi
+    - if [[ "${PRECOMPILED}" == "true" ]]; then IMAGE_NAME=${IN_REGISTRY}/${IN_IMAGE_NAME} ./scripts/precompiled.sh push; else make IMAGE_NAME=${IN_REGISTRY}/${IN_IMAGE_NAME} VERSION=${IN_VERSION} OUT_VERSION=${IN_VERSION} push-${DIST}-${DRIVER_VERSION}; fi
 
 .image-pull:
   # Perform for each DRIVER_VERSION
@@ -226,7 +226,6 @@ scan-precompiled-ubuntu22.04-amd64:
   variables:
     DIST: signed_ubuntu22.04
     BASE_TARGET: jammy
-    CVE_UPDATES: "openssl"
     PRECOMPILED: "true"
     PLATFORM: linux/amd64
   extends:
@@ -296,7 +295,6 @@ release:ngc-precompiled-ubuntu22.04:
   variables:
     DIST: signed_ubuntu22.04
     BASE_TARGET: jammy
-    CVE_UPDATES: "openssl"
     PRECOMPILED: "true"
   extends:
     - .driver-versions-precompiled-ubuntu22.04

@@ -284,3 +284,5 @@ release:staging-precompiled-ubuntu22.04:
   extends:
     - .driver-versions-precompiled-ubuntu22.04
     - .release-generic
+  needs:
+    - image-precompiled-ubuntu22.04

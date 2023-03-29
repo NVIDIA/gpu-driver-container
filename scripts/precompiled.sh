@@ -11,7 +11,6 @@ function sourceVersions(){
         source kernel_version.txt
         return 0
     fi
-
     # if KERNEL_VERSION DRIVER_VERSION and DRIVER_VERSIONS are set exit the function
     if [ -n "$KERNEL_VERSION" ] && [ -n "$DRIVER_VERSION" ] && [ -n "$DRIVER_VERSIONS" ]; then
         return 0
@@ -22,25 +21,42 @@ function sourceVersions(){
         exit 1
     fi
 
-    trap "docker rm -f base-${BASE_TARGET}" EXIT
-    docker run -d --name base-${BASE_TARGET} -e DRIVER_BRANCH=${DRIVER_BRANCH} --entrypoint /usr/local/bin/generate-ci-config ghcr.io/arangogutierrez/driver:base-jammy "${BASE_TARGET}"
-    # try 3 times every 3 seconds to get the file, if success exit the loop
-    for i in {1..10}; do
-        docker cp base-${BASE_TARGET}:/var/kernel_version.txt kernel_version.txt && break
-        sleep 10
-    done
+    if command -v regctl; then
+        regctl image get-file registry.gitlab.com/nvidia/container-images/driver/staging/driver:base-${BASE_TARGET}-${DRIVER_BRANCH} /var/kernel_version.txt kernel_version.txt
+    else
+        trap "docker rm -f base-${BASE_TARGET}" EXIT
+        docker run -d --name base-${BASE_TARGET} registry.gitlab.com/nvidia/container-images/driver/staging/driver:base-${BASE_TARGET}-${DRIVER_BRANCH} 
+        # try 3 times every 3 seconds to get the file, if success exit the loop
+        for i in {1..3}; do
+            docker cp base-${BASE_TARGET}:/var/kernel_version.txt kernel_version.txt && break
+            sleep 10
+        done
+    fi
 
     source kernel_version.txt
 }
 
+function buildBaseImage(){
+    # Build the base image
+    make DRIVER_BRANCH=${DRIVER_BRANCH} build-base-${BASE_TARGET}
+}
+
 function buildImage(){
     # Build the image
-    make DRIVER_VERSIONS=${DRIVER_VERSIONS} build-${DIST}-${DRIVER_VERSION}
+    make DRIVER_VERSIONS=${DRIVER_VERSIONS}  build-${DIST}-${DRIVER_VERSION}
+}
+
+function pushBaseImage(){
+    # push the base image
+    if [ -z "$IMAGE_NAME" ]; then
+        IMAGE_NAME="${STAGING_REGISTRY}"/driver
+    fi
+    make IMAGE_NAME=${IMAGE_NAME} DRIVER_BRANCH=${DRIVER_BRANCH} push-base-${BASE_TARGET}
 }
 
 function pushImage(){
     # push the image
-    make DRIVER_VERSIONS=${DRIVER_VERSIONS} IMAGE_NAME=${IN_REGISTRY}/${IN_IMAGE_NAME} VERSION=${IN_VERSION} OUT_VERSION=${IN_VERSION} push-${DIST}
+    make DRIVER_VERSIONS=${DRIVER_VERSIONS} push-${DIST}
 }
 
 function pullImage(){
@@ -51,20 +67,25 @@ function pullImage(){
 function archiveImage(){
     # archive the image
     make DRIVER_VERSIONS=${DRIVER_VERSIONS} archive-${DIST}-${DRIVER_VERSION}
-}   
+}
 
-sourceVersions
 case $1 in
     build)
+        buildBaseImage
+        pushBaseImage
+        sourceVersions
         buildImage
         ;;
     push)
+        sourceVersions
         pushImage
         ;;
     pull)
+        sourceVersions
         pullImage
         ;;
     archive)
+        sourceVersions
         archiveImage
         ;;
     *)
