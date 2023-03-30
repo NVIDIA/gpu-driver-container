@@ -19,7 +19,7 @@ default:
       command: ["--experimental"]
 
 variables:
-  DRIVER_VERSIONS: 450.216.04 470.161.03 510.108.03 515.86.01 525.85.12
+  DRIVER_VERSIONS: 450.236.01 470.182.03 515.105.01 525.105.17
   BUILD_MULTI_ARCH_IMAGES: "true"
 
 stages:
@@ -66,13 +66,13 @@ trigger-pipeline:
 .driver-versions:
   parallel:
     matrix:
-      - DRIVER_VERSION: [450.216.04, 470.161.03, 510.108.03, 515.86.01, 525.85.12]
+      - DRIVER_VERSION: [450.236.01, 470.182.03, 515.105.01, 525.105.17]
 
 # Define the driver versions for jobs that can be run in parallel for ubuntu22.04
 .driver-versions-ubuntu22.04:
   parallel:
     matrix:
-      - DRIVER_VERSION: [515.86.01, 525.85.12]
+      - DRIVER_VERSION: [515.105.01, 525.105.17]
 
 # Define the distribution targets
 .dist-ubuntu18.04:

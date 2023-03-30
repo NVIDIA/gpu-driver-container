@@ -13,6 +13,6 @@
 # limitations under the License.
 
 # DRIVER_VERSIONS contains latest version in all active datacenter branches
-DRIVER_VERSIONS ?= 450.216.04 470.161.03 510.108.03 515.86.01 525.85.12
+DRIVER_VERSIONS ?= 450.236.01 470.182.03 515.105.01 525.105.17
 
 CUDA_VERSION := 11.8.0
