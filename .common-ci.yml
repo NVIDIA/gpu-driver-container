@@ -24,7 +24,6 @@ variables:
 
 stages:
   - trigger
-  - precompiled
   - image-build
   - test
   - scan
@@ -74,6 +73,12 @@ trigger-pipeline:
     matrix:
       - DRIVER_VERSION: [515.105.01, 525.105.17]
 
+# Define the driver-branch versions for jobs that can be run in parallel for ubuntu22.04
+# for now is just 525, but we can add more branches later.
+.driver-versions-precompiled-ubuntu22.04:
+  variables:
+    DRIVER_BRANCH: "525"
+
 # Define the distribution targets
 .dist-ubuntu18.04:
   variables:
@@ -93,11 +98,6 @@ trigger-pipeline:
 .dist-signed-ubuntu20.04:
   variables:
     DIST: signed_ubuntu20.04
-    CVE_UPDATES: "openssl"
-
-.dist-signed-ubuntu22.04:
-  variables:
-    DIST: signed_ubuntu22.04
     CVE_UPDATES: "openssl"
 
 .dist-rhcos4.12:
@@ -129,15 +129,13 @@ trigger-pipeline:
     -  mkdir -p ~/.docker/cli-plugins
     -  curl -sSLo ~/.docker/cli-plugins/docker-buildx "https://github.com/docker/buildx/releases/download/${BUILDX_VERSION}/buildx-${BUILDX_VERSION}.linux-amd64"
     -  chmod a+x ~/.docker/cli-plugins/docker-buildx
-
     -  docker buildx create --use --platform=linux/amd64,linux/arm64
-
     -  '[[ -n "${SKIP_QEMU_SETUP}" ]] || docker run --rm --privileged multiarch/qemu-user-static --reset -p yes'
 
 # Download the regctl binary for use in the release steps
 .regctl-setup:
   before_script:
-    - export REGCTL_VERSION=v0.3.10
+    - export REGCTL_VERSION=v0.4.7
     - apk add --no-cache curl
     - mkdir -p bin
     - curl -sSLo bin/regctl https://github.com/regclient/regclient/releases/download/${REGCTL_VERSION}/regctl-linux-amd64
@@ -161,7 +159,7 @@ trigger-pipeline:
     - '[ ${CI_REGISTRY} = ${OUT_REGISTRY} ] || echo "Logging in to output registry ${OUT_REGISTRY}"'
     - '[ ${CI_REGISTRY} = ${OUT_REGISTRY} ] || regctl registry login "${OUT_REGISTRY}" -u "${OUT_REGISTRY_USER}" -p "${OUT_REGISTRY_TOKEN}"'
     # Since OUT_IMAGE_NAME and OUT_VERSION are set, this will push the CI image to the target
-    - make push-${DIST}-${DRIVER_VERSION}
+    - if [[ "${PRECOMPILED}" == "true" ]]; then ./scripts/precompiled.sh push; else make push-${DIST}-${DRIVER_VERSION}; fi
 
 .release-ubuntu22.04:
   # Perform for each DRIVER_VERSION
@@ -264,3 +262,27 @@ release:staging-centos7:
     - .dist-centos7
   needs:
     - image-centos7
+
+# Precompiled Ubuntu22.04 release
+release:staging-precompiled-ubuntu22.04:
+  stage: release
+  variables:
+    DIST: signed_ubuntu22.04
+    BASE_TARGET: jammy
+    IN_REGISTRY: "${STAGING_REGISTRY}"
+    IN_IMAGE_NAME: driver
+    OUT_REGISTRY_USER: "${CI_REGISTRY_USER}"
+    OUT_REGISTRY_TOKEN: "${CI_REGISTRY_PASSWORD}"
+    OUT_REGISTRY: "${CI_REGISTRY}"
+    OUT_IMAGE_NAME: "${CI_REGISTRY_IMAGE}/staging/driver"
+    # Define the source image for the release
+    IMAGE_NAME: "${CI_REGISTRY_IMAGE}"
+    VERSION: "${CI_COMMIT_SHORT_SHA}"
+    # OUT_VERSION is overridden for external releases
+    OUT_VERSION: "${CI_COMMIT_SHORT_SHA}"
+    PRECOMPILED: "true"
+  extends:
+    - .driver-versions-precompiled-ubuntu22.04
+    - .release-generic
+  needs:
+    - image-precompiled-ubuntu22.04
