@@ -14,7 +14,6 @@
 
 include:
     - local: '.common-ci.yml'
-    - local: '.precompiled-ci.yml'
 
 # Define the image build targets
 .image-build-generic:
@@ -26,11 +25,12 @@ include:
     PUSH_ON_BUILD: "true"
   before_script:
     - !reference [.buildx-setup, before_script]
+    - !reference [.regctl-setup, before_script]
     - apk add --no-cache bash make
     - 'echo "Logging in to CI registry ${CI_REGISTRY}"'
     - docker login -u "${CI_REGISTRY_USER}" -p "${CI_REGISTRY_PASSWORD}" "${CI_REGISTRY}"
   script:
-    - make build-${DIST}-${DRIVER_VERSION}
+    - if [[ "${PRECOMPILED}" == "true" ]]; then ./scripts/precompiled.sh build; else make build-${DIST}-${DRIVER_VERSION}; fi
 
 .image-build:
   # Perform for each DRIVER_VERSION
@@ -83,3 +83,19 @@ image-fedora36:
   extends:
     - .image-build
     - .dist-fedora36
+
+image-precompiled-ubuntu22.04:
+  stage: image-build
+  variables:
+    DIST: signed_ubuntu22.04
+    BASE_TARGET: jammy
+    IN_REGISTRY: "${STAGING_REGISTRY}"
+    IN_IMAGE_NAME: driver
+    OUT_REGISTRY_USER: "${CI_REGISTRY_USER}"
+    OUT_REGISTRY_TOKEN: "${CI_REGISTRY_PASSWORD}"
+    OUT_REGISTRY: "${CI_REGISTRY}"
+    OUT_IMAGE_NAME: "${CI_REGISTRY_IMAGE}/staging/driver"
+    PRECOMPILED: "true"
+  extends: 
+    - .driver-versions-precompiled-ubuntu22.04
+    - .image-build-generic

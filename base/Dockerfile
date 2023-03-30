@@ -1,8 +1,11 @@
 ARG CUDA_VERSION
+ARG DRIVER_BRANCH
 # Ubuntu 22.04
 FROM nvidia/cuda:${CUDA_VERSION}-base-ubuntu22.04 as jammy
 
 SHELL ["/bin/bash", "-c"]
+
+ENV DRIVER_BRANCH=${DRIVER_BRANCH}
 
 # Remove cuda repository to avoid GPG errors
 RUN rm -f /etc/apt/sources.list.d/cuda*
@@ -24,14 +27,17 @@ RUN echo "deb [arch=amd64] http://archive.ubuntu.com/ubuntu/ jammy main universe
 
 COPY generate-ci-config /usr/local/bin/generate-ci-config
 
-RUN chmod +x /usr/local/bin/generate-ci-config
+RUN chmod +x /usr/local/bin/generate-ci-config && \
+    generate-ci-config jammy
 
-ENTRYPOINT ["/usr/local/bin/generate-ci-config","jammy"]
+ENTRYPOINT ["/usr/bin/sleep","1000"]
 
 # Ubuntu 20.04
 FROM nvidia/cuda:${CUDA_VERSION}-base-ubuntu20.04 as focal
 
 SHELL ["/bin/bash", "-c"]
+
+ENV DRIVER_BRANCH=${DRIVER_BRANCH}
 
 # Remove cuda repository to avoid GPG errors
 RUN rm -f /etc/apt/sources.list.d/cuda*
@@ -53,6 +59,6 @@ RUN echo "deb [arch=amd64] http://archive.ubuntu.com/ubuntu/ focal main universe
 
 COPY generate-ci-config /usr/local/bin/generate-ci-config
 
-RUN chmod +x /usr/local/bin/generate-ci-config
+RUN chmod +x /usr/local/bin/generate-ci-config 
 
-ENTRYPOINT ["/usr/local/bin/generate-ci-config","focal"]
+ENTRYPOINT ["/usr/bin/sleep","1000"]
