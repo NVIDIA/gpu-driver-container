@@ -6,9 +6,9 @@ To manually build a specific `{kernel/driver}` image first you need to define
 the following environment variables:
 
 ```bash
-RHSM_ORG ?=<SECRET>
-RHSM_ACTIVATIONKEY?=<SECRET>
-PULL_SECRET_FILE?=<SECRET>
+RHSM_ORG ?=<YOUR RH SUBSCRITION ORG>
+RHSM_ACTIVATIONKEY?=<YOUR RH SUBSCRITION ACTIVATION KEY>
+PULL_SECRET_FILE?=<YOUR RH PULL-SECRET>
 ```
 
 Then run 
