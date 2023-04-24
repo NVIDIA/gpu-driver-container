@@ -35,3 +35,5 @@ rhsm-register:
 build-matrix:
 	@echo "!===	Building build-matrix	===!"
 	./build-matrix.sh ${PULL_SECRET_FILE}
+
+PHONY: image rhsm-register build-matrix

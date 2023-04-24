@@ -19,6 +19,8 @@ make build-matrix
 
 Select a combination of `{kernel/driver}` from the generated json file and
 Then you can build the image with:
+
+*NOTE* : the `{kernel/driver}` combination  must be listed at https://developer.download.nvidia.com/compute/cuda/repos/rhel8/x86_64/precompiled/
     
 ```bash
 KERNEL_VERSION=<From-build-matrix-${DATE}.json>
