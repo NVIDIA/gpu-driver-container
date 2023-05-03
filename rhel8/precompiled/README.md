@@ -50,7 +50,7 @@ docker push ${IMAGE_REGISTRY}/driver-toolkit:${RHEL_VERSION}-${KERNEL_VERSION}
 
 ## Note on Red Hat OpenShift
 
-The command produces an image named as `${IMAGE_REGISTRY}/driver-toolkit:${RHEL_VERSION}-${KERNEL_VERSION}`. If you are going to use it with the [NVIDIA GPU Operator on OpenShift](https://docs.nvidia.com/datacenter/cloud-native/gpu-operator/openshift/contents.html), `${IMAGE_REGISTRY}/driver:${DRIVER_VERSION}-${KERNEL_VERSION}-${OS_TAG}` will be probably expected.
+The command produces an image named as `${IMAGE_REGISTRY}/driver-toolkit:${RHEL_VERSION}-${KERNEL_VERSION}`. If you are going to use it with the [NVIDIA GPU Operator on OpenShift](https://docs.nvidia.com/datacenter/cloud-native/gpu-operator/openshift/contents.html), `${IMAGE_REGISTRY}/driver:${DRIVER_VERSION}-${KERNEL_VERSION}.${TARGET_ARCH}-${OS_TAG}` will be probably expected.
 
 Define the missing variables, then tag and push the image. 
 For example:
@@ -61,8 +61,8 @@ OS_TAG=rhcos4.12
 
 docker tag \
     ${IMAGE_REGISTRY}/driver-toolkit:${RHEL_VERSION}-${KERNEL_VERSION} \
-    ${IMAGE_REGISTRY}/driver:${DRIVER_VERSION}-${KERNEL_VERSION}-${OS_TAG}
+    ${IMAGE_REGISTRY}/driver:${DRIVER_VERSION}-${KERNEL_VERSION}.${TARGET_ARCH}-${OS_TAG}
 
-docker push ${IMAGE_REGISTRY}/driver:${DRIVER_VERSION}-${KERNEL_VERSION}-${OS_TAG}
+docker push ${IMAGE_REGISTRY}/driver:${DRIVER_VERSION}-${KERNEL_VERSION}.${TARGET_ARCH}-${OS_TAG}
 
 ```
