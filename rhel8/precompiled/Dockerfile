@@ -39,14 +39,14 @@ RUN rm /etc/rhsm-host \
     && dnf -y install kmod binutils ipmitool
 
 # Prevent modprobe from giving a WARNING about missing files
-RUN rm -rf /lib/modules/${KERNEL_VERSION} \
-    && mkdir -p /lib/modules/${KERNEL_VERSION}/proc \
-    && touch /lib/modules/${KERNEL_VERSION}/modules.order \
-    &&touch /lib/modules/${KERNEL_VERSION}/modules.builtin \
-    && depmod ${KERNEL_VERSION}
+RUN rm -rf /lib/modules/${KERNEL_VERSION}.${TARGET_ARCH} \
+    && mkdir -p /lib/modules/${KERNEL_VERSION}.${TARGET_ARCH}/proc \
+    && touch /lib/modules/${KERNEL_VERSION}.${TARGET_ARCH}/modules.order \
+    && touch /lib/modules/${KERNEL_VERSION}.${TARGET_ARCH}/modules.builtin
 
 # Install the Driver modules 
 RUN dnf module install -y nvidia-driver:${DRIVER_BRANCH} \
+    && depmod ${KERNEL_VERSION}.${TARGET_ARCH} \
     && dnf clean all \
     && subscription-manager unregister \
     && useradd -u 1001 -m -s /bin/bash builder
