@@ -207,6 +207,16 @@ trigger-pipeline:
       variables:
         VERSION: "${RELEASE_DEVEL_TAG}"
         OUT_VERSION: "${DEVEL_RELEASE_IMAGE_VERSION}"
+    - exists:
+        - $CI_PRECOMPILED
+      when: never
+
+# Define an external release step that pushes an image to an external repository.
+.release:external-precompiled:
+  extends:
+    - .release-generic
+  rules:
+    - !reference [.release:external, rules]
 
 .release:external-ubuntu22.04:
   extends:
@@ -227,6 +237,9 @@ release:staging-ubuntu18.04:
     - .dist-ubuntu18.04
   needs:
     - image-ubuntu18.04
+  except:
+    variables:
+      - $CI_PRECOMPILED
 
 release:staging-ubuntu20.04:
   extends:
@@ -234,6 +247,9 @@ release:staging-ubuntu20.04:
     - .dist-ubuntu20.04
   needs:
     - image-ubuntu20.04
+  except:
+    variables:
+      - $CI_PRECOMPILED
 
 release:staging-ubuntu22.04:
   extends:
@@ -241,6 +257,9 @@ release:staging-ubuntu22.04:
     - .dist-ubuntu22.04
   needs:
     - image-ubuntu22.04
+  except:
+    variables:
+      - $CI_PRECOMPILED
 
 release:staging-signed-ubuntu20.04:
   extends:
@@ -248,6 +267,9 @@ release:staging-signed-ubuntu20.04:
     - .dist-signed-ubuntu20.04
   needs:
     - image-signed-ubuntu20.04
+  except:
+    variables:
+      - $CI_PRECOMPILED
 
 release:staging-rhcos4.12:
   extends:
@@ -255,13 +277,18 @@ release:staging-rhcos4.12:
     - .dist-rhcos4.12
   needs:
     - image-rhcos4.12
+  except:
+    variables:
+      - $CI_PRECOMPILED
 
 release:staging-centos7:
   extends:
     - .release:staging
     - .dist-centos7
-  needs:
     - image-centos7
+  except:
+    variables:
+      - $CI_PRECOMPILED
 
 # Precompiled Ubuntu22.04 release
 release:staging-precompiled-ubuntu22.04:
@@ -286,3 +313,6 @@ release:staging-precompiled-ubuntu22.04:
     - .release-generic
   needs:
     - image-precompiled-ubuntu22.04
+  except:
+    variables:
+      - $CI_PRECOMPILED

@@ -56,7 +56,7 @@ function pushBaseImage(){
 
 function pushImage(){
     # push the image
-    make DRIVER_VERSIONS=${DRIVER_VERSIONS} push-${DIST}
+    make DRIVER_VERSIONS=${DRIVER_BRANCH} push-${DIST}
 }
 
 function pullImage(){
