@@ -27,6 +27,16 @@ _unmount_rootfs() {
     fi
 }
 
+# Create /dev/char directory if it doesn't exist inside the container.
+# Without this directory, nvidia-vgpu-mgr will fail to create symlinks
+# under /dev/char for new devices nodes.
+_create_dev_char_directory() {
+	if [ ! -d "/dev/char" ]; then
+		echo "Creating '/dev/char' directory"
+		mkdir -p /dev/char
+	fi
+}
+
 _install_driver() {
     local tmp_dir=$(mktemp -d)
 
@@ -150,6 +160,7 @@ init() {
   fi
   _unmount_rootfs
 
+  _create_dev_char_directory
   _install_driver
   _load_driver || exit 1
   _mount_rootfs
