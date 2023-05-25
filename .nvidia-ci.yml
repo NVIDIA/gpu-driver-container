@@ -283,7 +283,6 @@ scan-centos7-amd64:
 # Define the external release helpers
 .release:ngc-precompiled:
   extends: .release:external-precompiled
-  variables: !reference [.release:ngc, variables]
 
 release:ngc-ubuntu18.04:
   extends:
