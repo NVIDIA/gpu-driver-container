@@ -184,6 +184,9 @@ trigger-pipeline:
     OUT_REGISTRY_TOKEN: "${CI_REGISTRY_PASSWORD}"
     OUT_REGISTRY: "${CI_REGISTRY}"
     OUT_IMAGE_NAME: "${CI_REGISTRY_IMAGE}/staging/driver"
+  except:
+    variables:
+      - $CI_PRECOMPILED
 
 .release:staging-ubuntu22.04:
   extends:
@@ -193,6 +196,9 @@ trigger-pipeline:
     OUT_REGISTRY_TOKEN: "${CI_REGISTRY_PASSWORD}"
     OUT_REGISTRY: "${CI_REGISTRY}"
     OUT_IMAGE_NAME: "${CI_REGISTRY_IMAGE}/staging/driver"
+  except:
+    variables:
+      - $CI_PRECOMPILED
 
 # Define an external release step that pushes an image to an external repository.
 .release:external:
@@ -237,9 +243,6 @@ release:staging-ubuntu18.04:
     - .dist-ubuntu18.04
   needs:
     - image-ubuntu18.04
-  except:
-    variables:
-      - $CI_PRECOMPILED
 
 release:staging-ubuntu20.04:
   extends:
@@ -247,9 +250,6 @@ release:staging-ubuntu20.04:
     - .dist-ubuntu20.04
   needs:
     - image-ubuntu20.04
-  except:
-    variables:
-      - $CI_PRECOMPILED
 
 release:staging-ubuntu22.04:
   extends:
@@ -257,9 +257,6 @@ release:staging-ubuntu22.04:
     - .dist-ubuntu22.04
   needs:
     - image-ubuntu22.04
-  except:
-    variables:
-      - $CI_PRECOMPILED
 
 release:staging-signed-ubuntu20.04:
   extends:
@@ -267,9 +264,6 @@ release:staging-signed-ubuntu20.04:
     - .dist-signed-ubuntu20.04
   needs:
     - image-signed-ubuntu20.04
-  except:
-    variables:
-      - $CI_PRECOMPILED
 
 release:staging-rhcos4.12:
   extends:
@@ -277,18 +271,12 @@ release:staging-rhcos4.12:
     - .dist-rhcos4.12
   needs:
     - image-rhcos4.12
-  except:
-    variables:
-      - $CI_PRECOMPILED
 
 release:staging-centos7:
   extends:
     - .release:staging
     - .dist-centos7
     - image-centos7
-  except:
-    variables:
-      - $CI_PRECOMPILED
 
 # Precompiled Ubuntu22.04 release
 release:staging-precompiled-ubuntu22.04:
