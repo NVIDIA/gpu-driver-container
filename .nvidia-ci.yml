@@ -68,60 +68,48 @@ variables:
   extends:
     - .driver-versions
     - .image-pull-generic
+  except:
+    variables:
+      - $CI_PRECOMPILED
 
 .image-pull-ubuntu22.04:
   # Perform for each DRIVER_VERSION
   extends:
     - .driver-versions-ubuntu22.04
     - .image-pull-generic
+  except:
+    variables:
+      - $CI_PRECOMPILED
 
 image-ubuntu18.04:
   extends:
     - .image-pull
     - .dist-ubuntu18.04
-  except:
-    variables:
-      - $CI_PRECOMPILED 
 
 image-ubuntu20.04:
   extends:
     - .image-pull
     - .dist-ubuntu20.04
-  except:
-    variables:
-      - $CI_PRECOMPILED
 
 image-ubuntu22.04:
   extends:
     - .image-pull-ubuntu22.04
     - .dist-ubuntu22.04
-  except:
-    variables:
-      - $CI_PRECOMPILED
 
 image-signed-ubuntu20.04:
   extends:
     - .image-pull
     - .dist-signed-ubuntu20.04
-  except:
-    variables:
-      - $CI_PRECOMPILED
 
 image-rhcos4.12:
   extends:
     - .image-pull
     - .dist-rhcos4.12
-  except:
-    variables:
-      - $CI_PRECOMPILED
 
 image-centos7:
   extends:
     - .image-pull
     - .dist-centos7
-  except:
-    variables:
-      - $CI_PRECOMPILED
 
 image-precompiled-ubuntu22.04:
   stage: image-build
