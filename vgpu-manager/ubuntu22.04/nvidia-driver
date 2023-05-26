@@ -107,6 +107,16 @@ _install_driver() {
     sh NVIDIA-Linux-${DRIVER_ARCH}-${DRIVER_VERSION}-vgpu-kvm.run --ui=none --no-questions --tmpdir ${tmp_dir} --no-systemd
 }
 
+# Create /dev/char directory if it doesn't exist inside the container.
+# Without this directory, nvidia-vgpu-mgr will fail to create symlinks
+# under /dev/char for new devices nodes.
+_create_dev_char_directory() {
+    if [ ! -d "/dev/char" ]; then
+        echo "Creating '/dev/char' directory"
+        mkdir -p /dev/char
+    fi
+}
+
 # Currently _install_driver() takes care of loading nvidia modules. Just need to start necessary vgpu daemons
 _load_driver() {
     /usr/bin/nvidia-vgpud &
@@ -227,6 +237,7 @@ init() {
   _update_package_cache
   _resolve_kernel_version || exit 1
   _install_prerequisites
+  _create_dev_char_directory
   _install_driver
   _load_driver || exit 1
   _mount_rootfs
