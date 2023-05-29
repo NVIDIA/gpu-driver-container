@@ -217,13 +217,6 @@ trigger-pipeline:
         - $CI_PRECOMPILED
       when: never
 
-# Define an external release step that pushes an image to an external repository.
-.release:external-precompiled:
-  extends:
-    - .release-generic
-  rules:
-    - !reference [.release:external, rules]
-
 .release:external-ubuntu22.04:
   extends:
     - .release-ubuntu22.04

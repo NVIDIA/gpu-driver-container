@@ -268,9 +268,7 @@ scan-centos7-amd64:
   needs:
     - image-centos7
 
-# Define the external release helpers
-.release:ngc:
-  extends: .release:external
+.release:ngc-variables:
   variables:
     OUT_REGISTRY_USER: "${NGC_REGISTRY_USER}"
     OUT_REGISTRY_TOKEN: "${NGC_REGISTRY_TOKEN}"
@@ -280,9 +278,12 @@ scan-centos7-amd64:
     DOCKER: echo docker
     REGCTL: echo regctl
 
+
 # Define the external release helpers
-.release:ngc-precompiled:
-  extends: .release:external-precompiled
+.release:ngc:
+  extends: 
+    - .release:external
+    - .release:ngc-variables
 
 release:ngc-ubuntu18.04:
   extends:
@@ -311,7 +312,8 @@ release:ngc-precompiled-ubuntu22.04:
     PRECOMPILED: "true"
   extends:
     - .driver-versions-precompiled-ubuntu22.04
-    - .release:ngc-precompiled
+    - .release-generic
+    - .release:ngc-variables
   needs:
     - image-precompiled-ubuntu22.04
   rules:
