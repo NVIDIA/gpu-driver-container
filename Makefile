@@ -127,7 +127,7 @@ push-signed_ubuntu20.04%: DRIVER_TAG = $(DRIVER_BRANCH)
 push-signed_ubuntu22.04%: DIST = ubuntu22.04
 push-signed_ubuntu22.04%: DRIVER_TAG = $(DRIVER_BRANCH)
 push-signed_ubuntu22.04%: IMAGE_TAG = $(DRIVER_VERSION)-$(KERNEL_VERSION)-$(DIST)
-push-signed_ubuntu22.04%: OUT_IMAGE_TAG = $(DRIVER_VERSION)-$(KERNEL_VERSION)-$(DIST)
+push-signed_ubuntu22.04%: OUT_IMAGE_TAG = $(DRIVER_BRANCH)-$(KERNEL_VERSION)-$(DIST)
 
 # $(DRIVER_BUILD_TARGETS) is in the form of build-$(DIST)-$(DRIVER_VERSION)
 # Parse the target to set the required variables.
