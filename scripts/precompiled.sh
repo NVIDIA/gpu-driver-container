@@ -43,7 +43,7 @@ function buildBaseImage(){
 
 function buildImage(){
     # Build the image
-    make DRIVER_VERSIONS=${DRIVER_VERSIONS} DRIVER_BRANCH=${DRIVER_BRANCH} build-${DIST}-${DRIVER_BRANCH}
+    make DRIVER_VERSIONS=${DRIVER_VERSIONS} DRIVER_BRANCH=${DRIVER_BRANCH} build-${DIST}-${DRIVER_VERSION}
 }
 
 function pushBaseImage(){
@@ -61,12 +61,12 @@ function pushImage(){
 
 function pullImage(){
     # pull the image
-    make DRIVER_VERSIONS=${DRIVER_VERSIONS} DRIVER_BRANCH=${DRIVER_BRANCH} pull-${DIST}-${DRIVER_BRANCH}
+    make DRIVER_VERSIONS=${DRIVER_VERSIONS} DRIVER_BRANCH=${DRIVER_BRANCH} pull-${DIST}-${DRIVER_VERSION}
 }
 
 function archiveImage(){
     # archive the image
-    make DRIVER_VERSIONS=${DRIVER_VERSIONS} DRIVER_BRANCH=${DRIVER_BRANCH} archive-${DIST}-${DRIVER_BRANCH}
+    make DRIVER_VERSIONS=${DRIVER_VERSIONS} DRIVER_BRANCH=${DRIVER_BRANCH} archive-${DIST}-${DRIVER_VERSION}
 }
 
 case $1 in
