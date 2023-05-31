@@ -68,12 +68,18 @@ variables:
   extends:
     - .driver-versions
     - .image-pull-generic
+  except:
+    variables:
+      - $CI_PRECOMPILED
 
 .image-pull-ubuntu22.04:
   # Perform for each DRIVER_VERSION
   extends:
     - .driver-versions-ubuntu22.04
     - .image-pull-generic
+  except:
+    variables:
+      - $CI_PRECOMPILED
 
 image-ubuntu18.04:
   extends:
@@ -105,7 +111,6 @@ image-centos7:
     - .image-pull
     - .dist-centos7
 
-
 image-precompiled-ubuntu22.04:
   stage: image-build
   variables:
@@ -128,6 +133,7 @@ image-precompiled-ubuntu22.04:
     variables:
     - $CI_COMMIT_MESSAGE =~ /\[skip[ _-]scans?\]/i
     - $SKIP_SCANS && $SKIP_SCANS == "yes"
+    - $CI_PRECOMPILED && $CI_PRECOMPILED == "true"
   before_script:
     # We ensure that the DRIVER_VERSION and PLATFORM are set
     - 'if [[ "${PRECOMPILED}" != "true" ]]; then echo DRIVER_VERSION: ${DRIVER_VERSION} ; [[ -n "${DRIVER_VERSION}" ]] || exit 1; fi'
@@ -233,6 +239,10 @@ scan-precompiled-ubuntu22.04-amd64:
     - .platform-amd64
   needs:
     - image-precompiled-ubuntu22.04
+  except:
+    variables:
+    - $CI_COMMIT_MESSAGE =~ /\[skip[ _-]scans?\]/i
+    - $SKIP_SCANS && $SKIP_SCANS == "yes"
 
 scan-rhcos4.12-amd64:
   extends:
@@ -258,9 +268,7 @@ scan-centos7-amd64:
   needs:
     - image-centos7
 
-# Define the external release helpers
-.release:ngc:
-  extends: .release:external
+.release:ngc-variables:
   variables:
     OUT_REGISTRY_USER: "${NGC_REGISTRY_USER}"
     OUT_REGISTRY_TOKEN: "${NGC_REGISTRY_TOKEN}"
@@ -269,6 +277,13 @@ scan-centos7-amd64:
     # Disable external releases for now
     DOCKER: echo docker
     REGCTL: echo regctl
+
+
+# Define the external release helpers
+.release:ngc:
+  extends: 
+    - .release:external
+    - .release:ngc-variables
 
 release:ngc-ubuntu18.04:
   extends:
@@ -297,7 +312,12 @@ release:ngc-precompiled-ubuntu22.04:
     PRECOMPILED: "true"
   extends:
     - .driver-versions-precompiled-ubuntu22.04
-    - .release:ngc
+    - .release-generic
+    - .release:ngc-variables
+  needs:
+    - image-precompiled-ubuntu22.04
+  rules:
+    - if: $CI_PRECOMPILED == "true"
 
 release:ngc-rhcos4.12:
   extends:
