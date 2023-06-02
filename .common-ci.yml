@@ -269,6 +269,7 @@ release:staging-centos7:
   extends:
     - .release:staging
     - .dist-centos7
+  needs:
     - image-centos7
 
 # Precompiled Ubuntu22.04 release
