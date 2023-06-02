@@ -89,7 +89,7 @@ pull-signed_ubuntu20.04%: DRIVER_TAG = $(DRIVER_BRANCH)
 
 pull-signed_ubuntu22.04%: DIST = ubuntu22.04
 pull-signed_ubuntu22.04%: DRIVER_TAG = $(DRIVER_BRANCH)
-pull-signed_ubuntu22.04%: IMAGE_TAG = $(DRIVER_VERSION)-$(KERNEL_VERSION)-$(DIST)
+pull-signed_ubuntu22.04%: IMAGE_TAG = $(DRIVER_BRANCH)-$(KERNEL_VERSION)-$(DIST)
 
 PLATFORM ?= linux/amd64
 $(DRIVER_PULL_TARGETS): pull-%:
@@ -106,7 +106,7 @@ archive-signed_ubuntu20.04%: DRIVER_TAG = $(DRIVER_BRANCH)
 
 archive-signed_ubuntu22.04%: DIST = ubuntu22.04
 archive-signed_ubuntu22.04%: DRIVER_TAG = $(DRIVER_BRANCH)
-archive-signed_ubuntu22.04%: IMAGE_TAG = $(DRIVER_VERSION)-$(KERNEL_VERSION)-$(DIST)
+archive-signed_ubuntu22.04%: IMAGE_TAG = $(DRIVER_BRANCH)-$(KERNEL_VERSION)-$(DIST)
 
 $(DRIVER_ARCHIVE_TARGETS): archive-%:
 	$(DOCKER) save "$(IMAGE)" -o "archive.tar"
@@ -126,7 +126,7 @@ push-signed_ubuntu20.04%: DRIVER_TAG = $(DRIVER_BRANCH)
 
 push-signed_ubuntu22.04%: DIST = ubuntu22.04
 push-signed_ubuntu22.04%: DRIVER_TAG = $(DRIVER_BRANCH)
-push-signed_ubuntu22.04%: IMAGE_TAG = $(DRIVER_VERSION)-$(KERNEL_VERSION)-$(DIST)
+push-signed_ubuntu22.04%: IMAGE_TAG = $(DRIVER_BRANCH)-$(KERNEL_VERSION)-$(DIST)
 push-signed_ubuntu22.04%: OUT_IMAGE_TAG = $(DRIVER_BRANCH)-$(KERNEL_VERSION)-$(DIST)
 
 # $(DRIVER_BUILD_TARGETS) is in the form of build-$(DIST)-$(DRIVER_VERSION)
@@ -171,7 +171,7 @@ build-signed_ubuntu20.04%: DRIVER_TAG = $(DRIVER_BRANCH)
 build-signed_ubuntu22.04%: DIST = ubuntu22.04
 build-signed_ubuntu22.04%: SUBDIR = ubuntu22.04/precompiled
 build-signed_ubuntu22.04%: DRIVER_TAG = $(DRIVER_BRANCH)
-build-signed_ubuntu22.04%: IMAGE_TAG = $(DRIVER_VERSION)-$(KERNEL_VERSION)-$(DIST)
+build-signed_ubuntu22.04%: IMAGE_TAG = $(DRIVER_BRANCH)-$(KERNEL_VERSION)-$(DIST)
 build-signed_ubuntu22.04%: DOCKER_BUILD_ARGS =  --build-arg KERNEL_VERSION="$(KERNEL_VERSION)"
 
 # base is an image used to poll Canonical for the latest kernel version
