@@ -35,6 +35,12 @@ variables:
   STAGING_REGISTRY: registry.gitlab.com/nvidia/container-images/driver/staging
   STAGING_VERSION: "${CI_COMMIT_SHORT_SHA}"
 
+.image-pull-rules:
+  # We delay the job start to allow the public pipeline to generate the required images.
+  rules:
+    - when: delayed
+      start_in: 30 minutes
+
 .image-pull-generic:
   stage: image-build
   variables:
@@ -45,9 +51,6 @@ variables:
     OUT_REGISTRY_TOKEN: "${CI_REGISTRY_PASSWORD}"
     OUT_REGISTRY: "${CI_REGISTRY}"
     OUT_IMAGE_NAME: "${CI_REGISTRY_IMAGE}"
-  # We delay the job start to allow the public pipeline to generate the required images.
-  when: delayed
-  start_in: 30 minutes
   timeout: 30 minutes
   retry:
     max: 2
@@ -68,18 +71,21 @@ variables:
   extends:
     - .driver-versions
     - .image-pull-generic
-  except:
-    variables:
-      - $CI_PRECOMPILED
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "schedule"
+      when: never
+    - !reference [.image-pull-rules, rules]
+
 
 .image-pull-ubuntu22.04:
   # Perform for each DRIVER_VERSION
   extends:
     - .driver-versions-ubuntu22.04
     - .image-pull-generic
-  except:
-    variables:
-      - $CI_PRECOMPILED
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "schedule"
+      when: never
+    - !reference [.image-pull-rules, rules]
 
 image-ubuntu18.04:
   extends:
@@ -117,6 +123,9 @@ image-precompiled-ubuntu22.04:
     DIST: signed_ubuntu22.04
     BASE_TARGET: jammy
     PRECOMPILED: "true"
+  rules:
+    - when: delayed
+      start_in: 30 minutes
   extends:
     - .driver-versions-precompiled-ubuntu22.04
     - .image-pull-generic
@@ -129,11 +138,11 @@ image-precompiled-ubuntu22.04:
   variables:
     IMAGE_NAME: "${CI_REGISTRY_IMAGE}"
     VERSION: "${STAGING_VERSION}"
-  except:
-    variables:
-    - $CI_COMMIT_MESSAGE =~ /\[skip[ _-]scans?\]/i
-    - $SKIP_SCANS && $SKIP_SCANS == "yes"
-    - $CI_PRECOMPILED && $CI_PRECOMPILED == "true"
+  rules:
+    - if: $CI_COMMIT_MESSAGE =~ /\[skip[ _-]scans?\]/i
+      when: never
+    - if: $SKIP_SCANS && $SKIP_SCANS == "yes"
+      when: never
   before_script:
     # We ensure that the DRIVER_VERSION and PLATFORM are set
     - 'if [[ "${PRECOMPILED}" != "true" ]]; then echo DRIVER_VERSION: ${DRIVER_VERSION} ; [[ -n "${DRIVER_VERSION}" ]] || exit 1; fi'
@@ -158,17 +167,36 @@ image-precompiled-ubuntu22.04:
       - vulns.json
       - policy_evaluation.json
 
+.scan-rules-common:
+  rules:
+    - if: $CI_COMMIT_MESSAGE =~ /\[skip[ _-]scans?\]/i
+      when: never
+    - if: $SKIP_SCANS && $SKIP_SCANS == "yes"
+      when: never
+
 .scan:
   # Repeat for each DRIVER_VERSION
   extends:
     - .driver-versions
     - .scan-generic
+  rules:
+    - !reference [.scan-rules-common, rules]
+    - if: $CI_PIPELINE_SOURCE == "schedule"
+      when: never
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - !reference [.pipeline-trigger-rules, rules]
 
 .scan-ubuntu22.04:
   # Repeat for each DRIVER_VERSION
   extends:
     - .driver-versions-ubuntu22.04
     - .scan-generic
+  rules:
+    - !reference [.scan-rules-common, rules]
+    - if: $CI_PIPELINE_SOURCE == "schedule"
+      when: never
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - !reference [.pipeline-trigger-rules, rules]
 
 # Define the scan targets
 scan-ubuntu18.04-amd64:
@@ -239,10 +267,9 @@ scan-precompiled-ubuntu22.04-amd64:
     - .platform-amd64
   needs:
     - image-precompiled-ubuntu22.04
-  except:
-    variables:
-    - $CI_COMMIT_MESSAGE =~ /\[skip[ _-]scans?\]/i
-    - $SKIP_SCANS && $SKIP_SCANS == "yes"
+  rules:
+    - !reference [.scan-rules-common, rules]
+    - when: always
 
 scan-rhcos4.12-amd64:
   extends:
@@ -314,10 +341,11 @@ release:ngc-precompiled-ubuntu22.04:
     - .driver-versions-precompiled-ubuntu22.04
     - .release-generic
     - .release:ngc-variables
+  rules:
+    # Only run NGC release job on scheduled pipelines
+    - if: $CI_PIPELINE_SOURCE == "schedule"
   needs:
     - image-precompiled-ubuntu22.04
-  rules:
-    - if: $CI_PRECOMPILED == "true"
 
 release:ngc-rhcos4.12:
   extends:
