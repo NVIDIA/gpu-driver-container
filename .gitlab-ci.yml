@@ -37,6 +37,9 @@ include:
   extends:
     - .driver-versions
     - .image-build-generic
+  except:
+    variables:
+      - $CI_PRECOMPILED
 
 # Define the image build targets
 .image-build-ubuntu22.04:
@@ -44,6 +47,9 @@ include:
   extends:
     - .driver-versions-ubuntu22.04
     - .image-build-generic
+  except:
+    variables:
+      - $CI_PRECOMPILED
 
 image-ubuntu18.04:
   rules:
