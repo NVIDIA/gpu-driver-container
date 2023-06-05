@@ -184,9 +184,8 @@ trigger-pipeline:
     OUT_REGISTRY_TOKEN: "${CI_REGISTRY_PASSWORD}"
     OUT_REGISTRY: "${CI_REGISTRY}"
     OUT_IMAGE_NAME: "${CI_REGISTRY_IMAGE}/staging/driver"
-  except:
-    variables:
-      - $CI_PRECOMPILED
+  rules:
+    - if: $CI_PIPELINE_SOURCE != "schedule"
 
 .release:staging-ubuntu22.04:
   extends:
@@ -196,9 +195,8 @@ trigger-pipeline:
     OUT_REGISTRY_TOKEN: "${CI_REGISTRY_PASSWORD}"
     OUT_REGISTRY: "${CI_REGISTRY}"
     OUT_IMAGE_NAME: "${CI_REGISTRY_IMAGE}/staging/driver"
-  except:
-    variables:
-      - $CI_PRECOMPILED
+  rules:
+    - if: $CI_PIPELINE_SOURCE != "schedule"
 
 # Define an external release step that pushes an image to an external repository.
 .release:external:
@@ -214,7 +212,7 @@ trigger-pipeline:
         VERSION: "${RELEASE_DEVEL_TAG}"
         OUT_VERSION: "${DEVEL_RELEASE_IMAGE_VERSION}"
     - exists:
-        - $CI_PRECOMPILED
+        - $CI_PIPELINE_SOURCE && $CI_PIPELINE_SOURCE == "schedule"
       when: never
 
 .release:external-ubuntu22.04:
@@ -295,6 +293,7 @@ release:staging-precompiled-ubuntu22.04:
     - .release-generic
   needs:
     - image-precompiled-ubuntu22.04
-  except:
-    variables:
-      - $CI_PRECOMPILED
+  rules:
+    - if: $CI_PRECOMPILED == "true"
+      when: never
+  

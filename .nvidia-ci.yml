@@ -68,18 +68,16 @@ variables:
   extends:
     - .driver-versions
     - .image-pull-generic
-  except:
-    variables:
-      - $CI_PRECOMPILED
+  rules:
+    - if: $CI_PIPELINE_SOURCE != "schedule"
 
 .image-pull-ubuntu22.04:
   # Perform for each DRIVER_VERSION
   extends:
     - .driver-versions-ubuntu22.04
     - .image-pull-generic
-  except:
-    variables:
-      - $CI_PRECOMPILED
+  rules:
+    - if: $CI_PIPELINE_SOURCE != "schedule"
 
 image-ubuntu18.04:
   extends:
@@ -133,7 +131,7 @@ image-precompiled-ubuntu22.04:
     variables:
     - $CI_COMMIT_MESSAGE =~ /\[skip[ _-]scans?\]/i
     - $SKIP_SCANS && $SKIP_SCANS == "yes"
-    - $CI_PRECOMPILED && $CI_PRECOMPILED == "true"
+    - $CI_PIPELINE_SOURCE && $CI_PIPELINE_SOURCE == "schedule"
   before_script:
     # We ensure that the DRIVER_VERSION and PLATFORM are set
     - 'if [[ "${PRECOMPILED}" != "true" ]]; then echo DRIVER_VERSION: ${DRIVER_VERSION} ; [[ -n "${DRIVER_VERSION}" ]] || exit 1; fi'
@@ -277,7 +275,6 @@ scan-centos7-amd64:
     # Disable external releases for now
     DOCKER: echo docker
     REGCTL: echo regctl
-
 
 # Define the external release helpers
 .release:ngc:
