@@ -341,6 +341,9 @@ release:ngc-precompiled-ubuntu22.04:
     - .driver-versions-precompiled-ubuntu22.04
     - .release-generic
     - .release:ngc-variables
+  rules:
+    # Only run NGC release job on scheduled pipelines
+    - if: $CI_PIPELINE_SOURCE == "schedule"
   needs:
     - image-precompiled-ubuntu22.04
 
