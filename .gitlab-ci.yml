@@ -50,11 +50,11 @@ include:
     - if: $CI_PIPELINE_SOURCE != "schedule"
 
 image-ubuntu18.04:
-  rules:
-    - !reference [.manual-only, rules]
   extends:
     - .image-build
     - .dist-ubuntu18.04
+  rules:
+    - !reference [.manual-only, rules]
 
 image-ubuntu20.04:
   extends:
@@ -82,11 +82,12 @@ image-centos7:
     - .dist-centos7
 
 image-fedora36:
-  rules:
-    - !reference [.manual-only, rules]
   extends:
     - .image-build
     - .dist-fedora36
+  rules:
+    - !reference [.manual-only, rules]
+
 
 image-precompiled-ubuntu22.04:
   stage: image-build
