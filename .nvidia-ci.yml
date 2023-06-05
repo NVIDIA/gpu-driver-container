@@ -68,18 +68,16 @@ variables:
   extends:
     - .driver-versions
     - .image-pull-generic
-  except:
-    variables:
-      - $CI_PRECOMPILED
+  rules:
+    - if: $CI_PIPELINE_SOURCE != "schedule"
 
 .image-pull-ubuntu22.04:
   # Perform for each DRIVER_VERSION
   extends:
     - .driver-versions-ubuntu22.04
     - .image-pull-generic
-  except:
-    variables:
-      - $CI_PRECOMPILED
+  rules:
+    - if: $CI_PIPELINE_SOURCE != "schedule"
 
 image-ubuntu18.04:
   extends:
@@ -163,12 +161,16 @@ image-precompiled-ubuntu22.04:
   extends:
     - .driver-versions
     - .scan-generic
+  rules:
+    - if: $CI_PIPELINE_SOURCE != "schedule"
 
 .scan-ubuntu22.04:
   # Repeat for each DRIVER_VERSION
   extends:
     - .driver-versions-ubuntu22.04
     - .scan-generic
+  rules:
+    - if: $CI_PIPELINE_SOURCE != "schedule"
 
 # Define the scan targets
 scan-ubuntu18.04-amd64:
@@ -316,8 +318,6 @@ release:ngc-precompiled-ubuntu22.04:
     - .release:ngc-variables
   needs:
     - image-precompiled-ubuntu22.04
-  rules:
-    - if: $CI_PRECOMPILED == "true"
 
 release:ngc-rhcos4.12:
   extends:
