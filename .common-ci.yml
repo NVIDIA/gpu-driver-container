@@ -272,3 +272,29 @@ release:staging-centos7:
   needs:
     - image-centos7
 
+# Precompiled Ubuntu22.04 release
+release:staging-precompiled-ubuntu22.04:
+  stage: release
+  variables:
+    DIST: signed_ubuntu22.04
+    BASE_TARGET: jammy
+    IN_REGISTRY: "${STAGING_REGISTRY}"
+    IN_IMAGE_NAME: driver
+    OUT_REGISTRY_USER: "${CI_REGISTRY_USER}"
+    OUT_REGISTRY_TOKEN: "${CI_REGISTRY_PASSWORD}"
+    OUT_REGISTRY: "${CI_REGISTRY}"
+    OUT_IMAGE_NAME: "${CI_REGISTRY_IMAGE}/staging/driver"
+    # Define the source image for the release
+    IMAGE_NAME: "${CI_REGISTRY_IMAGE}"
+    VERSION: "${CI_COMMIT_SHORT_SHA}"
+    # OUT_VERSION is overridden for external releases
+    OUT_VERSION: "${CI_COMMIT_SHORT_SHA}"
+    PRECOMPILED: "true"
+  extends:
+    - .driver-versions-precompiled-ubuntu22.04
+    - .release-generic
+  needs:
+    - image-precompiled-ubuntu22.04
+  except:
+    variables:
+      - $CI_PRECOMPILED
