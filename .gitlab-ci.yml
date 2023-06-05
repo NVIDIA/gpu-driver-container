@@ -37,6 +37,8 @@ include:
   extends:
     - .driver-versions
     - .image-build-generic
+  rules:
+    - if: $CI_PIPELINE_SOURCE != "schedule"
 
 # Define the image build targets
 .image-build-ubuntu22.04:
@@ -44,6 +46,8 @@ include:
   extends:
     - .driver-versions-ubuntu22.04
     - .image-build-generic
+  rules:
+    - if: $CI_PIPELINE_SOURCE != "schedule"
 
 image-ubuntu18.04:
   rules:
