@@ -36,7 +36,7 @@ include:
   # Perform for each DRIVER_VERSION
   extends:
     - .driver-versions
-    - .image-build-generi
+    - .image-build-generic
   rules:
     - if: $CI_PIPELINE_SOURCE != "schedule"
 
