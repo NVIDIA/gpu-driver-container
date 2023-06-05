@@ -41,6 +41,16 @@ include:
     variables:
       - $CI_PRECOMPILED
 
+# Define the image build manual only
+.image-build-mannual-only:
+  # Perform for each DRIVER_VERSION
+  extends:
+    - .driver-versions
+    - .image-build-generic
+  rules:
+    - !reference [.manual-only, rules]
+    - if: $CI_PRECOMPILED == "true"
+
 # Define the image build targets
 .image-build-ubuntu22.04:
   # Perform for each DRIVER_VERSION
@@ -52,10 +62,8 @@ include:
       - $CI_PRECOMPILED
 
 image-ubuntu18.04:
-  rules:
-    - !reference [.manual-only, rules]
   extends:
-    - .image-build
+    - .image-build-mannual-only
     - .dist-ubuntu18.04
 
 image-ubuntu20.04:
@@ -84,10 +92,8 @@ image-centos7:
     - .dist-centos7
 
 image-fedora36:
-  rules:
-    - !reference [.manual-only, rules]
   extends:
-    - .image-build
+    - .image-build-mannual-only
     - .dist-fedora36
 
 image-precompiled-ubuntu22.04:
