@@ -37,6 +37,8 @@ stages:
     - if: $CI_COMMIT_BRANCH == "main"
     # We trigger the pipeline on tags
     - if: $CI_COMMIT_TAG && $CI_COMMIT_TAG != ""
+    # We trigger the pipeline on tags
+    - if: $CI_PIPELINE_SOURCE == "schedule"
 
 workflow:
   rules:
@@ -61,8 +63,6 @@ trigger-pipeline:
     - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
       when: manual
       allow_failure: false
-    # We schedule the job on a pipeline schedule
-    - if: $CI_PIPELINE_SOURCE == "schedule"
     # We then add all the regular triggers
     - !reference [.pipeline-trigger-rules, rules]
 
