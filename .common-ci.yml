@@ -301,4 +301,5 @@ release:staging-precompiled-ubuntu22.04:
   rules:
     - if: $CI_PRECOMPILED == "true"
       when: never
+    - when: always
   
