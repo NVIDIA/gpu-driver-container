@@ -55,6 +55,18 @@ function pushBaseImage(){
 }
 
 function pushImage(){
+	# check if image exists in output registry
+	# note: DIST is in the form "signed_<distribution>", so we drop the '*_' prefix
+	# to extract the distribution string.
+	local out_image=${OUT_IMAGE_NAME}:${DRIVER_BRANCH}-${KERNEL_VERSION}-${DIST##*_}
+	if imageExists "$out_image"; then
+		echo "image tag already exists in output registry - $out_image"
+		if [ "$FORCE_PUSH" != "true" ]; then
+			echo "exiting"
+			return 0
+		fi
+		echo "overwriting image tag - $out_image"
+	fi
     # push the image
     make DRIVER_VERSIONS=${DRIVER_VERSIONS} DRIVER_BRANCH=${DRIVER_BRANCH} push-${DIST}
 }
@@ -67,6 +79,10 @@ function pullImage(){
 function archiveImage(){
     # archive the image
     make DRIVER_VERSIONS=${DRIVER_VERSIONS} DRIVER_BRANCH=${DRIVER_BRANCH} archive-${DIST}-${DRIVER_VERSION}
+}
+
+function imageExists(){
+	regctl manifest get $1 --list > /dev/null && return 0 || return 1
 }
 
 case $1 in
