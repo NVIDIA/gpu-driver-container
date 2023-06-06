@@ -87,11 +87,6 @@ trigger-pipeline:
     DRIVER_BRANCH: "525"
 
 # Define the distribution targets
-.dist-ubuntu18.04:
-  variables:
-    DIST: ubuntu18.04
-    CVE_UPDATES: "openssl"
-
 .dist-ubuntu20.04:
   variables:
     DIST: ubuntu20.04
@@ -231,13 +226,6 @@ trigger-pipeline:
       variables:
         VERSION: "${RELEASE_DEVEL_TAG}"
         OUT_VERSION: "${DEVEL_RELEASE_IMAGE_VERSION}"
-
-release:staging-ubuntu18.04:
-  extends:
-    - .release:staging
-    - .dist-ubuntu18.04
-  needs:
-    - image-ubuntu18.04
 
 release:staging-ubuntu20.04:
   extends:
