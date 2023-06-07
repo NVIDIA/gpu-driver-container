@@ -49,13 +49,6 @@ include:
   rules:
     - if: $CI_PIPELINE_SOURCE != "schedule"
 
-image-ubuntu18.04:
-  extends:
-    - .image-build
-    - .dist-ubuntu18.04
-  rules:
-    - !reference [.manual-only, rules]
-
 image-ubuntu20.04:
   extends:
     - .image-build
@@ -65,11 +58,6 @@ image-ubuntu22.04:
   extends:
     - .image-build-ubuntu22.04
     - .dist-ubuntu22.04
-
-image-signed-ubuntu20.04:
-  extends:
-    - .image-build
-    - .dist-signed-ubuntu20.04
 
 image-rhcos4.12:
   extends:
