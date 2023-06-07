@@ -97,9 +97,9 @@ trigger-pipeline:
     DIST: ubuntu22.04
     CVE_UPDATES: "openssl"
 
-.dist-rhcos4.12:
+.dist-rhel8:
   variables:
-    DIST: rhcos4.12
+    DIST: rhel8
 
 .dist-centos7:
   variables:
@@ -236,12 +236,12 @@ release:staging-ubuntu22.04:
   needs:
     - image-ubuntu22.04
 
-release:staging-rhcos4.12:
+release:staging-rhel8:
   extends:
     - .release:staging
-    - .dist-rhcos4.12
+    - .dist-rhel8
   needs:
-    - image-rhcos4.12
+    - image-rhel8
 
 release:staging-centos7:
   extends:
