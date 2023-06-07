@@ -87,11 +87,6 @@ trigger-pipeline:
     DRIVER_BRANCH: "525"
 
 # Define the distribution targets
-.dist-ubuntu18.04:
-  variables:
-    DIST: ubuntu18.04
-    CVE_UPDATES: "openssl"
-
 .dist-ubuntu20.04:
   variables:
     DIST: ubuntu20.04
@@ -100,11 +95,6 @@ trigger-pipeline:
 .dist-ubuntu22.04:
   variables:
     DIST: ubuntu22.04
-    CVE_UPDATES: "openssl"
-
-.dist-signed-ubuntu20.04:
-  variables:
-    DIST: signed_ubuntu20.04
     CVE_UPDATES: "openssl"
 
 .dist-rhcos4.12:
@@ -232,13 +222,6 @@ trigger-pipeline:
         VERSION: "${RELEASE_DEVEL_TAG}"
         OUT_VERSION: "${DEVEL_RELEASE_IMAGE_VERSION}"
 
-release:staging-ubuntu18.04:
-  extends:
-    - .release:staging
-    - .dist-ubuntu18.04
-  needs:
-    - image-ubuntu18.04
-
 release:staging-ubuntu20.04:
   extends:
     - .release:staging
@@ -252,13 +235,6 @@ release:staging-ubuntu22.04:
     - .dist-ubuntu22.04
   needs:
     - image-ubuntu22.04
-
-release:staging-signed-ubuntu20.04:
-  extends:
-    - .release:staging
-    - .dist-signed-ubuntu20.04
-  needs:
-    - image-signed-ubuntu20.04
 
 release:staging-rhcos4.12:
   extends:
