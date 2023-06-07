@@ -97,11 +97,6 @@ image-ubuntu22.04:
     - .image-pull-ubuntu22.04
     - .dist-ubuntu22.04
 
-image-signed-ubuntu20.04:
-  extends:
-    - .image-pull
-    - .dist-signed-ubuntu20.04
-
 image-rhel8:
   extends:
     - .image-pull
@@ -226,22 +221,6 @@ scan-ubuntu22.04-arm64:
   needs:
     - image-ubuntu22.04
 
-scan-signed-ubuntu20.04-amd64:
-  extends:
-    - .scan
-    - .dist-signed-ubuntu20.04
-    - .platform-amd64
-  needs:
-    - image-signed-ubuntu20.04
-
-scan-signed-ubuntu20.04-arm64:
-  extends:
-    - .scan
-    - .dist-signed-ubuntu20.04
-    - .platform-arm64
-  needs:
-    - image-signed-ubuntu20.04
-
 scan-precompiled-ubuntu22.04-amd64:
   variables:
     DIST: signed_ubuntu22.04
@@ -308,11 +287,6 @@ release:ngc-ubuntu22.04:
   extends:
     - .release:ngc
     - .dist-ubuntu22.04
-
-release:ngc-signed-ubuntu20.04:
-  extends:
-    - .release:ngc
-    - .dist-signed-ubuntu20.04
 
 release:ngc-precompiled-ubuntu22.04:
   variables:
