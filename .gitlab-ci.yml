@@ -59,10 +59,10 @@ image-ubuntu22.04:
     - .image-build-ubuntu22.04
     - .dist-ubuntu22.04
 
-image-rhcos4.12:
+image-rhel8:
   extends:
     - .image-build
-    - .dist-rhcos4.12
+    - .dist-rhel8
 
 image-centos7:
   extends:
