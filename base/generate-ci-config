@@ -5,14 +5,15 @@ echo "Generating kernel_version.txt"
 flavor=$1
 
 # Supported NVIDIA driver versions
-DRIVER_BRANCH="${DRIVER_BRANCH:-525}"
+: ${DRIVER_BRANCH:=525}
 
 # Ubuntu  Flavors
 # Ubuntu Jammy = 22.04
 UBUNTU_FLAVORS="jammy"
 # Ubuntu LTS kernels currently are 5.13 and 5.15
 # see https://ubuntu.com/about/release-cycle#ubuntu-kernel-release-cycle
-LTS_KERNEL="${LTS_KERNEL:-5.15}"
+: ${LTS_KERNEL:=5.15}
+: ${KERNEL_FLAVOR:=generic}
 SUPPORTED_KERNELS=""
 
 
@@ -40,9 +41,9 @@ for i in $(cat /tmp/${flavor}_tags.txt); do
     continue
   fi
   if [[ $SUPPORTED_KERNELS == "" ]]; then
-    SUPPORTED_KERNELS="$kernel-generic"
+    SUPPORTED_KERNELS="$kernel-$KERNEL_FLAVOR"
   else
-    SUPPORTED_KERNELS="$SUPPORTED_KERNELS, $kernel-generic"
+    SUPPORTED_KERNELS="$SUPPORTED_KERNELS, $kernel-$KERNEL_FLAVOR"
   fi
 done
 

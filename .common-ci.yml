@@ -268,8 +268,9 @@ release:staging-centos7:
   extends:
     - .release-generic
 
+
 # Precompiled Ubuntu22.04 release
-release:staging-precompiled-ubuntu22.04:
+release:staging-precompiled-ubuntu22.04-generic:
   variables:
     DIST: signed_ubuntu22.04
     BASE_TARGET: jammy
@@ -278,4 +279,15 @@ release:staging-precompiled-ubuntu22.04:
     - .driver-versions-precompiled-ubuntu22.04
     - .release:staging-precompiled
   needs:
-    - image-precompiled-ubuntu22.04
+    - image-precompiled-ubuntu22.04-generic
+
+release:staging-precompiled-ubuntu22.04-nvidia:
+  variables:
+    DIST: signed_ubuntu22.04
+    BASE_TARGET: jammy
+    KERNEL_FLAVOR: nvidia
+  extends:
+    - .driver-versions-precompiled-ubuntu22.04
+    - .release:staging-precompiled
+  needs:
+    - image-precompiled-ubuntu22.04-nvidia

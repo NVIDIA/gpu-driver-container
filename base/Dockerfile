@@ -1,11 +1,14 @@
 ARG CUDA_VERSION
+
 # Ubuntu 22.04
 FROM nvidia/cuda:${CUDA_VERSION}-base-ubuntu22.04 as jammy
 
 SHELL ["/bin/bash", "-c"]
 
 ARG DRIVER_BRANCH
+ARG KERNEL_FLAVOR
 ENV DRIVER_BRANCH=${DRIVER_BRANCH}
+ENV KERNEL_FLAVOR=${KERNEL_FLAVOR}
 
 # Remove cuda repository to avoid GPG errors
 RUN rm -f /etc/apt/sources.list.d/cuda*
@@ -38,7 +41,9 @@ FROM nvidia/cuda:${CUDA_VERSION}-base-ubuntu20.04 as focal
 SHELL ["/bin/bash", "-c"]
 
 ARG DRIVER_BRANCH
+ARG KERNEL_FLAVOR
 ENV DRIVER_BRANCH=${DRIVER_BRANCH}
+ENV KERNEL_FLAVOR=${KERNEL_FLAVOR}
 
 # Remove cuda repository to avoid GPG errors
 RUN rm -f /etc/apt/sources.list.d/cuda*
