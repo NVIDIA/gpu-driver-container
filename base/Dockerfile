@@ -1,10 +1,10 @@
 ARG CUDA_VERSION
-ARG DRIVER_BRANCH
 # Ubuntu 22.04
 FROM nvidia/cuda:${CUDA_VERSION}-base-ubuntu22.04 as jammy
 
 SHELL ["/bin/bash", "-c"]
 
+ARG DRIVER_BRANCH
 ENV DRIVER_BRANCH=${DRIVER_BRANCH}
 
 # Remove cuda repository to avoid GPG errors
@@ -37,6 +37,7 @@ FROM nvidia/cuda:${CUDA_VERSION}-base-ubuntu20.04 as focal
 
 SHELL ["/bin/bash", "-c"]
 
+ARG DRIVER_BRANCH
 ENV DRIVER_BRANCH=${DRIVER_BRANCH}
 
 # Remove cuda repository to avoid GPG errors
