@@ -80,11 +80,11 @@ trigger-pipeline:
     matrix:
       - DRIVER_VERSION: [525.125.06, 535.54.03]
 
-# Define the driver-branch versions for jobs that can be run in parallel for ubuntu22.04
-# for now is just 525, but we can add more branches later.
+# Define the driver branches for precompiled jobs that can be run in parallel for ubuntu22.04
 .driver-versions-precompiled-ubuntu22.04:
-  variables:
-    DRIVER_BRANCH: "525"
+  parallel:
+    matrix:
+      - DRIVER_BRANCH: [525, 535]
 
 # Define the distribution targets
 .dist-ubuntu20.04:
@@ -250,12 +250,9 @@ release:staging-centos7:
   needs:
     - image-centos7
 
-# Precompiled Ubuntu22.04 release
-release:staging-precompiled-ubuntu22.04:
+.release:staging-precompiled:
   stage: release
   variables:
-    DIST: signed_ubuntu22.04
-    BASE_TARGET: jammy
     IN_REGISTRY: "${STAGING_REGISTRY}"
     IN_IMAGE_NAME: driver
     OUT_REGISTRY_USER: "${CI_REGISTRY_USER}"
@@ -269,7 +266,16 @@ release:staging-precompiled-ubuntu22.04:
     OUT_VERSION: "${CI_COMMIT_SHORT_SHA}"
     PRECOMPILED: "true"
   extends:
-    - .driver-versions-precompiled-ubuntu22.04
     - .release-generic
+
+# Precompiled Ubuntu22.04 release
+release:staging-precompiled-ubuntu22.04:
+  variables:
+    DIST: signed_ubuntu22.04
+    BASE_TARGET: jammy
+    KERNEL_FLAVOR: generic
+  extends:
+    - .driver-versions-precompiled-ubuntu22.04
+    - .release:staging-precompiled
   needs:
     - image-precompiled-ubuntu22.04
