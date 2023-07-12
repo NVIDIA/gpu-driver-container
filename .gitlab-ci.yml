@@ -76,12 +76,10 @@ image-fedora36:
   rules:
     - !reference [.manual-only, rules]
 
-
-image-precompiled-ubuntu22.04:
-  stage: image-build
+.image-build-precompiled:
+  extends:
+    .image-build-generic
   variables:
-    DIST: signed_ubuntu22.04
-    BASE_TARGET: jammy
     IN_REGISTRY: "${STAGING_REGISTRY}"
     IN_IMAGE_NAME: driver
     OUT_REGISTRY_USER: "${CI_REGISTRY_USER}"
@@ -89,6 +87,13 @@ image-precompiled-ubuntu22.04:
     OUT_REGISTRY: "${CI_REGISTRY}"
     OUT_IMAGE_NAME: "${CI_REGISTRY_IMAGE}/staging/driver"
     PRECOMPILED: "true"
-  extends: 
+
+image-precompiled-ubuntu22.04:
+  stage: image-build
+  variables:
+    DIST: signed_ubuntu22.04
+    BASE_TARGET: jammy
+    KERNEL_FLAVOR: generic
+  extends:
     - .driver-versions-precompiled-ubuntu22.04
-    - .image-build-generic
+    - .image-build-precompiled
