@@ -143,7 +143,7 @@ build-%: DOCKERFILE = $(CURDIR)/$(SUBDIR)/Dockerfile
 $(DISTRIBUTIONS): %: build-%
 $(BUILD_TARGETS): %: $(foreach driver_version, $(DRIVER_VERSIONS), $(addprefix %-, $(driver_version)))
 $(DRIVER_BUILD_TARGETS):
-	$(DOCKER) $(BUILDX) create --use --name network-host \
+	$(DOCKER) $(BUILDX) create --use --name network-host --driver-opt network=host \
 		--buildkitd-flags '--allow-insecure-entitlement network.host'
 	DOCKER_BUILDKIT=1 \
 		$(DOCKER) $(BUILDX) build --pull \
