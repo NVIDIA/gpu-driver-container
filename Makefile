@@ -147,6 +147,7 @@ $(DRIVER_BUILD_TARGETS):
 		$(DOCKER) $(BUILDX) build --pull \
 				$(DOCKER_BUILD_OPTIONS) \
 				$(DOCKER_BUILD_PLATFORM_OPTIONS) \
+				--network=host \
 				--tag $(IMAGE) \
 				--build-arg DRIVER_VERSION="$(DRIVER_VERSION)" \
 				--build-arg DRIVER_BRANCH="$(DRIVER_BRANCH)" \
