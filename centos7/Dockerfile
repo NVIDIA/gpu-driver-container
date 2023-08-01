@@ -20,7 +20,7 @@ RUN sh /tmp/install.sh depinstall
 
 RUN sh /tmp/install.sh nvswitch_depinstall
 
-RUN curl -fsSL -o /usr/local/bin/donkey https://github.com/3XX0/donkey/releases/download/v1.1.0/donkey
+RUN curl -fsSLv -o /usr/local/bin/donkey https://github.com/3XX0/donkey/releases/download/v1.1.0/donkey
 
 RUN curl -fsSL -o /usr/local/bin/extract-vmlinux https://raw.githubusercontent.com/torvalds/linux/master/scripts/extract-vmlinux && \
     chmod +x /usr/local/bin/donkey /usr/local/bin/extract-vmlinux
