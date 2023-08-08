@@ -85,7 +85,7 @@ trigger-pipeline:
   parallel:
     matrix:
       - DRIVER_BRANCH: [525, 535]
-        KERNEL_FLAVOR: [generic, nvidia]
+        KERNEL_FLAVOR: [generic, nvidia, aws, azure]
 
 # Define the distribution targets
 .dist-ubuntu20.04:
