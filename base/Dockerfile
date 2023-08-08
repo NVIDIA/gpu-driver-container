@@ -31,7 +31,7 @@ RUN echo "deb [arch=amd64] http://archive.ubuntu.com/ubuntu/ jammy main universe
 COPY generate-ci-config /usr/local/bin/generate-ci-config
 
 RUN chmod +x /usr/local/bin/generate-ci-config && \
-    generate-ci-config jammy
+    generate-ci-config
 
 ENTRYPOINT ["/usr/bin/sleep","1000"]
 
