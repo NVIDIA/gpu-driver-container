@@ -80,11 +80,12 @@ trigger-pipeline:
     matrix:
       - DRIVER_VERSION: [525.125.06, 535.86.10]
 
-# Define the driver branches for precompiled jobs that can be run in parallel for ubuntu22.04
+# Define the matrix of precompiled jobs that can be run in parallel for ubuntu22.04
 .driver-versions-precompiled-ubuntu22.04:
   parallel:
     matrix:
       - DRIVER_BRANCH: [525, 535]
+        KERNEL_FLAVOR: [generic, nvidia]
 
 # Define the distribution targets
 .dist-ubuntu20.04:
@@ -268,12 +269,12 @@ release:staging-centos7:
   extends:
     - .release-generic
 
+
 # Precompiled Ubuntu22.04 release
 release:staging-precompiled-ubuntu22.04:
   variables:
     DIST: signed_ubuntu22.04
     BASE_TARGET: jammy
-    KERNEL_FLAVOR: generic
   extends:
     - .driver-versions-precompiled-ubuntu22.04
     - .release:staging-precompiled
