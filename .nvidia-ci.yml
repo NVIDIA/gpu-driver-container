@@ -293,6 +293,8 @@ release:ngc-precompiled-ubuntu22.04:
     DIST: signed_ubuntu22.04
     BASE_TARGET: jammy
     PRECOMPILED: "true"
+    DOCKER: echo docker
+    REGCTL: echo regctl
   extends:
     - .driver-versions-precompiled-ubuntu22.04
     - .release-generic
