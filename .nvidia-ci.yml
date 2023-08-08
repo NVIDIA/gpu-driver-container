@@ -87,6 +87,19 @@ variables:
       when: never
     - !reference [.image-pull-rules, rules]
 
+.image-pull-precompiled-ubuntu22.04:
+  stage: image-build
+  variables:
+    DIST: signed_ubuntu22.04
+    BASE_TARGET: jammy
+    PRECOMPILED: "true"
+  rules:
+    - when: delayed
+      start_in: 30 minutes
+  extends:
+    - .driver-versions-precompiled-ubuntu22.04
+    - .image-pull-generic
+
 image-ubuntu20.04:
   extends:
     - .image-pull
@@ -107,18 +120,17 @@ image-centos7:
     - .image-pull
     - .dist-centos7
 
-image-precompiled-ubuntu22.04:
-  stage: image-build
-  variables:
-    DIST: signed_ubuntu22.04
-    BASE_TARGET: jammy
-    PRECOMPILED: "true"
-  rules:
-    - when: delayed
-      start_in: 30 minutes
+image-precompiled-ubuntu22.04-generic:
   extends:
-    - .driver-versions-precompiled-ubuntu22.04
-    - .image-pull-generic
+    - .image-pull-precompiled-ubuntu22.04
+  variables:
+    KERNEL_FLAVOR: "generic"
+
+image-precompiled-ubuntu22.04-nvidia:
+  extends:
+    - .image-pull-precompiled-ubuntu22.04
+  variables:
+    KERNEL_FLAVOR: "nvidia"
 
 # The .scan step forms the base of the image scan operation performed before releasing
 # images.
@@ -188,6 +200,18 @@ image-precompiled-ubuntu22.04:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
     - !reference [.pipeline-trigger-rules, rules]
 
+.scan-precompiled-ubuntu22.04:
+  variables:
+    DIST: signed_ubuntu22.04
+    BASE_TARGET: jammy
+    PRECOMPILED: "true"
+  extends:
+    - .driver-versions-precompiled-ubuntu22.04
+    - .scan-generic
+  rules:
+    - !reference [.scan-rules-common, rules]
+    - when: always
+
 # Define the scan targets
 scan-ubuntu20.04-amd64:
   extends:
@@ -221,21 +245,25 @@ scan-ubuntu22.04-arm64:
   needs:
     - image-ubuntu22.04
 
-scan-precompiled-ubuntu22.04-amd64:
+scan-precompiled-ubuntu22.04-generic-amd64:
   variables:
-    DIST: signed_ubuntu22.04
-    BASE_TARGET: jammy
-    PRECOMPILED: "true"
+    KERNEL_FLAVOR: "generic"
     PLATFORM: linux/amd64
   extends:
-    - .driver-versions-precompiled-ubuntu22.04
-    - .scan-generic
+    - .scan-precompiled-ubuntu22.04
     - .platform-amd64
   needs:
-    - image-precompiled-ubuntu22.04
-  rules:
-    - !reference [.scan-rules-common, rules]
-    - when: always
+    - image-precompiled-ubuntu22.04-generic
+
+scan-precompiled-ubuntu22.04-nvidia-amd64:
+  variables:
+    KERNEL_FLAVOR: "nvidia"
+    PLATFORM: linux/amd64
+  extends:
+    - .scan-precompiled-ubuntu22.04
+    - .platform-amd64
+  needs:
+    - image-precompiled-ubuntu22.04-nvidia
 
 scan-rhel8-amd64:
   extends:
@@ -268,6 +296,19 @@ scan-centos7-amd64:
     OUT_REGISTRY: "${NGC_REGISTRY}"
     OUT_IMAGE_NAME: "${NGC_REGISTRY_IMAGE}"
 
+.release:ngc-precompiled-ubuntu22.04:
+  variables:
+    DIST: signed_ubuntu22.04
+    BASE_TARGET: jammy
+    PRECOMPILED: "true"
+  extends:
+    - .driver-versions-precompiled-ubuntu22.04
+    - .release-generic
+    - .release:ngc-variables
+  rules:
+    # Only run NGC release job on scheduled pipelines
+    - if: $CI_PIPELINE_SOURCE == "schedule"
+
 # Define the external release helpers
 .release:ngc:
   extends:
@@ -284,18 +325,17 @@ release:ngc-ubuntu22.04:
     - .release:ngc
     - .dist-ubuntu22.04
 
-release:ngc-precompiled-ubuntu22.04:
+release:ngc-precompiled-ubuntu22.04-generic:
   variables:
-    DIST: signed_ubuntu22.04
-    BASE_TARGET: jammy
-    PRECOMPILED: "true"
+    KERNEL_FLAVOR: "generic"
   extends:
-    - .driver-versions-precompiled-ubuntu22.04
-    - .release-generic
-    - .release:ngc-variables
-  rules:
-    # Only run NGC release job on scheduled pipelines
-    - if: $CI_PIPELINE_SOURCE == "schedule"
+    - .release:ngc-precompiled-ubuntu22.04
+
+release:ngc-precompiled-ubuntu22.04-nvidia:
+  variables:
+    KERNEL_FLAVOR: "nvidia"
+  extends:
+    - .release:ngc-precompiled-ubuntu22.04
 
 release:ngc-centos7:
   extends:
