@@ -87,6 +87,18 @@ variables:
       when: never
     - !reference [.image-pull-rules, rules]
 
+image-precompiled-ubuntu22.04:
+  variables:
+    DIST: signed_ubuntu22.04
+    BASE_TARGET: jammy
+    PRECOMPILED: "true"
+  rules:
+    - when: delayed
+      start_in: 30 minutes
+  extends:
+    - .driver-versions-precompiled-ubuntu22.04
+    - .image-pull-generic
+
 image-ubuntu20.04:
   extends:
     - .image-pull
@@ -106,19 +118,6 @@ image-centos7:
   extends:
     - .image-pull
     - .dist-centos7
-
-image-precompiled-ubuntu22.04:
-  stage: image-build
-  variables:
-    DIST: signed_ubuntu22.04
-    BASE_TARGET: jammy
-    PRECOMPILED: "true"
-  rules:
-    - when: delayed
-      start_in: 30 minutes
-  extends:
-    - .driver-versions-precompiled-ubuntu22.04
-    - .image-pull-generic
 
 # The .scan step forms the base of the image scan operation performed before releasing
 # images.
@@ -188,6 +187,18 @@ image-precompiled-ubuntu22.04:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
     - !reference [.pipeline-trigger-rules, rules]
 
+.scan-precompiled-ubuntu22.04:
+  variables:
+    DIST: signed_ubuntu22.04
+    BASE_TARGET: jammy
+    PRECOMPILED: "true"
+  extends:
+    - .driver-versions-precompiled-ubuntu22.04
+    - .scan-generic
+  rules:
+    - !reference [.scan-rules-common, rules]
+    - when: always
+
 # Define the scan targets
 scan-ubuntu20.04-amd64:
   extends:
@@ -223,19 +234,12 @@ scan-ubuntu22.04-arm64:
 
 scan-precompiled-ubuntu22.04-amd64:
   variables:
-    DIST: signed_ubuntu22.04
-    BASE_TARGET: jammy
-    PRECOMPILED: "true"
     PLATFORM: linux/amd64
   extends:
-    - .driver-versions-precompiled-ubuntu22.04
-    - .scan-generic
+    - .scan-precompiled-ubuntu22.04
     - .platform-amd64
   needs:
     - image-precompiled-ubuntu22.04
-  rules:
-    - !reference [.scan-rules-common, rules]
-    - when: always
 
 scan-rhel8-amd64:
   extends:
