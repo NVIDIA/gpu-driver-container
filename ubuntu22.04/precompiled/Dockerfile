@@ -53,13 +53,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends nvidia-driver-$
     libnvidia-nscq-${DRIVER_BRANCH} && \
     apt-get purge -y \
     libnvidia-egl-wayland1 \
-    nvidia-dkms-525-server \
-    nvidia-kernel-source-525-server \
-    xserver-xorg-video-nvidia-525-server && \
+    nvidia-dkms-${DRIVER_BRANCH}-server \
+    nvidia-kernel-source-${DRIVER_BRANCH}-server \
+    xserver-xorg-video-nvidia-${DRIVER_BRANCH}-server && \
     rm -rf /var/lib/apt/lists/*;
 
 # update pkg cache and download pkgs for driver module installation during runtime.
-# this is done to avoid shiping .ko files.
+# this is done to avoid shipping .ko files.
 # avoid cleaning the cache after this to retain these packages during runtime.
 RUN apt-get update && apt-get install --download-only --no-install-recommends -y linux-objects-nvidia-${DRIVER_BRANCH}-server-${KERNEL_VERSION} \
     linux-signatures-nvidia-${KERNEL_VERSION} \
