@@ -5,6 +5,8 @@ ENV DEBIAN_FRONTEND=noninteractive
 
 ARG DRIVER_BRANCH=525
 ENV DRIVER_BRANCH=$DRIVER_BRANCH
+ARG DRIVER_VERSION=525.125.06
+ENV DRIVER_VERSION=$DRIVER_VERSION
 
 ARG KERNEL_VERSION=5.15.0-60-generic
 ENV KERNEL_VERSION=$KERNEL_VERSION
@@ -49,8 +51,8 @@ RUN if [ -n "${CVE_UPDATES}" ]; then \
 
 # update pkg cache and install pkgs for userspace driver libs
 RUN apt-get update && apt-get install -y --no-install-recommends nvidia-driver-${DRIVER_BRANCH}-server \
-    nvidia-fabricmanager-${DRIVER_BRANCH} \
-    libnvidia-nscq-${DRIVER_BRANCH} && \
+    nvidia-fabricmanager-${DRIVER_BRANCH}=${DRIVER_VERSION}-1 \
+    libnvidia-nscq-${DRIVER_BRANCH}=${DRIVER_VERSION}-1 && \
     apt-get purge -y \
     libnvidia-egl-wayland1 \
     nvidia-dkms-${DRIVER_BRANCH}-server \
