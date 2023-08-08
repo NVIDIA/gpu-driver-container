@@ -89,11 +89,9 @@ image-fedora36:
     PRECOMPILED: "true"
 
 image-precompiled-ubuntu22.04:
-  stage: image-build
   variables:
     DIST: signed_ubuntu22.04
     BASE_TARGET: jammy
-    KERNEL_FLAVOR: generic
   extends:
     - .driver-versions-precompiled-ubuntu22.04
     - .image-build-precompiled

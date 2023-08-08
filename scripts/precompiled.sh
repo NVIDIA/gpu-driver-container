@@ -22,13 +22,13 @@ function sourceVersions(){
     fi
 
     if command -v regctl; then
-        regctl image get-file registry.gitlab.com/nvidia/container-images/driver/staging/driver:base-${BASE_TARGET}-${DRIVER_BRANCH} /var/kernel_version.txt kernel_version.txt
+        regctl image get-file registry.gitlab.com/nvidia/container-images/driver/staging/driver:base-${BASE_TARGET}-${KERNEL_FLAVOR}-${DRIVER_BRANCH} /var/kernel_version.txt kernel_version.txt
     else
         trap "docker rm -f base-${BASE_TARGET}" EXIT
-        docker run --pull=always -d --name base-${BASE_TARGET} registry.gitlab.com/nvidia/container-images/driver/staging/driver:base-${BASE_TARGET}-${DRIVER_BRANCH} 
+        docker run --pull=always -d --name base-${BASE_TARGET}-${KERNEL_FLAVOR} registry.gitlab.com/nvidia/container-images/driver/staging/driver:base-${BASE_TARGET}-${KERNEL_FLAVOR}-${DRIVER_BRANCH} 
         # try 3 times every 3 seconds to get the file, if success exit the loop
         for i in {1..3}; do
-            docker cp base-${BASE_TARGET}:/var/kernel_version.txt kernel_version.txt && break
+            docker cp base-${BASE_TARGET}-${KERNEL_FLAVOR}:/var/kernel_version.txt kernel_version.txt && break
             sleep 10
         done
     fi
@@ -38,7 +38,7 @@ function sourceVersions(){
 
 function buildBaseImage(){
     # Build the base image
-    make DRIVER_BRANCH=${DRIVER_BRANCH} build-base-${BASE_TARGET}
+    make DRIVER_BRANCH=${DRIVER_BRANCH} KERNEL_FLAVOR=${KERNEL_FLAVOR} build-base-${BASE_TARGET}
 }
 
 function buildImage(){
@@ -51,7 +51,7 @@ function pushBaseImage(){
     if [ -z "$IMAGE_NAME" ]; then
         IMAGE_NAME="${STAGING_REGISTRY}"/driver
     fi
-    make IMAGE_NAME=${IMAGE_NAME} DRIVER_BRANCH=${DRIVER_BRANCH} push-base-${BASE_TARGET}
+    make IMAGE_NAME=${IMAGE_NAME} DRIVER_BRANCH=${DRIVER_BRANCH} KERNEL_FLAVOR=${KERNEL_FLAVOR} push-base-${BASE_TARGET}
 }
 
 function pushImage(){
