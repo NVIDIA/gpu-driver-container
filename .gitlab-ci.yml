@@ -88,23 +88,10 @@ image-fedora36:
     OUT_IMAGE_NAME: "${CI_REGISTRY_IMAGE}/staging/driver"
     PRECOMPILED: "true"
 
-image-precompiled-ubuntu22.04-generic:
-  stage: image-build
+image-precompiled-ubuntu22.04:
   variables:
     DIST: signed_ubuntu22.04
     BASE_TARGET: jammy
-    KERNEL_FLAVOR: generic
   extends:
     - .driver-versions-precompiled-ubuntu22.04
     - .image-build-precompiled
-
-image-precompiled-ubuntu22.04-nvidia:
-  stage: image-build
-  variables:
-    DIST: signed_ubuntu22.04
-    BASE_TARGET: jammy
-    KERNEL_FLAVOR: nvidia
-  extends:
-    - .driver-versions-precompiled-ubuntu22.04
-    - .image-build-precompiled
-
