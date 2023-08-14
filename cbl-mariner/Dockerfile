@@ -1,4 +1,5 @@
-FROM mcr.microsoft.com/cbl-mariner/base/core:2.0
+ARG CBL_MARINER_VERSION=2.0
+FROM mcr.microsoft.com/cbl-mariner/base/core:${CBL_MARINER_VERSION}
 
 ARG DRIVER_BRANCH=525
 ENV DRIVER_BRANCH=$DRIVER_BRANCH
@@ -18,7 +19,12 @@ RUN MARINER_NVIDIA_GPGKEY_SUM=4097a14dd56c7d9a44ac164945396c3a460346fca94fe89dee
 
 RUN curl -fsSl https://packages.microsoft.com/cbl-mariner/2.0/prod/nvidia/x86_64/config.repo > /etc/yum.repos.d/mariner-nvidia.repo && \
     tdnf -y install dnf && \
-    dnf -y install util-linux tar kernel-devel-${KERNEL_VERSION}
+    dnf -y install util-linux tar
+
+# Download the driver and dependent packages and stage for install during runtime
+RUN dnf -y --downloadonly install kernel-${KERNEL_VERSION} \
+        cuda-${DRIVER_VERSION}*_${KERNEL_VERSION//-/.}    \
+        "nvidia-fabric-manager-${DRIVER_VERSION}"
 
 LABEL io.k8s.display-name="NVIDIA Driver Container"
 LABEL name="NVIDIA Driver Container"
