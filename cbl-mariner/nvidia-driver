@@ -107,6 +107,11 @@ _get_module_params() {
     fi
 }
 
+_install_dep_pkgs() {
+  echo "Installing dependent packages"
+  dnf -y install kernel-"${KERNEL_VERSION}"
+}
+
 _install_driver() {
     echo "Installing the NVIDIA driver modules"
     dnf install -y "cuda-${DRIVER_VERSION}-2_${KERNEL_VERSION//-/.}"
@@ -269,6 +274,7 @@ _shutdown() {
 }
 
 _load() {
+    _install_dep_pkgs
     _install_driver
     _load_driver
     _mount_rootfs
