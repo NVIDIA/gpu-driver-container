@@ -1,35 +1,134 @@
-ARG RHEL_VERSION=''
-FROM nvidia/cuda:${CUDA_VERSION}-base-ubi8
+ARG DRIVER_TOOLKIT_IMAGE=''
+ARG CUDA_VERSION=''
+ARG CUDA_DIST=''
 
-ARG RHEL_VERSION=''
+FROM ${DRIVER_TOOLKIT_IMAGE} as builder
+
+ARG BASE_URL='https://us.download.nvidia.com/tesla'
 ARG KERNEL_VERSION=''
-ARG DRIVER_BRANCH=''
-ARG RT_KERNEL_VERSION=''
-# Install / upgrade packages here that are required to resolve CVEs
-ARG CVE_UPDATES
+ARG DRIVER_VERSION=''
+ARG DRIVER_EPOCH=''
+ARG TARGET_ARCH=''
+ARG BUILDER_USER=''
+ARG BUILDER_EMAIL=''
+
+RUN useradd -u 1001 -m -s /bin/bash builder
+
+USER builder
+
+WORKDIR /home/builder
+COPY --chown=1001:0 x509-configuration.ini x509-configuration.ini
+
+RUN export KVER=$(echo ${KERNEL_VERSION} | cut -d '-' -f 1) \
+        KREL=$(echo ${KERNEL_VERSION} | cut -d '-' -f 2 | sed 's/\.el._.$//') \
+        KDIST=$(echo ${KERNEL_VERSION} | cut -d '-' -f 2 | sed 's/^.*\(\.el._.\)$/\1/') \
+        DRIVER_STREAM=$(echo ${DRIVER_VERSION} | cut -d '.' -f 1) \
+    && curl -sLO ${BASE_URL}/${DRIVER_VERSION}/NVIDIA-Linux-${TARGET_ARCH}-${DRIVER_VERSION}.run \
+    && git clone --depth 1 --single-branch -b rhel8 https://github.com/NVIDIA/yum-packaging-precompiled-kmod \
+    && cd yum-packaging-precompiled-kmod \
+    && mkdir BUILD BUILDROOT RPMS SRPMS SOURCES SPECS \
+    && mkdir nvidia-kmod-${DRIVER_VERSION}-${TARGET_ARCH} \
+    && sh ${HOME}/NVIDIA-Linux-${TARGET_ARCH}-${DRIVER_VERSION}.run --extract-only --target tmp \
+    && mv tmp/kernel nvidia-kmod-${DRIVER_VERSION}-${TARGET_ARCH}/ \
+    && tar -cJf SOURCES/nvidia-kmod-${DRIVER_VERSION}-${TARGET_ARCH}.tar.xz nvidia-kmod-${DRIVER_VERSION}-${TARGET_ARCH} \
+    && mv kmod-nvidia.spec SPECS/ \
+    && sed -i -e "s/\$USER/${BUILDER_USER}/" -e "s/\$EMAIL/${BUILDER_EMAIL}/" ${HOME}/x509-configuration.ini \
+    && openssl req -x509 -new -nodes -utf8 -sha256 -days 36500 -batch \
+      -config ${HOME}/x509-configuration.ini \
+      -outform DER -out SOURCES/public_key.der \
+      -keyout SOURCES/private_key.priv \
+    && rpmbuild \
+        --define "%_topdir $(pwd)" \
+        --define "debug_package %{nil}" \
+        --define "kernel ${KVER}" \
+        --define "kernel_release ${KREL}" \
+        --define "kernel_dist ${KDIST}" \
+        --define "driver ${DRIVER_VERSION}" \
+        --define "epoch ${DRIVER_EPOCH}" \
+        --define "driver_branch ${DRIVER_STREAM}" \
+        -v -bb SPECS/kmod-nvidia.spec
+
+FROM nvidia/cuda:${CUDA_VERSION}-base-${CUDA_DIST}
+
+ARG KERNEL_VERSION=''
+ARG RHEL_VERSION=''
+ARG CUDA_VERSION=''
+
+ARG DRIVER_TYPE=passthrough
+ENV DRIVER_TYPE=${DRIVER_TYPE}
+
+ARG DRIVER_VERSION=''
+ENV DRIVER_VERSION=${DRIVER_VERSION}
+
+ARG TARGET_ARCH=''
+ENV TARGETARCH=${TARGET_ARCH}
+
+# Force using provided RHSM registration
+ENV SMDEV_CONTAINER_OFF=1
+
+# Disable vGPU version compability check by default
+ARG DISABLE_VGPU_VERSION_CHECK=true
+ENV DISABLE_VGPU_VERSION_CHECK=$DISABLE_VGPU_VERSION_CHECK
 
 USER root
 
-COPY nvidia-driver /usr/local/bin
-COPY common.sh /usr/local/bin
+COPY --chmod=744 nvidia-driver /usr/local/bin
+COPY --chmod=744 common.sh /usr/local/bin
 
-# Copy the rhsm-register script to enable subscription-manager
-# during build time
-COPY ./rhsm-register /usr/local/bin/rhsm-register
+# Copy the built NVIDIA driver RPM from the builder
+COPY --from=builder /home/builder/yum-packaging-precompiled-kmod/RPMS/${TARGET_ARCH}/*.rpm /rpms/
 
-WORKDIR /drivers
+# Copy the DRM module dependency from the builder
+COPY --from=builder /lib/modules/${KERNEL_VERSION}.${TARGET_ARCH}/kernel/drivers/gpu/drm/drm.ko.xz /lib/modules/${KERNEL_VERSION}.${TARGET_ARCH}/kernel/drivers/gpu/drm/
 
 # Kernel packages needed to build drivers / kmod
-RUN rm /etc/rhsm-host \
-    && /usr/local/bin/rhsm-register \
-    && echo "${RHEL_VERSION}" > /etc/dnf/vars/releasever \
+RUN echo "${RHEL_VERSION}" > /etc/dnf/vars/releasever \
     && dnf config-manager --best --nodocs --setopt=install_weak_deps=False --save \
-    && dnf -y install kmod binutils \
-    && dnf module install -y nvidia-driver:${DRIVER_BRANCH} \
-    && if [ -n "${CVE_UPDATES}" ]; then yum update -y ${CVE_UPDATES} fi \
-    && dnf clean all \
-    && subscription-manager unregister \
-    && useradd -u 1001 -m -s /bin/bash builder
+    && DRIVER_STREAM=$(echo ${DRIVER_VERSION} | cut -d '.' -f 1) \
+    && dnf -y module enable nvidia-driver:${DRIVER_STREAM}/default \
+    && dnf -y install kmod binutils
+
+# Prevent modprobe from giving a WARNING about missing files
+RUN rm -rf /lib/modules/${KERNEL_VERSION} \
+    && mkdir -p /lib/modules/${KERNEL_VERSION}/proc \
+    && touch /lib/modules/${KERNEL_VERSION}/modules.order \
+    && touch /lib/modules/${KERNEL_VERSION}/modules.builtin \
+    && depmod ${KERNEL_VERSION}
+
+# Install the Driver modules
+RUN dnf install -y /rpms/kmod-nvidia-*.rpm
+
+# Copy the rhsm-register script to enable subscription-manager during build time
+COPY --chmod=744 ./rhsm-register /usr/local/bin/rhsm-register
+
+RUN --mount=type=secret,id=RHSM_ORG,target=/run/secrets/RHSM_ORG \
+    --mount=type=secret,id=RHSM_ACTIVATIONKEY,target=/run/secrets/RHSM_ACTIVATIONKEY \
+    CUDA_VERSION_ARRAY=(${CUDA_VERSION//./ }) && CUDA_DASHED_VERSION=${CUDA_VERSION_ARRAY[0]}-${CUDA_VERSION_ARRAY[1]} \
+    && rm /etc/rhsm-host \
+    && /usr/local/bin/rhsm-register \
+    && dnf install -y \
+        nvidia-driver-cuda-${DRIVER_VERSION} \
+	    nvidia-driver-libs-${DRIVER_VERSION} \
+	    nvidia-driver-NVML-${DRIVER_VERSION} \
+        cuda-compat-${CUDA_DASHED_VERSION} \
+        cuda-cudart-${CUDA_DASHED_VERSION}
+
+RUN if [ "$DRIVER_TYPE" != "vgpu" ]; then \
+        VERSION_ARRAY=(${DRIVER_VERSION//./ }) \
+        && if [ ${VERSION_ARRAY[0]} -ge 470 ] || ([ ${VERSION_ARRAY[0]} == 460 ] && [ ${VERSION_ARRAY[1]} -ge 91 ]) \
+        then \
+            FABRIC_MANAGER_VERSION=${DRIVER_VERSION}-1 ; \
+        else \
+            FABRIC_MANAGER_VERSION=${VERSION_ARRY[0]}-${DRIVER_VERSION}-1 ; \
+        fi \
+        && NSCQ_VERSION=${VERSION_ARRAY[0]}-${DRIVER_VERSION}-1 \
+        && dnf install -y \
+            nvidia-fabric-manager-${FABRIC_MANAGER_VERSION} \
+            libnvidia-nscq-${NSCQ_VERSION}; \
+    fi
+
+RUN dnf clean all \
+    && subscription-manager unregister
 
 LABEL io.k8s.display-name="NVIDIA Driver Container"
 LABEL name="NVIDIA Driver Container"
