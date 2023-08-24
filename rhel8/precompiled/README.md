@@ -1,4 +1,4 @@
-# Precompiled NVIDIA GPU driver container image for RHEL/RHCOS 8.x
+# Precompiled NVIDIA GPU driver container image for RHEL 8.x and 9.x (RHCOS 4.12 and 4.13)
 
 The procedure is based on [building custom kmod packages](https://github.com/NVIDIA/yum-packaging-precompiled-kmod) to allow support for a wide range of kernel versions.
 
@@ -19,7 +19,9 @@ The procedure is based on [building custom kmod packages](https://github.com/NVI
     quay.io/openshift-release-dev/ocp-v4.0-art-dev@sha256:6afc764e57b39493f57dd20a714cf9bee8cd02a34bf361570f68888b4af753ad
     ```
 
-4. Find out the kernel version (_without the architecture part_) of your target OpenShift cluster.
+4. Find out the kernel version of your target OpenShift cluster.
+
+    **IMPORTANT**: Use the kernel version *without* the architecture part (x86_64). The `TARGET_ARCH` variable is used to specify the target architecture.
 
     For example, on a live system
 
@@ -56,6 +58,8 @@ The procedure is based on [building custom kmod packages](https://github.com/NVI
 
     make image image-push
     ```
+
+    When building for RHEL 9.x (RHCOS 4.13), set `CUDA_DIST=ubi9`.
 
     When building a vGPU driver, set `export DRIVER_TYPE=vgpu` (the default is `passthrough`).
 
