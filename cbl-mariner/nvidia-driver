@@ -41,7 +41,7 @@ _gpu_direct_rdma_enabled() {
 _update_package_cache() {
     if [ "${PACKAGE_TAG:-}" != "builtin" ]; then
         echo "Updating the package cache..."
-        if ! dnf -q makecache; then
+        if ! tdnf -q makecache; then
             echo "FATAL: failed to reach CBL/Mariner package repositories. "\
                  "Ensure that the cluster can access the proper networks."
             exit 1
@@ -109,15 +109,15 @@ _get_module_params() {
 
 _install_dep_pkgs() {
   echo "Installing dependent packages"
-  dnf -y install kernel-"${KERNEL_VERSION}"
+  tdnf -y install kernel-"${KERNEL_VERSION}"
 }
 
 _install_driver() {
     echo "Installing the NVIDIA driver modules"
-    dnf install -y "cuda-${DRIVER_VERSION}-2_${KERNEL_VERSION//-/.}"
+    tdnf install -y "cuda-${DRIVER_VERSION}-2_${KERNEL_VERSION//-/.}"
 
     echo "Installing the NVIDIA fabricmanager"
-    dnf install -y "nvidia-fabric-manager-${DRIVER_VERSION}"
+    tdnf install -y "nvidia-fabric-manager-${DRIVER_VERSION}"
 }
 
 # Load the kernel modules and start persistenced.
