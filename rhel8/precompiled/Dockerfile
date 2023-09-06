@@ -11,6 +11,7 @@ ARG DRIVER_EPOCH=''
 ARG TARGET_ARCH=''
 ARG BUILDER_USER=''
 ARG BUILDER_EMAIL=''
+ARG RHEL_VERSION=''
 
 RUN useradd -u 1001 -m -s /bin/bash builder
 
@@ -23,8 +24,9 @@ RUN export KVER=$(echo ${KERNEL_VERSION} | cut -d '-' -f 1) \
         KREL=$(echo ${KERNEL_VERSION} | cut -d '-' -f 2 | sed 's/\.el._.$//') \
         KDIST=$(echo ${KERNEL_VERSION} | cut -d '-' -f 2 | sed 's/^.*\(\.el._.\)$/\1/') \
         DRIVER_STREAM=$(echo ${DRIVER_VERSION} | cut -d '.' -f 1) \
-    && curl -sLO ${BASE_URL}/${DRIVER_VERSION}/NVIDIA-Linux-${TARGET_ARCH}-${DRIVER_VERSION}.run \
-    && git clone --depth 1 --single-branch -b rhel8 https://github.com/NVIDIA/yum-packaging-precompiled-kmod \
+        RHEL_VERSION_MAJOR=$(echo ${RHEL_VERSION} | cut -d '.' -f 1) \
+    && curl -sLOf ${BASE_URL}/${DRIVER_VERSION}/NVIDIA-Linux-${TARGET_ARCH}-${DRIVER_VERSION}.run \
+    && git clone --depth 1 --single-branch -b rhel${RHEL_VERSION_MAJOR} https://github.com/NVIDIA/yum-packaging-precompiled-kmod \
     && cd yum-packaging-precompiled-kmod \
     && mkdir BUILD BUILDROOT RPMS SRPMS SOURCES SPECS \
     && mkdir nvidia-kmod-${DRIVER_VERSION}-${TARGET_ARCH} \
