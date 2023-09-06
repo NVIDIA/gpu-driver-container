@@ -10,7 +10,7 @@ DRIVER_VERSION=${1}
 CONTAINER_VERSION=${2}
 REGISTRY=${3}
 CI_REPOSITORY_URL=${CI_REPOSITORY_URL:-https://gitlab.com/nvidia/driver.git}
-CI_COMMIT_REF_NAME=${CI_COMMIT_REF_NAME:-master}
+CI_COMMIT_REF_NAME=${CI_COMMIT_REF_NAME:-main}
 
 # Get the kernel version
 kernel_version=$(uname -r)
