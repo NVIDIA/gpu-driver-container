@@ -22,9 +22,8 @@ _update_package_cache() {
 }
 
 _assert_nvswitch_system() {
-    [ -d /proc/driver/nvidia-nvswitch ] || return 1
-    entries=$(ls -1 /proc/driver/nvidia-nvswitch/devices/*)
-    if [ -z "${entries}" ]; then
+    [ -d /proc/driver/nvidia-nvswitch/devices ] || return 1
+    if [ -z "$(ls -A /proc/driver/nvidia-nvswitch/devices)" ]; then
         return 1
     fi
     return 0
