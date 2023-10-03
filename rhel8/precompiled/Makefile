@@ -3,8 +3,8 @@ RHEL_VERSION ?= 8.6
 CUDA_VERSION ?= 12.1.0
 CUDA_DIST ?= ubi8
 DRIVER_VERSION ?= 525.105.17
-TARGET_ARCH ?= x86_64
-KERNEL_VERSION ?= 4.18.0-372.51.1.el8_6
+KERNEL_VERSION ?= 4.18.0-372.51.1.el8_6.x86_64
+TARGET_ARCH = $(shell echo "${KERNEL_VERSION}" | awk -F. '{print $$NF}')
 CONTAINER_TOOL ?= docker
 IMAGE_REGISTRY ?= nvcr.io/ea-cnt/nv_only
 BASE_URL ?= https://us.download.nvidia.com/tesla
@@ -52,11 +52,11 @@ image: rhsm-register
 		--build-arg DRIVER_TOOLKIT_IMAGE=${DRIVER_TOOLKIT_IMAGE} \
 		--build-arg DRIVER_TYPE=${DRIVER_TYPE} \
 		--build-arg BASE_URL=${BASE_URL} \
-		--tag ${IMAGE_REGISTRY}/${IMAGE_NAME}:${DRIVER_VERSION}-${KERNEL_VERSION}.${TARGET_ARCH}-${OS_TAG} \
+		--tag ${IMAGE_REGISTRY}/${IMAGE_NAME}:${DRIVER_VERSION}-${KERNEL_VERSION}-${OS_TAG} \
 		--progress=plain \
 		--file ${DOCKERFILE} .
 
 image-push:
 	@echo "!=== Pushing image ===!"
 	${CONTAINER_TOOL} push \
-	${IMAGE_REGISTRY}/${IMAGE_NAME}:${DRIVER_VERSION}-${KERNEL_VERSION}.${TARGET_ARCH}-${OS_TAG}
+	${IMAGE_REGISTRY}/${IMAGE_NAME}:${DRIVER_VERSION}-${KERNEL_VERSION}-${OS_TAG}
