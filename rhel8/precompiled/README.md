@@ -21,8 +21,6 @@ The procedure is based on [building custom kmod packages](https://github.com/NVI
 
 4. Find out the kernel version of your target OpenShift cluster.
 
-    **IMPORTANT**: Use the kernel version *without* the architecture part (x86_64). The `TARGET_ARCH` variable is used to specify the target architecture.
-
     For example, on a live system
 
     ```
@@ -47,8 +45,7 @@ The procedure is based on [building custom kmod packages](https://github.com/NVI
 
     export DRIVER_TOOLKIT_IMAGE=quay.io/openshift-release-dev/ocp-v4.0-art-dev@sha256:6afc764e57b39493f57dd20a714cf9bee8cd02a34bf361570f68888b4af753ad
 
-    export KERNEL_VERSION=4.18.0-372.51.1.el8_6
-    export TARGET_ARCH=x86_64
+    export KERNEL_VERSION=4.18.0-372.51.1.el8_6.x86_64
     export RHEL_VERSION=8.6
     export CUDA_VERSION=12.1.0
     export CUDA_DIST=ubi8
@@ -63,13 +60,13 @@ The procedure is based on [building custom kmod packages](https://github.com/NVI
 
     When building a vGPU driver, set `export DRIVER_TYPE=vgpu` (the default is `passthrough`).
 
-    Optionally, override the `IMAGE_REGISTRY`, `IMAGE_NAME`, and/or `CONTAINER_TOOL` (docker/podman). You can also override `BUILDER_USER` and/or `BUILDER_EMAL` if you want, otherwise your Git username and email will be used. See the [Makefile](Makefile) for all available variables.
+    Optionally, override the `IMAGE_REGISTRY`, `IMAGE_NAME`, and/or `CONTAINER_TOOL` (docker/podman). You can also override `BUILDER_USER` and/or `BUILDER_EMAIL` if you want, otherwise your Git username and email will be used. See the [Makefile](Makefile) for all available variables.
 
     **NOTE:** The default image name is `driver` for passthrough and `vgpu-guest-driver` for vGPU.
 
 ## NVIDIA GPU operator
 
-In order to be used with the NVIDIA GPU Operator on Red Hat OpenShift, the image tag must follow the format `${DRIVER_VERSION}-${KERNEL_VERSION}.${TARGET_ARCH}-${OS_TAG}`, and the full name will look like `nvcr.io/nvidia/driver:525.105.17-4.18.0-372.51.1.el8_6.x86_64-rhcos4.12`.
+In order to be used with the NVIDIA GPU Operator on Red Hat OpenShift, the image tag must follow the format `${DRIVER_VERSION}-${KERNEL_VERSION}-${OS_TAG}`, and the full name will look like `nvcr.io/nvidia/driver:525.105.17-4.18.0-372.51.1.el8_6.x86_64-rhcos4.12`.
 
 
 Define the `ClusterPolicy` resource to make use of the pre-compiled driver image, e.g.:
