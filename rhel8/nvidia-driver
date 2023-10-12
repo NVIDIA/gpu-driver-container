@@ -15,7 +15,6 @@ NVIDIA_PEERMEM_MODULE_PARAMS=()
 TARGETARCH=${TARGETARCH:?"Missing TARGETARCH env"}
 USE_HOST_MOFED="${USE_HOST_MOFED:-false}"
 DNF_RELEASEVER=${DNF_RELEASEVER:-""}
-OPENSHIFT_VERSION=${OPENSHIFT_VERSION:-""}
 
 DRIVER_ARCH=${TARGETARCH/amd64/x86_64} && DRIVER_ARCH=${DRIVER_ARCH/arm64/aarch64}
 echo "DRIVER_ARCH is $DRIVER_ARCH"
@@ -288,22 +287,8 @@ _get_module_params() {
     fi
 }
 
-_is_selinux_enabled() {
-    if [ -e /sys/fs/selinux ]; then
-      echo "SELinux is enabled"
-      return 0
-    fi
-    return 1
-}
-
 # Load the kernel modules and start persistenced.
 _load_driver() {
-    # Apply SELinux labels before loading modules
-    if _is_selinux_enabled && [[ -z "${OPENSHIFT_VERSION}" ]]; then
-        echo "Change module files security context to modules_file_t"
-        chcon -R -t modules_object_t /lib/modules/$KERNEL_VERSION/kernel/drivers/video
-    fi
-
     echo "Parsing kernel module parameters..."
     _get_module_params
 
@@ -460,10 +445,13 @@ _mount_rootfs() {
     mkdir -p ${RUN_DIR}/driver
     mount --rbind / ${RUN_DIR}/driver
 
-    # Apply SELinux labels for device files
-    if _is_selinux_enabled; then
-        echo "Change device files security context to container_file_t"
+    echo "Check SELinux status"
+    if [ -e /sys/fs/selinux ]; then
+        echo "SELinux is enabled"
+        echo "Change device files security context for selinux compatibility"
         chcon -R -t container_file_t ${RUN_DIR}/driver/dev
+    else
+        echo "SELinux is disabled, skipping..."
     fi
 }
 
