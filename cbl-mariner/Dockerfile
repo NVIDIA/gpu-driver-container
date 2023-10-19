@@ -22,7 +22,7 @@ RUN curl -fsSl https://packages.microsoft.com/cbl-mariner/2.0/prod/nvidia/x86_64
 
 # Download the driver and dependent packages and stage for install during runtime
 RUN tdnf -y --downloadonly install kernel-${KERNEL_VERSION} \
-        cuda-${DRIVER_VERSION}-2_${KERNEL_VERSION//-/.}    \
+        $(tdnf repoquery "cuda-${DRIVER_VERSION}" | grep -m1 ${KERNEL_VERSION//-/.})    \
         "nvidia-fabric-manager-${DRIVER_VERSION}"
 
 LABEL io.k8s.display-name="NVIDIA Driver Container"

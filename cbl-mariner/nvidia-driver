@@ -114,7 +114,7 @@ _install_dep_pkgs() {
 
 _install_driver() {
     echo "Installing the NVIDIA driver modules"
-    tdnf install -y "cuda-${DRIVER_VERSION}-2_${KERNEL_VERSION//-/.}"
+    tdnf install -y $(tdnf repoquery "cuda-${DRIVER_VERSION}" | grep -m1 ${KERNEL_VERSION//-/.})
 
     echo "Installing the NVIDIA fabricmanager"
     tdnf install -y "nvidia-fabric-manager-${DRIVER_VERSION}"
