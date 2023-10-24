@@ -92,6 +92,7 @@ image-precompiled-ubuntu22.04:
   variables:
     DIST: signed_ubuntu22.04
     BASE_TARGET: jammy
+    CVE_UPDATES: "curl libc6"
   extends:
     - .driver-versions-precompiled-ubuntu22.04
     - .image-build-precompiled
