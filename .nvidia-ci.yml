@@ -134,6 +134,7 @@ image-centos7:
     - if: $SKIP_SCANS && $SKIP_SCANS == "yes"
       when: never
   before_script:
+    - !reference [.regctl-setup, before_script]
     # We ensure that the DRIVER_VERSION and PLATFORM are set
     - 'if [[ "${PRECOMPILED}" != "true" ]]; then echo DRIVER_VERSION: ${DRIVER_VERSION} ; [[ -n "${DRIVER_VERSION}" ]] || exit 1; fi'
     - 'echo PLATFORM: ${PLATFORM} ; [[ -n "${PLATFORM}" ]] || exit 1'
