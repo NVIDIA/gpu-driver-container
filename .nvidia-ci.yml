@@ -92,6 +92,7 @@ image-precompiled-ubuntu22.04:
     DIST: signed_ubuntu22.04
     BASE_TARGET: jammy
     PRECOMPILED: "true"
+    CVE_UPDATES: "curl libc6"
   rules:
     - when: delayed
       start_in: 30 minutes
