@@ -59,6 +59,11 @@ _resolve_rhel_version() {
         fi
         RHEL_VERSION="${version}"
         echo "Proceeding with RHEL version ${RHEL_VERSION}"
+
+        # set dnf release version as rhel version by default
+        if [[ -z "${DNF_RELEASEVER}" ]]; then
+            DNF_RELEASEVER="${RHEL_VERSION}"
+        fi
     fi
     return 0
 }
@@ -755,9 +760,6 @@ if [ $# -ne 0 ]; then
     usage
 fi
 
-if [[ -z "${DNF_RELEASEVER}" ]]; then
-  _resolve_rhel_version || exit 1
-  DNF_RELEASEVER="${RHEL_VERSION}"
-fi
+_resolve_rhel_version || exit 1
 
 $command
