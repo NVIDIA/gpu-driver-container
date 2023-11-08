@@ -124,6 +124,24 @@ _install_driver() {
 _load_driver() {
     echo "Parsing kernel module parameters..."
     _get_module_params
+    local nv_fw_search_path="$RUN_DIR/driver/lib/firmware"
+    local set_fw_path="true"
+    local fw_path_config_file="/sys/module/firmware_class/parameters/path"
+    for param in "${NVIDIA_MODULE_PARAMS[@]}"; do
+        if [[ "$param" == "NVreg_EnableGpuFirmware=0" ]]; then
+          set_fw_path="false"
+        fi
+    done
+
+    if [[ "$set_fw_path" == "true" ]]; then
+        echo "Configuring the following firmware search path in '$fw_path_config_file': $nv_fw_search_path"
+        if [[ ! -z $(grep '[^[:space:]]' $fw_path_config_file) ]]; then
+            echo "WARNING: A search path is already configured in $fw_path_config_file"
+            echo "         Retaining the current configuration"
+        else
+            echo -n "$nv_fw_search_path" > $fw_path_config_file || echo "WARNING: Failed to configure firmware search path"
+        fi
+    fi
 
     echo "Loading ipmi and i2c_core kernel modules..."
     modprobe -a i2c_core ipmi_msghandler ipmi_devintf
