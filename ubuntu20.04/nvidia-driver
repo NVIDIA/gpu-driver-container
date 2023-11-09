@@ -279,9 +279,10 @@ _load_driver() {
         echo "Configuring the following firmware search path in '$fw_path_config_file': $nv_fw_search_path"
         if [[ ! -z $(grep '[^[:space:]]' $fw_path_config_file) ]]; then
             echo "WARNING: A search path is already configured in $fw_path_config_file"
-            echo "         Retaining the current configuration. Note, GSP firmware may not be found and thus won't be used by the NVIDIA driver."
+            echo "         Retaining the current configuration"
+        else
+            echo -n "$nv_fw_search_path" > $fw_path_config_file > || echo "Failed to configure the firmware search path"
         fi
-        echo -n "$nv_fw_search_path" > $fw_path_config_file
     fi
 
     echo "Loading ipmi and i2c_core kernel modules..."
