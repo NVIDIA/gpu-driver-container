@@ -6,7 +6,6 @@ set -eu
 RUN_DIR=/run/nvidia
 PID_FILE=${RUN_DIR}/${0##*/}.pid
 DRIVER_VERSION=${DRIVER_VERSION:?"Missing DRIVER_VERSION env"}
-KERNEL_UPDATE_HOOK=/run/kernel/postinst.d/update-nvidia-driver
 NVIDIA_MODULE_PARAMS=()
 NVIDIA_UVM_MODULE_PARAMS=()
 NVIDIA_MODESET_MODULE_PARAMS=()
@@ -285,7 +284,7 @@ _unmount_rootfs() {
 _shutdown() {
     if _unload_driver; then
         _unmount_rootfs
-        rm -f "${PID_FILE}" ${KERNEL_UPDATE_HOOK}
+        rm -f "${PID_FILE}"
         return 0
     fi
     return 1
