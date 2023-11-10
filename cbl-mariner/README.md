@@ -1,9 +1,9 @@
 # CBL-Mariner (EXPERIMENTAL)
 
-This directory containers the docker manifests used to run the precompiled gpu driver on Azure Linux/CBL-Mariner Linux,
+This directory contains the docker manifests used to run the precompiled gpu driver on Azure Linux/CBL-Mariner Linux,
 the fedora based Linux distribution provided by Microsoft
 
-The container essentially pulls the driver rpm packages hosted here: https://packages.microsoft.com/cbl-mariner/2.0/prod/nvidia/x86_64/Packages/ 
+The container image uses the driver rpm packages hosted here: https://packages.microsoft.com/cbl-mariner/2.0/prod/nvidia/x86_64/Packages/ 
 
 The following driver versions are supported:
 
