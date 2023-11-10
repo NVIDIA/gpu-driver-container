@@ -15,4 +15,4 @@
 # DRIVER_VERSIONS contains latest version in all active datacenter branches
 DRIVER_VERSIONS ?= 470.223.02 525.147.05 535.129.03
 
-CUDA_VERSION := 12.2.2
+CUDA_VERSION := 12.3.0
