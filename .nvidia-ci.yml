@@ -289,6 +289,7 @@ release:ngc-ubuntu22.04:
   extends:
     - .release:ngc
     - .dist-ubuntu22.04
+    - .driver-versions-ubuntu22.04
 
 release:ngc-precompiled-ubuntu22.04:
   variables:
@@ -342,6 +343,13 @@ release:ngc-rhcos4.13:
     - .dist-rhel8
   variables:
     OUT_DIST: "rhcos4.13"
+
+release:ngc-rhcos4.14:
+  extends:
+    - .release:ngc
+    - .dist-rhel8
+  variables:
+    OUT_DIST: "rhcos4.14"
 
 release:ngc-rhel8.6:
   extends:
