@@ -200,7 +200,7 @@ _create_driver_package() (
     local nvidia_modeset_sign_args=""
     local nvidia_uvm_sign_args=""
 
-    trap "make -s -j SYSSRC=/lib/modules/${KERNEL_VERSION}/build clean > /dev/null" EXIT
+    trap "make -s -j ${MAX_THREADS} SYSSRC=/lib/modules/${KERNEL_VERSION}/build clean > /dev/null" EXIT
 
     echo "Compiling NVIDIA driver kernel modules..."
     cd /usr/src/nvidia-${DRIVER_VERSION}/${KERNEL_TYPE}
@@ -220,7 +220,7 @@ _create_driver_package() (
         fi
     fi
 
-    make -s -j SYSSRC=/lib/modules/${KERNEL_VERSION}/build nv-linux.o nv-modeset-linux.o > /dev/null
+    make -s -j ${MAX_THREADS} SYSSRC=/lib/modules/${KERNEL_VERSION}/build nv-linux.o nv-modeset-linux.o > /dev/null
 
     echo "Relinking NVIDIA driver kernel modules..."
     rm -f nvidia.ko nvidia-modeset.ko
@@ -750,10 +750,10 @@ usage() {
 Usage: $0 COMMAND [ARG...]
 
 Commands:
-  init   [-a | --accept-license]
-  build  [-a | --accept-license]
+  init   [-a | --accept-license] [-m | --max-threads MAX_THREADS]
+  build  [-a | --accept-license] [-m | --max-threads MAX_THREADS]
   load
-  update [-k | --kernel VERSION] [-s | --sign KEYID] [-t | --tag TAG]
+  update [-k | --kernel VERSION] [-s | --sign KEYID] [-t | --tag TAG] [-m | --max-threads MAX_THREADS]
 EOF
     exit 1
 }
@@ -763,10 +763,10 @@ if [ $# -eq 0 ]; then
 fi
 command=$1; shift
 case "${command}" in
-    init) options=$(getopt -l accept-license -o a -- "$@") ;;
-    build) options=$(getopt -l accept-license,tag: -o a:t -- "$@") ;;
+    init) options=$(getopt -l accept-license,max-threads: -o am: -- "$@") ;;
+    build) options=$(getopt -l accept-license,tag:,max-threads: -o a:t:m: -- "$@") ;;
     load) options="" ;;
-    update) options=$(getopt -l kernel:,sign:,tag: -o k:s:t: -- "$@") ;;
+    update) options=$(getopt -l kernel:,sign:,tag:,max-threads: -o k:s:t:m: -- "$@") ;;
     reload_nvidia_peermem) options="" ;;
     probe_nvidia_peermem) options="" ;;
     *) usage ;;
@@ -777,6 +777,7 @@ fi
 eval set -- "${options}"
 
 ACCEPT_LICENSE=""
+MAX_THREADS=""
 KERNEL_VERSION=$(uname -r)
 PRIVATE_KEY=""
 PACKAGE_TAG=""
@@ -785,6 +786,7 @@ for opt in ${options}; do
     case "$opt" in
     -a | --accept-license) ACCEPT_LICENSE="yes"; shift 1 ;;
     -k | --kernel) KERNEL_VERSION=$2; shift 2 ;;
+    -m | --max-threads) MAX_THREADS=$2; shift 2 ;;
     -s | --sign) PRIVATE_KEY=$2; shift 2 ;;
     -t | --tag) PACKAGE_TAG=$2; shift 2 ;;
     --) shift; break ;;

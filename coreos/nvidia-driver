@@ -63,7 +63,7 @@ cp /proc/version /usr/src/linux/proc/
 
 echo "Compiling NVIDIA driver kernel modules with $(gcc --version | head -1)..."
 cd /usr/src/nvidia-*/kernel
-make -s -j SYSSRC=/usr/src/linux nv-linux.o nv-modeset-linux.o > /dev/null
+make -s -j ${MAX_THREADS} SYSSRC=/usr/src/linux nv-linux.o nv-modeset-linux.o > /dev/null
 EOF
     mkdir -p /lib/modules/${KERNEL_VERSION}
     cp /mnt/coreos/lib/modules/${KERNEL_VERSION}/modules.* /lib/modules/${KERNEL_VERSION}/
@@ -316,8 +316,8 @@ usage() {
 Usage: $0 COMMAND [ARG...]
 
 Commands:
-  init   [-a | --accept-license]
-  update [-k | --kernel VERSION] [-s | --sign KEYID] [-t | --tag TAG]
+  init   [-a | --accept-license] [-m | --max-threads MAX_THREADS]
+  update [-k | --kernel VERSION] [-s | --sign KEYID] [-t | --tag TAG] [-m | --max-threads MAX_THREADS]
 EOF
     exit 1
 }
@@ -327,8 +327,8 @@ if [ $# -eq 0 ]; then
 fi
 command=$1; shift
 case "${command}" in
-    init) options=$(getopt -l accept-license -o a -- "$@") ;;
-    update) options=$(getopt -l kernel:,sign:,tag: -o k:s:t: -- "$@") ;;
+    init) options=$(getopt -l accept-license,max-threads: -o am: -- "$@") ;;
+    update) options=$(getopt -l kernel:,sign:,tag:,max-threads: -o k:s:t:m: -- "$@") ;;
     *) usage ;;
 esac
 if [ $? -ne 0 ]; then
@@ -337,6 +337,7 @@ fi
 eval set -- "${options}"
 
 ACCEPT_LICENSE=""
+MAX_THREADS=""
 KERNEL_VERSION=$(uname -r)
 PRIVATE_KEY=""
 PACKAGE_TAG=""
@@ -345,6 +346,7 @@ for opt in ${options}; do
     case "$opt" in
     -a | --accept-license) ACCEPT_LICENSE="yes"; shift 1 ;;
     -k | --kernel) KERNEL_VERSION=$2; shift 2 ;;
+    -m | --max-threads) MAX_THREADS=$2; shift 2 ;;
     -s | --sign) PRIVATE_KEY=$2; shift 2 ;;
     -t | --tag) PACKAGE_TAG=$2; shift 2 ;;
     --) shift; break ;;
