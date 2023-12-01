@@ -371,3 +371,10 @@ release:ngc-rhel8.8:
     - .dist-rhel8
   variables:
     OUT_DIST: "rhel8.8"
+
+release:ngc-rhel8.9:
+  extends:
+    - .release:ngc
+    - .dist-rhel8
+  variables:
+    OUT_DIST: "rhel8.9"
