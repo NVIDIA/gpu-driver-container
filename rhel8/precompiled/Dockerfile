@@ -121,7 +121,7 @@ RUN if [ "$DRIVER_TYPE" != "vgpu" ]; then \
         then \
             FABRIC_MANAGER_VERSION=${DRIVER_VERSION}-1 ; \
         else \
-            FABRIC_MANAGER_VERSION=${VERSION_ARRY[0]}-${DRIVER_VERSION}-1 ; \
+            FABRIC_MANAGER_VERSION=${VERSION_ARRAY[0]}-${DRIVER_VERSION}-1 ; \
         fi \
         && NSCQ_VERSION=${VERSION_ARRAY[0]}-${DRIVER_VERSION}-1 \
         && dnf install -y \
