@@ -15,6 +15,10 @@ NVIDIA_MODESET_MODULE_PARAMS=()
 NVIDIA_PEERMEM_MODULE_PARAMS=()
 TARGETARCH=${TARGETARCH:?"Missing TARGETARCH env"}
 USE_HOST_MOFED="${USE_HOST_MOFED:-false}"
+DNF_RELEASEVER=${DNF_RELEASEVER:-""}
+
+OPEN_KERNEL_MODULES_ENABLED=${OPEN_KERNEL_MODULES_ENABLED:-false}
+[[ "${OPEN_KERNEL_MODULES_ENABLED}" == "true" ]] && KERNEL_TYPE=kernel-open || KERNEL_TYPE=kernel
 
 DRIVER_ARCH=${TARGETARCH/amd64/x86_64} && DRIVER_ARCH=${DRIVER_ARCH/arm64/aarch64}
 echo "DRIVER_ARCH is $DRIVER_ARCH"
@@ -89,6 +93,8 @@ _install_prerequisites() (
             dnf -q -y install kernel-headers
         fi
     fi
+    echo "List kernel-devel rpm version installed:"
+    rpm -qa | grep ^kernel-headers || true
 
     echo "Installing Linux development files..."
     if ! dnf -q -y install kernel-devel-${KERNEL_VERSION} > /dev/null; then
@@ -102,9 +108,11 @@ _install_prerequisites() (
             exit 1
         fi
     fi
+    echo "List kernel-devel rpm version installed:"
+    rpm -qa | grep ^kernel-devel || true
     ln -s /usr/src/kernels/${KERNEL_VERSION} /lib/modules/${KERNEL_VERSION}/build
 
-    echo "Installing Linux kernel module files..."
+    echo "Installing Linux kernel-core files..."
     if ! dnf -q -y download kernel-core-${KERNEL_VERSION} > /dev/null; then
         echo "Failed to find kernel-core-${KERNEL_VERSION} in repositories."
         echo "Trying to download kernel-core from koji..."
@@ -115,7 +123,28 @@ _install_prerequisites() (
             exit 1
         fi
     fi
+    echo "List kernel-core rpm version installed:"
+    rpm -qa | grep ^kernel-core || true
     cat ./kernel-core-*.rpm | rpm2cpio | cpio -idm --quiet
+    rm ./*.rpm
+
+    echo "Installing Linux kernel-modules-core files..."
+    if ! dnf -q -y download kernel-modules-core${KERNEL_VERSION} > /dev/null; then
+        echo "Failed to find kernel-modules-core-${KERNEL_VERSION} in repositories."
+        echo "Trying to download kernel-modules-core from koji..."
+        KOJI_KERNEL_CORE_RPM=$KOJI_BASE_URL/packages/kernel/$KERNEL_RPM_VERSION/$KERNEL_RPM_RELEASE/$KERNEL_RPM_ARCH/kernel-modules-core-$KERNEL_VERSION.rpm
+        if ! dnf -q -y download $KOJI_KERNEL_CORE_RPM \
+          --setopt=install_weak_deps=False; then
+            echo "Can't find kernel-modules-core-${KERNEL_VERSION}"
+            echo "Please try to update your kernel on the host system."
+            exit 1
+        else
+            echo 'Kernel-modules-core installed from koji'
+        fi
+    fi
+    echo "List kernel-modules rpm version installed:"
+    rpm -qa | grep ^kernel-modules || true
+    cat ./kernel-modules-*.rpm | rpm2cpio | cpio -idm --quiet
     rm ./*.rpm
 
     mv lib/modules/${KERNEL_VERSION}/modules.* /lib/modules/${KERNEL_VERSION}
@@ -123,11 +152,15 @@ _install_prerequisites() (
     # Prevent depmod from giving a WARNING about missing files
     touch /lib/modules/${KERNEL_VERSION}/modules.order
     touch /lib/modules/${KERNEL_VERSION}/modules.builtin
+
     depmod ${KERNEL_VERSION}
 
     echo "Generating Linux kernel version string..."
-
-    extract-vmlinux ./lib/modules/${KERNEL_VERSION}/vmlinuz | strings | grep -E '^Linux version' | sed 's/^\(.*\)\s\+(.*)$/\1/' > version
+    if [ "$TARGETARCH" = "arm64" ]; then
+        gunzip -c /lib/modules/${KERNEL_VERSION}/vmlinuz | strings | grep -E '^Linux version' | sed 's/^\(.*\)\s\+(.*)$/\1/' > version
+    else
+        extract-vmlinux /lib/modules/${KERNEL_VERSION}/vmlinuz | strings | grep -E '^Linux version' | sed 's/^\(.*\)\s\+(.*)$/\1/' > version
+    fi
     if [ -z "$(<version)" ]; then
         strings ./lib/modules/${KERNEL_VERSION}/vmlinuz | grep 'gcc (GCC)' > version
         # Example:
@@ -144,7 +177,7 @@ _install_prerequisites() (
     local gcc_version=$(cat /lib/modules/${KERNEL_VERSION}/proc/version | grep -Eo "Red Hat ([0-9\.-]+)"  | grep -Eo "([0-9\.-]+)").${KERNEL_OS_VERSION}.${KERNEL_RPM_ARCH}
     local current_gcc=$(rpm -qa gcc)
 
-    if ! [[ "${current_gcc}" =~ "gcc-${gcc_version}"-.* ]]; then
+    if ! [[ "${current_gcc}" =~ "gcc-${gcc_version}".* ]]; then
         echo "kernel requires gcc version: 'gcc-${gcc_version}', current gcc version is '${current_gcc}'"
         # Sometimes there are -v differences in the x.y.z-v gcc versions available.
         # So we try, but allow failure of installation of precise gcc version.
@@ -173,13 +206,10 @@ _kernel_requires_package() {
 
     echo "Checking NVIDIA driver packages..."
 
-    [[ ! -d /usr/src/nvidia-${DRIVER_VERSION}/kernel ]] && return 0
-    cd /usr/src/nvidia-${DRIVER_VERSION}/kernel
+    [[ ! -d /usr/src/nvidia-${DRIVER_VERSION}/${KERNEL_TYPE} ]] && return 0
+    cd /usr/src/nvidia-${DRIVER_VERSION}/${KERNEL_TYPE}
 
-    # When the kernel version is latest on host, this check fails and lead to recompilation, even when precompiled modules exist.
-    #if [ "${KERNEL_VERSION}" != "$(uname -r)" ]; then
     proc_mount_arg="--proc-mount-point /lib/modules/${KERNEL_VERSION}/proc"
-    #fi
     for pkg_name in $(ls -d -1 precompiled/** 2> /dev/null); do
         is_match=$(../mkprecompiled --match ${pkg_name} ${proc_mount_arg})
         if [ "${is_match}" == "kernel interface matches." ]; then
@@ -200,7 +230,7 @@ _create_driver_package() (
     trap "make -s -j SYSSRC=/lib/modules/${KERNEL_VERSION}/build clean > /dev/null" EXIT
 
     echo "Compiling NVIDIA driver kernel modules..."
-    cd /usr/src/nvidia-${DRIVER_VERSION}/kernel
+    cd /usr/src/nvidia-${DRIVER_VERSION}/${KERNEL_TYPE}
 
     if _gpu_direct_rdma_enabled; then
         ln -s /run/mellanox/drivers/usr/src/ofa_kernel /usr/src/
@@ -217,7 +247,7 @@ _create_driver_package() (
         fi
     fi
 
-    IGNORE_CC_MISMATCH=1 make -s -e NV_EXCLUDE_KERNEL_MODULES=nvidia-drm -j SYSSRC=/lib/modules/${KERNEL_VERSION}/build nv-linux.o nv-modeset-linux.o > /dev/null
+    make -s -j SYSSRC=/lib/modules/${KERNEL_VERSION}/build nv-linux.o nv-modeset-linux.o > /dev/null
 
     echo "Relinking NVIDIA driver kernel modules..."
     rm -f nvidia.ko nvidia-modeset.ko
@@ -308,6 +338,12 @@ _get_module_params() {
 
 # Load the kernel modules and start persistenced.
 _load_driver() {
+    # Apply SELinux labels before loading modules
+    # if [ -e /sys/fs/selinux ]; then
+    #     echo "Change module files security context to modules_file_t"
+    #     chcon -R -t modules_object_t /lib/modules/$KERNEL_VERSION/kernel/drivers/video
+    # fi
+
     echo "Parsing kernel module parameters..."
     _get_module_params
 
@@ -449,8 +485,7 @@ _install_driver() {
     if [ "${ACCEPT_LICENSE}" = "yes" ]; then
         install_args+=("--accept-license")
     fi
-
-    IGNORE_CC_MISMATCH=1 nvidia-installer --kernel-module-only --no-drm --ui=none --no-nouveau-check ${install_args[@]+"${install_args[@]}"}
+    IGNORE_CC_MISMATCH=1 nvidia-installer --kernel-module-only --no-drm --ui=none --no-nouveau-check -m=${KERNEL_TYPE} ${install_args[@]+"${install_args[@]}"}
     # May need to add no-cc-check for Rhel, otherwise it complains about cc missing in path
     # /proc/version and lib/modules/KERNEL_VERSION/proc are different, by default installer looks at /proc/ so, added the proc-mount-point
     # TODO: remove the -a flag. its not needed. in the new driver version, license-acceptance is implicit
@@ -465,8 +500,14 @@ _mount_rootfs() {
     mkdir -p ${RUN_DIR}/driver
     mount --rbind / ${RUN_DIR}/driver
 
-    echo "Change device files security context for selinux compatibility"
-    chcon -R -t container_file_t ${RUN_DIR}/driver/dev
+    echo "Check SELinux status"
+    if [ -e /sys/fs/selinux ]; then
+        echo "SELinux is enabled"
+        echo "Change device files security context for selinux compatibility"
+        chcon -R -t container_file_t ${RUN_DIR}/driver/dev
+    else
+        echo "SELinux is disabled, skipping..."
+    fi
 }
 
 # Unmount the driver rootfs from the run directory.
@@ -499,6 +540,11 @@ EOF
 }
 
 _shutdown() {
+    if [ -f /var/log/nvidia-installer.log ]; then
+        echo ***
+        cat /var/log/nvidia-installer.log
+        echo ***
+    fi
     if _unload_driver; then
         _unmount_rootfs
         rm -f ${PID_FILE} ${KERNEL_UPDATE_HOOK}
@@ -555,11 +601,11 @@ _prepare() {
     fi
 
     # Install the userspace components and copy the kernel module sources.
-    sh NVIDIA-Linux-$DRIVER_ARCH-$DRIVER_VERSION.run -x && \
+    sh NVIDIA-Linux-$DRIVER_ARCH-$DRIVER_VERSION.run -x -m=${KERNEL_TYPE} && \
         cd NVIDIA-Linux-$DRIVER_ARCH-$DRIVER_VERSION && \
         sh /tmp/install.sh nvinstall && \
         mkdir -p /usr/src/nvidia-$DRIVER_VERSION && \
-        mv LICENSE mkprecompiled kernel /usr/src/nvidia-$DRIVER_VERSION && \
+        mv LICENSE mkprecompiled ${KERNEL_TYPE} /usr/src/nvidia-$DRIVER_VERSION && \
         sed '9,${/^\(kernel\|LICENSE\)/!d}' .manifest > /usr/src/nvidia-$DRIVER_VERSION/.manifest
 
     echo -e "\n========== NVIDIA Software Installer ==========\n"
@@ -587,7 +633,7 @@ _build() {
     # Install dependencies
     if _kernel_requires_package; then
         _update_package_cache
-        #_resolve_kernel_version || exit 1
+        # _resolve_kernel_version || exit 1
         _install_prerequisites
         _create_driver_package
         #_remove_prerequisites
@@ -649,11 +695,11 @@ update() {
     if [ "${DRIVER_TYPE}" != "vgpu" ]; then
         # Install the userspace components and copy the kernel module sources.
         if [ ! -e /usr/src/nvidia-${DRIVER_VERSION}/mkprecompiled ]; then
-            sh NVIDIA-Linux-$DRIVER_ARCH-$DRIVER_VERSION.run -x && \
+            sh NVIDIA-Linux-$DRIVER_ARCH-$DRIVER_VERSION.run -x -m=${KERNEL_TYPE} && \
                 cd NVIDIA-Linux-$DRIVER_ARCH-$DRIVER_VERSION && \
                 sh /tmp/install.sh nvinstall && \
                 mkdir -p /usr/src/nvidia-$DRIVER_VERSION && \
-                mv LICENSE mkprecompiled kernel /usr/src/nvidia-$DRIVER_VERSION && \
+                mv LICENSE mkprecompiled ${KERNEL_TYPE} /usr/src/nvidia-$DRIVER_VERSION && \
                 sed '9,${/^\(kernel\|LICENSE\)/!d}' .manifest > /usr/src/nvidia-$DRIVER_VERSION/.manifest
         fi
     fi
@@ -679,14 +725,14 @@ update() {
 # Wait for MOFED drivers to be loaded and load nvidia-peermem whenever it gets unloaded during MOFED driver updates
 reload_nvidia_peermem() {
     if [ "$USE_HOST_MOFED" = "true" ]; then
-        until  lsmod | grep mlx5_core > /dev/null 2>&1 && [ -f /sys/module/nvidia/refcnt ];
+        until  lsmod | grep mlx5_core > /dev/null 2>&1 && [ -f /run/nvidia/validations/.driver-ctr-ready ];
         do
             echo "waiting for mellanox ofed and nvidia drivers to be installed"
             sleep 10
         done
     else
         # use driver readiness flag created by MOFED container
-        until  [ -f /run/mellanox/drivers/.driver-ready ] && [ -f /sys/module/nvidia/refcnt ];
+        until  [ -f /run/mellanox/drivers/.driver-ready ] && [ -f /run/nvidia/validations/.driver-ctr-ready ];
         do
             echo "waiting for mellanox ofed and nvidia drivers to be installed"
             sleep 10
@@ -723,8 +769,7 @@ usage() {
 Usage: $0 COMMAND [ARG...]
 
 Commands:
-  init       [-a | --accept-license]
-  init-debug [-a | --accept-license] [-x]
+  init   [-a | --accept-license] [-x]
   build  [-a | --accept-license]
   load
   update [-k | --kernel VERSION] [-s | --sign KEYID] [-t | --tag TAG]

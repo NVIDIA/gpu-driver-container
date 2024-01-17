@@ -1,50 +1,49 @@
-# ******************************************************************************
-# REMOVED VGPU UTIL RHEL WORK FOR NOW - HAVEN'T ATTEMPTED INCLUSION
-# ******************************************************************************
+ARG FEDORA_VERSION=36
+ARG CUDA_VERSION
 
-# FROM nvidia/cuda:11.6.0-base-ubi8 as build
+FROM nvidia/cuda:${CUDA_VERSION}-base-ubi8 as build
 
-# ARG TARGETARCH
+ARG TARGETARCH
 
-# SHELL ["/bin/bash", "-c"]
+SHELL ["/bin/bash", "-c"]
 
-# RUN dnf install -y git wget
+RUN dnf install -y git wget
 
-# ENV GOLANG_VERSION=1.20
+ENV GOLANG_VERSION=1.21.5
 
-# # download appropriate binary based on the target architecture for multi-arch builds
-# RUN OS_ARCH=${TARGETARCH/x86_64/amd64} && OS_ARCH=${OS_ARCH/aarch64/arm64} && \
-#     curl https://storage.googleapis.com/golang/go${GOLANG_VERSION}.linux-${OS_ARCH}.tar.gz \
-#     | tar -C /usr/local -xz
+# download appropriate binary based on the target architecture for multi-arch builds
+RUN OS_ARCH=${TARGETARCH/x86_64/amd64} && OS_ARCH=${OS_ARCH/aarch64/arm64} && \
+    curl https://dl.google.com/go/go${GOLANG_VERSION}.linux-${OS_ARCH}.tar.gz \
+    | tar -C /usr/local -xz
 
-# ENV PATH /usr/local/go/bin:$PATH
+ENV PATH /usr/local/go/bin:$PATH
 
-# WORKDIR /work
+WORKDIR /work
 
-# RUN git clone https://gitlab.com/nvidia/container-images/driver && \
-#     cd driver/vgpu/src && \
-#     go build -o vgpu-util && \
-#     mv vgpu-util /work
+RUN git clone https://gitlab.com/nvidia/container-images/driver && \
+    cd driver/vgpu/src && \
+    go build -o vgpu-util && \
+    mv vgpu-util /work
 
 ARG FEDORA_VERSION=36
 ARG CUDA_VERSION=11.7.0
 
-FROM nvidia/cuda:$CUDA_VERSION-base-ubi8 as license
-
-FROM fedora:$FEDORA_VERSION
+FROM fedora:${FEDORA_VERSION}
 
 ARG TARGETARCH
 ENV TARGETARCH=$TARGETARCH
+
+ARG KERNEL_TYPE
+ENV KERNEL_TYPE=$KERNEL_TYPE
+
 ARG HTTP_PROXY
 ENV HTTP_PROXY=$HTTP_PROXY
 ARG HTTPS_PROXY
 ENV HTTPS_PROXY=$HTTPS_PROXY
 
-
 SHELL ["/bin/bash", "-c"]
 
-# Note that this prior url is non-https....so don't use it...
-# ARG BASE_URL=http://us.download.nvidia.com/XFree86/Linux-x86_64
+#ARG BASE_URL=http://us.download.nvidia.com/XFree86/Linux-x86_64
 ARG BASE_URL=https://us.download.nvidia.com/tesla
 ENV BASE_URL=${BASE_URL}
 ARG DRIVER_VERSION
@@ -53,10 +52,10 @@ ENV DRIVER_VERSION=$DRIVER_VERSION
 # Arg to indicate if driver type is either of passthrough/baremetal or vgpu
 ARG DRIVER_TYPE=passthrough
 ENV DRIVER_TYPE=$DRIVER_TYPE
-ARG VGPU_LICENSE_SERVER_TYPE=FNE
+ARG VGPU_LICENSE_SERVER_TYPE=NLS
 ENV VGPU_LICENSE_SERVER_TYPE=$VGPU_LICENSE_SERVER_TYPE
 # Enable vGPU version compability check by default
-ARG DISABLE_VGPU_VERSION_CHECK=false
+ARG DISABLE_VGPU_VERSION_CHECK=true
 ENV DISABLE_VGPU_VERSION_CHECK=$DISABLE_VGPU_VERSION_CHECK
 # Avoid dependency of container-toolkit for driver container
 ENV NVIDIA_VISIBLE_DEVICES=void
@@ -109,7 +108,8 @@ WORKDIR /usr/src/nvidia-$DRIVER_VERSION
 # COPY ocp_dtk_entrypoint /usr/local/bin
 COPY common.sh /usr/local/bin
 
-# COPY --from=build /work/vgpu-util /usr/local/bin
+COPY --from=build /work/vgpu-util /usr/local/bin
+
 WORKDIR /drivers
 
 ARG PUBLIC_KEY=empty
@@ -126,15 +126,15 @@ LABEL release="N/A"
 LABEL summary="Provision the NVIDIA driver through containers"
 LABEL description="See summary"
 
-# Add NGC DL license
-COPY --from=license /NGC-DL-CONTAINER-LICENSE /licenses/NGC-DL-CONTAINER-LICENSE
+# Add NGC DL license from the CUDA image
+COPY --from=build /NGC-DL-CONTAINER-LICENSE /licenses/NGC-DL-CONTAINER-LICENSE
 
-# # Install / upgrade packages here that are required to resolve CVEs
-# ARG CVE_UPDATES
-# RUN if [ -n "${CVE_UPDATES}" ]; then \
-#         yum update -y ${CVE_UPDATES} && \
-#         rm -rf /var/cache/yum/*; \
-#     fi
+# Install / upgrade packages here that are required to resolve CVEs
+ARG CVE_UPDATES
+RUN if [ -n "${CVE_UPDATES}" ]; then \
+        yum update -y ${CVE_UPDATES} && \
+        rm -rf /var/cache/yum/*; \
+    fi
 
 # Remove cuda repository to avoid GPG errors
 RUN rm -f /etc/yum.repos.d/cuda.repo
