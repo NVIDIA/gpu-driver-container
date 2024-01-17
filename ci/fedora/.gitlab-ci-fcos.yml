@@ -22,46 +22,65 @@
 # and stable.  In this manner pre-built kernel packages can be created matching
 # the kernel versions running on the gitlab-runners at that particular time.
 # These gitlab runners need to be tagged: fcos-next, fcos-testing, fcos-stable.
+# Behaviour is branch specific as described below.
+#
+# Branches != ^fedora.*
 #
 # In terms of general operations if a repo is pointed to this CICD script then
 # a branch without 'fedora' in its name will build one container image on a
-# fcos-next runner for the latest targeted DRIVER_VERSION only, suffixing the
+# fcos-next runner for the latest targeted DRIVER_VERSION only, prefixing the
 # image tag with the git commit short SHA.  It will be pushed to the internal
 # gitlab project container registry. The release stage will run but will again
 # target the internal gitlab registry conditionally overwriting the tag (minus
-# the commit sha).  This release stage is purely to test out the CICD release
-# flow.
+# the commit sha).  This release stage is purely to test out the CICD code that
+# would for the 'fedora' branch publish to a remote repository.
+#
+# Branches == "fedora" and tags == .*fedora$
 #
 # The protected branch 'fedora' will cause container image builds on all three
 # fcos runner types and build ALL_DRIVER_VERSIONS.  The images will then be scan-
 # ned and providing there are no detected vulnerabilities will be pushed to the
-# remote repository defined by the CICD variables, e.g. docker.io/fifofonix/driver.
+# remote repository defined by RELEASE_REGISTRY_PROJECT.
+#
 # By default remote tags are not overwritten during daily scheduled pipelines.
 # However, a bespoke pipeline run setting OVERWRITE_REMOTE_TAGS can be used to
 # force overwrite remote tags.  Any gitlab tag suffixed 'fedora' will also trigger
 # this pipeline flow.
 #
+# Branches == "fedora.+"
+#
 # Any other protected branch with the word fedora in it will do the same - build
 # all the NVIDIA driver versions on all the fcos releases - and scan them, but
 # will not publish them to the remote registry.
 #
+# All Flows
+#
 # It is possible to suppress compilation of driver kernel modules and build
 # of the kernel packages byy toggling COMPILE_KERNEL_MODULES.
-
+#
+# If pre-compilation of driver kernel modules fails then the CICD pipeline will
+# continue but will not push a kernel-labeled tag.  This is done in case these
+# fedora major version labeled images may run OK on different kernel versions
+# than those used by gitab-runners.
+#
+# Experimental
+#
+# It is possible to set the KERNEL_TYPE variable to 'kernel-open' which will
+# result in eligible driver versions (515.x.x) being built with the NVIDIA open
+# kernel (this is only advertised for newer data center A|T-series processors).
+# If this option is elected gitlab container tags will be at driver/open:<tag>.
+# Kernel-specific tags will be generated for pre-compiled open kernel interface
+# modules if possible per COMPILE_KERNEL_MODULES.  Note, although this all runs
+# and appears to launch stably on an appropriate node the GPU is not detected.
+# An issue for this exists:
+# https://gitlab.com/nvidia/container-images/driver/-/issues/46
+#
 # Some notes on driver versions:
 #
-# Driver versions for Tesla-class GPUs, e.g. M60 that we use on AWS nodes, can be
-# established here: https://www.nvidia.com/Download/index.aspx
+# Driver versions for datacenter class GPUs can be established here:
+# https://www.nvidia.com/Download/index.aspx
 # The driver versions are tied to specific CUDA versions, e.g.:
 # - M60 only supports # 11.4, 11.2, 11.0 ... (but not 11.3 for example?)
-#
-# CUDA 11.6 has a minimum kernel of Fedora 35 / 5.14.10
-# (https://docs.nvidia.com/cuda/archive/11.6.0/cuda-installation-guide-linux/index.html)
-# 5/27/22 - Current recommended Tesla / Linux driver version is 510.73.05
-#
-# CUDA 11.4 has a minimum kernel of Fedora 35 / 5.10.13
-# (https://docs.nvidia.com/cuda/archive/11.4.0/cuda-installation-guide-linux/index.html)
-# 1/17/22 - Current recommended Tesla / Linux driver version is 470.82.01
 #
 
 variables:
@@ -73,15 +92,24 @@ variables:
   http_proxy: ${HTTP_PROXY}
   https_proxy: ${HTTPS_PROXY}
   no_proxy: ${NO_PROXY}
-  # Project specific variables
-  DRIVER_VERSION: "515.86.01"
-  ALL_DRIVER_VERSIONS: "515.86.01"
-  DRIVER_VERSIONS: 515.86.01
 
-  BUILD_MULTI_ARCH_IMAGES: "true"
+  # To survey latest Data Center driver versions available:
+  # https://www.nvidia.com/Download/Find.aspx
+  # https://www.nvidia.com/en-us/drivers/unix/
+  DRIVER_VERSION: "535.129.03"
+  DRIVER_VERSIONS: 535.129.03 525.147.05
+
+  CUDA_VERSION: 12.2.0
+
+  CVE_UPDATES: "curl libc6"
+
   OVERWRITE_TAGS: 1
   OVERWRITE_REMOTE_TAGS: 0
-  COMPILE_KERNEL_MODULES: 1 # Requires 16GB RAM on FCOS gitlab-runner
+
+  # https://developer.nvidia.com/blog/nvidia-releases-open-source-gpu-kernel-modules/
+  KERNEL_TYPE: "kernel"       # NVIDIA: kernel, OPEN: kernel-open, 515/525-only.
+  COMPILE_KERNEL_MODULES: 1   # Requires 16GB RAM on FCOS gitlab-runner
+
   RELEASE_REGISTRY_PROJECT: ""
   RELEASE_REGISTRY_USER: ""
   RELEASE_REGISTRY_TOKEN: ""
@@ -93,7 +121,6 @@ default:
 
 stages:
   - build
-  - test
   - scan
   - deploy
   - release
@@ -102,31 +129,57 @@ stages:
   before_script:
     - export FEDORA_VERSION=$(uname -r | sed -r "s/^.*fc([0-9][0-9]).*/\1/")
     - export FEDORA_UNAME=$(uname -r)
+    - |
+      if [[ "${KERNEL_TYPE}" == "kernel-open" ]]; then
+          export IMAGE_BASE_NAME=${CI_REGISTRY_IMAGE}/open
+        else
+          export IMAGE_BASE_NAME=${CI_REGISTRY_IMAGE}
+      fi
 
 .build_push_fn-script: &build_push_fn-script
     - |
       function build_push_fn() {
         local _driver_version=$1
         local _overwrite_tag=$2
-        local _tag_suffix=$3
-        export DOCKER_IMAGE=${CI_REGISTRY_IMAGE}:${_driver_version}-fedora${FEDORA_VERSION}-${FEDORA_UNAME}${_tag_suffix}
+        local _tag_prefix=$3
+
+        if [[ "${KERNEL_TYPE}" == "kernel-open" ]]; then
+          local _driver_major_version=$(echo ${_driver_version} | cut -c1-3)
+          if [[ "${_driver_major_version}" != "515" && "${_driver_major_version}" != "525" ]]; then
+            echo "Driver version ${_driver_version} does not support ${KERNEL_TYPE}, skipping build-push."
+            return
+          fi
+        fi
+        export DOCKER_IMAGE=${IMAGE_BASE_NAME}:${_tag_prefix}${_driver_version}-${FEDORA_UNAME}-fedora${FEDORA_VERSION}
+        echo -e "\033[33mBuilding driver ${_driver_version} (${KERNEL_TYPE}) for Fedora ${FEDORA_VERSION} (${FEDORA_UNAME}).\033[0m"
         docker build \
           --build-arg FEDORA_VERSION=${FEDORA_VERSION} \
           --build-arg DRIVER_VERSION=${_driver_version} \
           --build-arg TARGETARCH=$(uname -m) \
+          --build-arg CUDA_VERSION=${CUDA_VERSION} \
+          --build-arg KERNEL_TYPE=${KERNEL_TYPE} \
           --build-arg HTTP_PROXY=${HTTP_PROXY} \
           --build-arg HTTPS_PROXY=${HTTPS_PROXY} \
           -t ${DOCKER_IMAGE} fedora
         if ! $(docker manifest inspect ${DOCKER_IMAGE} > /dev/null 2>&1) || [[ "${_overwrite_tag}" == "1" ]]; then
           if [[ "${COMPILE_KERNEL_MODULES}" == "1" ]]; then
-            docker run --privileged --pid=host --name build-kernel-modules-${_driver_version} \
-              --entrypoint nvidia-driver ${DOCKER_IMAGE} update -t builtin
-            docker commit -m '"Compile Linux kernel modules version ${FEDORA_UNAME} for NVIDIA driver version ${_driver_version}"' \
-              --change='ENTRYPOINT ["nvidia-driver", "init"]' build-kernel-modules-${_driver_version} ${DOCKER_IMAGE}
-            echo "Pushing ${DOCKER_IMAGE} with compiled kernel modules."
+            if ((docker run --privileged --pid=host --name build-kernel-modules-${_driver_version} \
+              --entrypoint nvidia-driver ${DOCKER_IMAGE} update -t builtin 2>&1 ) > /tmp/kernel-module-build.log); then
+              cat /tmp/kernel-module-build.log | grep -Ev "'naked' return found in RETHUNK build|missing int3 after ret"
+              docker commit -m '"Compile Linux kernel modules version ${FEDORA_UNAME} for NVIDIA driver version ${_driver_version}"' \
+                --change='ENTRYPOINT ["nvidia-driver", "init"]' build-kernel-modules-${_driver_version} ${DOCKER_IMAGE}
+              echo "Pushing ${DOCKER_IMAGE} with compiled kernel interface modules."
+            else
+              cat /tmp/kernel-module-build.log | grep -Ev "'naked' return found in RETHUNK build|missing int3 after ret"
+              export DOCKER_IMAGE_NO_PRECOMPILED_KERNEL_MODULES=${IMAGE_BASE_NAME}:${_tag_prefix}${_driver_version}-fedora${FEDORA_VERSION}
+              docker tag ${DOCKER_IMAGE} ${DOCKER_IMAGE_NO_PRECOMPILED_KERNEL_MODULES}
+              export DOCKER_IMAGE=${DOCKER_IMAGE_NO_PRECOMPILED_KERNEL_MODULES}
+              echo "Pushing ${DOCKER_IMAGE} without compiled kernel interface modules."
+            fi
           else
             echo "Pushing ${DOCKER_IMAGE} to internal gitlab repository."
           fi
+          docker login -u "${CI_REGISTRY_USER}" -p "${CI_REGISTRY_PASSWORD}" "${CI_REGISTRY}"
           docker push -q ${DOCKER_IMAGE}
         else
             echo "Skipping push of ${DOCKER_IMAGE} to internal gitlab repository."
@@ -135,129 +188,149 @@ stages:
 
 .build-push-script: &build-push-script
     - *build_push_fn-script
-    - docker login -u "${CI_REGISTRY_USER}" -p "${CI_REGISTRY_PASSWORD}" "${CI_REGISTRY}"
-    - for driver_version in ${ALL_DRIVER_VERSIONS:-${DRIVER_VERSION}}; do build_push_fn ${driver_version} $OVERWRITE_TAGS;done
+    - for driver_version in ${DRIVER_VERSIONS:-${DRIVER_VERSION}}; do build_push_fn ${driver_version} $OVERWRITE_TAGS;done
 
 build-push-next-one-only:
   stage: build
   extends: .common
   script:
     - *build_push_fn-script
-    - docker login -u "${CI_REGISTRY_USER}" -p "${CI_REGISTRY_PASSWORD}" "${CI_REGISTRY}"
     # Here we pass in the short git sha which gets suffixed to the built image.
-    - for driver_version in ${DRIVER_VERSION}; do build_push_fn ${driver_version} $OVERWRITE_TAGS -${CI_COMMIT_SHORT_SHA}; done
+    - for driver_version in ${DRIVER_VERSION}; do build_push_fn ${driver_version} $OVERWRITE_TAGS ${CI_COMMIT_SHORT_SHA}-; done
   tags:
     - fcos-next
   except:
     - /fedora/
 
-.common-build:
+build-push:
   stage: build
   extends: .common
   script:
     - *build-push-script
+  parallel:
+    matrix:
+      - STREAM: [next, testing, stable]
+  tags:
+    - fcos-${STREAM}
   only:
     - /fedora/
-
-build-push-next:
-  stage: build
-  extends: .common-build
-  tags:
-    - fcos-next
-  only:
-    - /fedora/
-
-build-push-testing:
-  extends: .common-build
-  tags:
-    - fcos-testing
-  only:
-    - /fedora/
-
-build-push-stable:
-  extends: .common-build
-  tags:
-    - fcos-stable
-  only:
-    - /fedora/
-
-test:
-  stage: test
-  extends: .common
-  script:
-    - "true" # TODO: write a test!
-  tags:
-    - fcos-next
 
 .common-scan:
-  # Trivy, which is the gitlab default, does not supported fedora.
-  # image: registry.gitlab.com/security-products/container-scanning:4
-  image: registry.gitlab.com/security-products/container-scanning/grype:4
+  image: registry.gitlab.com/security-products/container-scanning:6
   stage: scan
-  extends: .common
   variables:
-    # https://docs.gitlab.com/ee/user/application_security/container_scanning/index.html#overriding-the-container-scanning-template
-    # https://docs.gitlab.com/ee/user/application_security/container_scanning/#vulnerability-allowlisting
     GIT_STRATEGY: fetch
     DOCKERFILE_PATH: '$CI_PROJECT_DIR/fedora/Dockerfile'
+    # SECURE_LOG_LEVEL: 'debug'
+    TRIVY_TIMEOUT: 30m
+  allow_failure: false
+  artifacts:
+    paths: [driver-artifacts]
+  dependencies: []
   before_script:
     - !reference [.common, before_script]
-    - echo ${DOCKERFILE_PATH}
     - if ! [[ -z ${HTTP_PROXY} ]]; then sudo -- sh -c 'echo Acquire::http::Proxy \"'${HTTP_PROXY}'\"\; >> /etc/apt/apt.conf.d/proxy.conf'; fi
     - if ! [[ -z ${HTTPS_PROXY} ]]; then sudo -- sh -c 'echo Acquire::https::Proxy \"'${HTTPS_PROXY}'\"\; >> /etc/apt/apt.conf.d/proxy.conf'; fi
     - sudo apt-get -qy update > /dev/null
     - sudo apt-get -qy install jq > /dev/null
+    - mkdir driver-artifacts
     - |
       function scan_fn() {
         local _driver_version=$1
-        export DOCKER_IMAGE=$CI_REGISTRY_IMAGE:${_driver_version}-fedora${FEDORA_VERSION}-${FEDORA_UNAME}
-        gtcs scan
+        local _tag_prefix=$2
+        if [[ "${KERNEL_TYPE}" == "kernel-open" ]]; then
+          local _driver_major_version=$(echo ${_driver_version} | cut -c1-3)
+          if [[ "${_driver_major_version}" != "515" && "${_driver_major_version}" != "525" ]]; then
+            echo "Driver version ${_driver_version} does not support ${KERNEL_TYPE}, skipping scan."
+            return
+          fi
+        fi
+        export DOCKER_TAG=${_tag_prefix}${_driver_version}-${FEDORA_UNAME}-fedora${FEDORA_VERSION}
+        export CS_IMAGE=${IMAGE_BASE_NAME}:${DOCKER_TAG}
+        # Try to scan the kernel-specific tag...if it fails go to non-kernel-specific tag...
+        if ! (gtcs scan); then
+          export DOCKER_TAG=${_tag_prefix}${_driver_version}-fedora${FEDORA_VERSION}
+          export CS_IMAGE=${IMAGE_BASE_NAME}:${DOCKER_TAG}
+          gtcs scan
+        fi
         cat gl-container-scanning-report.json | jq '.vulnerabilities[].severity' | sort | uniq -c
         if [[ $(cat gl-container-scanning-report.json | jq '.vulnerabilities | any') == 'true' ]]; then
           exit 1
         fi
+        if [[ $(cat gl-dependency-scanning-report.json | jq '.vulnerabilities | any') == 'true' ]]; then
+          exit 1
+        fi
+        mv gl-container-scanning-report.json driver-artifacts/gl-container-scanning-report-${_driver_version}.json
+        mv gl-dependency-scanning-report.json driver-artifacts/gl-dependency-scanning-report-${_driver_version}.json
       }
   script:
-    - for driver_version in ${ALL_DRIVER_VERSIONS:-${DRIVER_VERSION}}; do scan_fn ${driver_version};done
-  artifacts:
-    reports:
-      container_scanning: gl-container-scanning-report.json
-    paths: [gl-container-scanning-report.json]
-  only:
+    - for driver_version in ${DRIVER_VERSIONS:-${DRIVER_VERSION}}; do scan_fn ${driver_version};done
+
+scan-next-one-only:
+  extends: .common-scan
+  needs: ["build-push-next-one-only"]
+  script:
+    - scan_fn ${DRIVER_VERSION} ${CI_COMMIT_SHORT_SHA}-
+  tags:
+    - fcos-next
+  except:
     - /fedora/
+
+# Gitlab does not yet support matrix jobs with dynamic matrix-based dependencies.
+# https://forum.gitlab.com/t/ci-specifying-artifact-dependencies-when-using-parallel-matrix/45026/2
+scan:
+  extends: .common-scan
+  tags: ["not-a-branch"]
+  only: ["not-a-branch"]
 
 scan-next:
   extends: .common-scan
-  needs: ["build-push-next"]
+  needs: ["build-push: [next]"]
   tags:
     - fcos-next
+  only:
+    - /fedora/
 
 scan-testing:
   extends: .common-scan
-  needs: ["build-push-testing"]
+  needs: ["build-push: [testing]"]
   tags:
     - fcos-testing
+  only:
+    - /fedora/
 
 scan-stable:
   extends: .common-scan
-  needs: ["build-push-stable"]
+  needs: ["build-push: [stable]"]
   tags:
     - fcos-stable
+  only:
+    - /fedora/
 
 .common-release-fn-script: &common-release-fn-script
   - |
     function release_fn() {
       local _driver_version=$1
       local _overwrite_remote_tag=${2:-${OVERWRITE_REMOTE_TAGS}}
-      local _tag_suffix=$3
-      export DOCKER_IMAGE=$CI_REGISTRY_IMAGE:${_driver_version}-fedora${FEDORA_VERSION}-${FEDORA_UNAME}${_tag_suffix}
-      docker pull -q ${DOCKER_IMAGE}
-      docker tag ${DOCKER_IMAGE} ${RELEASE_REGISTRY_PROJECT}:${_driver_version}-fedora${FEDORA_VERSION}-${FEDORA_UNAME}
-      if ! $(docker manifest inspect ${RELEASE_REGISTRY_PROJECT}:${_driver_version}-fedora${FEDORA_VERSION}-${FEDORA_UNAME} > /dev/null 2>&1) || [[ ${_overwrite_remote_tag} -eq 1 ]]; then
-        echo "Pushing ${RELEASE_REGISTRY_PROJECT}:${_driver_version}-fedora${FEDORA_VERSION}-${FEDORA_UNAME} to remote repository."
-        docker push -q ${RELEASE_REGISTRY_PROJECT}:${_driver_version}-fedora${FEDORA_VERSION}-${FEDORA_UNAME}
+      local _tag_prefix=$3
+      if [[ "${KERNEL_TYPE}" == "kernel-open" ]]; then
+        local _driver_major_version=$(echo ${_driver_version} | cut -c1-3)
+        if [[ "${_driver_major_version}" != "515" && "${_driver_major_version}" != "525" ]]; then
+          echo "Driver version ${_driver_version} does not support ${KERNEL_TYPE}, skipping release."
+          return
+        fi
+      fi
+      export DOCKER_TAG=${_tag_prefix}${_driver_version}-${FEDORA_UNAME}-fedora${FEDORA_VERSION}
+      if ! (docker manifest inspect ${IMAGE_BASE_NAME}:${DOCKER_TAG} > /dev/null 2>&1); then
+          export DOCKER_TAG=${_tag_prefix}${_driver_version}-fedora${FEDORA_VERSION}
+      fi
+      docker pull -q ${IMAGE_BASE_NAME}:${DOCKER_TAG}
+      docker tag ${IMAGE_BASE_NAME}:${DOCKER_TAG} ${RELEASE_REGISTRY_PROJECT}:${DOCKER_TAG}
+      if ! $(docker manifest inspect ${RELEASE_REGISTRY_PROJECT}:${DOCKER_TAG} > /dev/null 2>&1) || [[ ${_overwrite_remote_tag} -eq 1 ]]; then
+        echo "Pushing ${RELEASE_REGISTRY_PROJECT}:${DOCKER_TAG} to remote repository."
+        docker push -q ${RELEASE_REGISTRY_PROJECT}:${DOCKER_TAG}
       else
-        echo "Skipping push of ${RELEASE_REGISTRY_PROJECT}:${_driver_version}-fedora${FEDORA_VERSION}-${FEDORA_UNAME} to remote repository."
+        echo "Skipping push of ${RELEASE_REGISTRY_PROJECT}:${DOCKER_TAG} to remote repository."
       fi
     }
 
@@ -272,7 +345,7 @@ scan-stable:
     - *common-release-fn-script
     - docker login -u "${CI_REGISTRY_USER}" -p "${CI_REGISTRY_PASSWORD}" "${CI_REGISTRY}"
     - docker login -u "${RELEASE_REGISTRY_USER}" -p "${RELEASE_REGISTRY_TOKEN}" "${RELEASE_REGISTRY}"
-    - for driver_version in ${ALL_DRIVER_VERSIONS:-${DRIVER_VERSION}}; do release_fn ${driver_version};done
+    - for driver_version in ${DRIVER_VERSIONS:-${DRIVER_VERSION}}; do release_fn ${driver_version};done
   rules:
     - if: $CI_COMMIT_TAG =~ /fedora$/ || $CI_COMMIT_REF_NAME == 'fedora'
 
@@ -283,25 +356,36 @@ release-next-one-only:
     # Here we create a circular reference defining the 'remote' registry to in
     # fact be this repo's registry.  This is purely for CICD testing purposes
     # in a non-protected branch...validating the release stage...
-    RELEASE_REGISTRY_PROJECT: ${CI_REGISTRY_IMAGE}
+    RELEASE_REGISTRY_PROJECT: ${IMAGE_BASE_NAME}
     RELEASE_REGISTRY: ${CI_REGISTRY}
     RELEASE_REGISTRY_USER: ${CI_REGISTRY_USER}
     RELEASE_REGISTRY_TOKEN: ${CI_REGISTRY_PASSWORD}
   before_script:
     - !reference [.common, before_script]
   script:
+    - export RELEASE_REGISTRY_PROJECT=${IMAGE_BASE_NAME}
     - *common-release-fn-script
     - docker login -u "${CI_REGISTRY_USER}" -p "${CI_REGISTRY_PASSWORD}" "${CI_REGISTRY}"
     - docker login -u "${RELEASE_REGISTRY_USER}" -p "${RELEASE_REGISTRY_TOKEN}" "${RELEASE_REGISTRY}"
-    - for driver_version in ${DRIVER_VERSION}; do release_fn ${driver_version} ${OVERWRITE_REMOTE_TAGS} -${CI_COMMIT_SHORT_SHA}; done
+    - for driver_version in ${DRIVER_VERSION}; do release_fn ${driver_version} ${OVERWRITE_REMOTE_TAGS} ${CI_COMMIT_SHORT_SHA}-; done
   tags:
     - fcos-next
   except:
     - /fedora/
 
-# The build will build/push N images to the local gitlab registry.  The scan
-# will scan each of them, and if any of the scans fail, none of the new images
-# will get released...releases run for the fedora branch only.
+# Gitlab does not yet support matrix jobs with dynamic matrix-based dependencies.
+# https://forum.gitlab.com/t/ci-specifying-artifact-dependencies-when-using-parallel-matrix/45026/2
+# release:
+#   extends: .common-release
+#   before_script:
+#     - !reference [.common, before_script]
+#   needs: ["scan"]
+#   parallel:
+#     matrix:
+#       - STREAM: [next, testing, stable]
+#   tags:
+#     - fcos-${STREAM}
+
 release-next:
   extends: .common-release
   before_script:
