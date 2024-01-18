@@ -186,6 +186,26 @@ dtk-build-driver() {
         echo "#"
     fi
 
+    if _gdrcopy_enabled; then
+        echo "#"
+        echo "# Executing gdrcopy driver build."
+        echo "#"
+        # Make nvidia driver sources accessible for building nvidia-fs
+        nvidia_src_dir=$(find /usr/src/nvidia-* -name "nv-p2p.c" -print -quit | xargs dirname || echo "NVIDIA_DRIVER_MISSING" 2>/dev/null)
+        if [ "nvidia_src_dir" = "NVIDIA_DRIVER_MISSING" ]; then
+            echo "Failed to find NVIDIA driver source, exiting."
+            return 1
+        fi
+        export NVIDIA_SRC_DIR=$nvidia_src_dir
+
+        # Build gdrdrv kernel module
+        make -C $DRIVER_TOOLKIT_SHARED_DIR/gdrcopy driver
+
+        echo "#"
+        echo "# gdrcopy  build script completed."
+        echo "#"
+    fi
+
     MODULES_SHARED="${DRIVER_TOOLKIT_SHARED_DIR}/modules"
     mkdir -p "${MODULES_SHARED}"
 
@@ -221,6 +241,11 @@ dtk-build-driver() {
     if _gpu_direct_storage_enabled; then
         echo "NVIDIA-FS drivers generated, inform nvidia-fs-driver-ctr container about it and sleep forever."
         touch "${DRIVER_TOOLKIT_SHARED_DIR}/nvidia_fs_built"
+    fi
+
+	if _gdrcopy_enabled; then
+        echo "gdrcopy driver built, inform nvidia-gdrcopy-ctr container about it and sleep forever."
+        touch "${DRIVER_TOOLKIT_SHARED_DIR}/gdrcopy_built"
     fi
 
     while [ -f "$DRIVER_TOOLKIT_SHARED_DIR/driver_built" ]; do
