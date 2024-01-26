@@ -90,9 +90,8 @@ _get_module_params() {
 }
 
 _install_driver() {
-    # This will be changed to tdnf install -y cuda-$(uname -r) once the Mariner CUDA naming update gets published
     echo "Installing the NVIDIA driver modules"
-    tdnf install -y ${PACKAGE_DIR}/$(tdnf repoquery "cuda-${DRIVER_VERSION}" | grep -m1 ${KERNEL_VERSION//-/.}).rpm
+    tdnf install -y ${PACKAGE_DIR}/cuda-${DRIVER_VERSION}*${KERNEL_VERSION//-/.}*.rpm
 
     echo "Installing the NVIDIA fabricmanager"
     tdnf install -y ${PACKAGE_DIR}/nvidia-fabric-manager-${DRIVER_VERSION}*.rpm
@@ -283,10 +282,6 @@ init() {
     _load
 }
 
-load() {
-    _load
-}
-
 # Wait for MOFED drivers to be loaded and load nvidia-peermem whenever it gets unloaded during MOFED driver updates
 reload_nvidia_peermem() {
     if [ "$USE_HOST_MOFED" = "true" ]; then
@@ -336,7 +331,6 @@ Usage: $0 COMMAND [ARG...]
 Commands:
   init   [-a | --accept-license]
   build  [-a | --accept-license]
-  load
 EOF
     exit 1
 }
@@ -347,7 +341,6 @@ fi
 command=$1; shift
 case "${command}" in
     init) options=$(getopt -l accept-license -o a -- "$@") ;;
-    load) options="" ;;
     reload_nvidia_peermem) options="" ;;
     probe_nvidia_peermem) options="" ;;
     *) usage ;;
