@@ -15,6 +15,8 @@ NVIDIA_PEERMEM_MODULE_PARAMS=()
 TARGETARCH=${TARGETARCH:?"Missing TARGETARCH env"}
 USE_HOST_MOFED="${USE_HOST_MOFED:-false}"
 DNF_RELEASEVER=${DNF_RELEASEVER:-""}
+RHEL_VERSION=${RHEL_VERSION:-""}
+RHEL_MAJOR_VERSION=8
 
 OPEN_KERNEL_MODULES_ENABLED=${OPEN_KERNEL_MODULES_ENABLED:-false}
 [[ "${OPEN_KERNEL_MODULES_ENABLED}" == "true" ]] && KERNEL_TYPE=kernel-open || KERNEL_TYPE=kernel
@@ -43,27 +45,28 @@ _cleanup_package_cache() {
     fi
 }
 
-_resolve_rhel_version() {
-    if [ -f /host-etc/os-release ]; then
-        echo "Resolving RHEL version..."
-        local version=""
-        local id=$(cat /host-etc/os-release | grep ^ID= | awk -F= '{print $2}' | sed -e 's/^"//' -e 's/"$//')
-        if [ "${id}" = "rhcos" ]; then
-            version=$(cat /host-etc/os-release | grep RHEL_VERSION | awk -F= '{print $2}' | sed -e 's/^"//' -e 's/"$//')
-        elif [ "${id}" = "rhel" ]; then
-            version=$(cat /host-etc/os-release | grep VERSION_ID | awk -F= '{print $2}' | sed -e 's/^"//' -e 's/"$//')
-        fi
-        if [ -z "${version}" ]; then
-            echo "Could not resolve RHEL version" >&2
-            return 1
-        fi
-        RHEL_VERSION="${version}"
-        echo "Proceeding with RHEL version ${RHEL_VERSION}"
+_get_rhel_version_from_kernel() {
+    local rhel_version_underscore rhel_version_arr
+    rhel_version_underscore=$(echo "${KERNEL_VERSION}" | sed 's/.*el\([0-9]_[0-9]\).*/\1/g')
+    # For the Kernel version 4.18.0-513.9.1.el8_9, we expect to extract the string "8_9"
+    if [[ ${#rhel_version_underscore} -ne 3 ]]; then
+        echo "Unable to resolve RHEL version from kernel version" >&2
+        return 1
+    fi
+    IFS='_' read -r -a rhel_version_arr <<< "$rhel_version_underscore"
+    if [[ ${#rhel_version_arr[@]} -ne 2 ]]; then
+        echo "Unable to resolve RHEL version from kernel version" >&2
+        return 1
+    fi
+    RHEL_VERSION="${rhel_version_arr[0]}.${rhel_version_arr[1]}"
+    return 0
+}
 
-        # set dnf release version as rhel version by default
-        if [[ -z "${DNF_RELEASEVER}" ]]; then
-            DNF_RELEASEVER="${RHEL_VERSION}"
-        fi
+_resolve_rhel_version() {
+    _get_rhel_version_from_kernel || RHEL_VERSION="${RHEL_MAJOR_VERSION}"
+    # set dnf release version as rhel version by default
+    if [[ -z "${DNF_RELEASEVER}" ]]; then
+        DNF_RELEASEVER="${RHEL_VERSION}"
     fi
     return 0
 }
@@ -110,6 +113,17 @@ _install_prerequisites() (
     dnf config-manager --set-enabled rhel-8-for-$DRIVER_ARCH-baseos-eus-rpms  || true
     if ! dnf makecache --releasever=${DNF_RELEASEVER}; then
     	dnf config-manager --set-disabled rhel-8-for-$DRIVER_ARCH-baseos-eus-rpms || true
+    fi
+
+    # try with EUS disabled, if it does not work, then try just major version
+    if ! dnf makecache --releasever=${DNF_RELEASEVER}; then
+      # If pointing to DNF_RELEASEVER does not work, we point to the RHEL_MAJOR_VERSION as a last resort
+      if ! dnf makecache --releasever=${RHEL_MAJOR_VERSION}; then
+        echo "FATAL: failed to update the dnf metadata cache after multiple attempts with releasevers ${DNF_RELEASEVER}, ${RHEL_MAJOR_VERSION}"
+        exit 1
+      else
+        DNF_RELEASEVER=${RHEL_MAJOR_VERSION}
+      fi
     fi
 
     echo "Installing Linux kernel headers..."
@@ -656,7 +670,7 @@ update() {
     fi
     exec 3>&-
 
-    # vgpu driver version is choosen dynamically during runtime, so pre-compile modules for
+    # vgpu driver version is chosen dynamically during runtime, so pre-compile modules for
     # only non-vgpu driver types
     if [ "${DRIVER_TYPE}" != "vgpu" ]; then
         # Install the userspace components and copy the kernel module sources.
@@ -717,7 +731,7 @@ reload_nvidia_peermem() {
     exit 1
 }
 
-# probe by gpu-opertor for liveness/startup checks for nvidia-peermem module to be loaded when MOFED drivers are ready
+# probe by gpu-operator for liveness/startup checks for nvidia-peermem module to be loaded when MOFED drivers are ready
 probe_nvidia_peermem() {
     if lsmod | grep mlx5_core > /dev/null 2>&1; then
         if [ ! -f /sys/module/nvidia_peermem/refcnt ]; then
