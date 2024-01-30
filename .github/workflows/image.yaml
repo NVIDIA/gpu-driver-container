@@ -1,0 +1,180 @@
+# Copyright 2024 NVIDIA CORPORATION
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# Run this workflow on pull requests or merge to main/release branches
+name: image
+
+on:
+  pull_request:
+    types:
+      - opened
+      - synchronize
+    branches:
+      - main
+      - release-*
+  push:
+    branches:
+      - main
+      - release-*
+
+jobs:
+  image:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        driver:
+          - 470.223.02
+          - 535.161.07
+          - 550.54.14
+        dist:
+          - ubuntu20.04
+          - ubuntu22.04
+          - rhel8
+          - centos7
+          - rhel9
+          - fedora36
+        ispr:
+          - ${{github.event_name == 'pull_request'}}
+        exclude:
+          - ispr: true
+            dist: fedora36
+          - ispr: true
+            dist: rhel8
+          - ispr: true
+            dist: ubuntu20.04
+          - ispr: true
+            driver: 470.223.02
+          - ispr: true
+            driver: 535.161.07
+          - driver: 470.223.02
+            dist: ubuntu22.04
+          - driver: 470.223.02
+            dist: rhel9
+      fail-fast: false
+    steps:
+      - uses: actions/checkout@v4
+        name: Check out code
+      - name: Calculate build vars
+        id: vars
+        run: |
+          echo "COMMIT_SHORT_SHA=${GITHUB_SHA:0:8}" >> $GITHUB_ENV
+          echo "LOWERCASE_REPO_OWNER=$(echo "${GITHUB_REPOSITORY_OWNER}" | awk '{print tolower($0)}')" >> $GITHUB_ENV
+          REPO_FULL_NAME="${{ github.event.pull_request.head.repo.full_name }}"
+          echo "${REPO_FULL_NAME}"
+          echo "LABEL_IMAGE_SOURCE=https://github.com/${REPO_FULL_NAME}" >> $GITHUB_ENV
+
+          GENERATE_ARTIFACTS="false"
+          if [[ "${{ github.actor }}" == "dependabot[bot]" ]]; then
+            GENERATE_ARTIFACTS="false"
+          elif [[ "${{ github.event_name }}" == "pull_request" && "${{ github.event.pull_request.head.repo.full_name }}" == "${{ github.repository }}" ]]; then
+            GENERATE_ARTIFACTS="true"
+          elif [[ "${{ github.event_name }}" == "push" ]]; then
+            GENERATE_ARTIFACTS="true"
+          fi
+          echo "PUSH_ON_BUILD=${GENERATE_ARTIFACTS}" >> $GITHUB_ENV
+          echo "BUILD_MULTI_ARCH_IMAGES=${GENERATE_ARTIFACTS}" >> $GITHUB_ENV
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build image
+        env:
+          IMAGE_NAME: ghcr.io/nvidia/driver
+          VERSION: ${COMMIT_SHORT_SHA}
+        run: |
+          DRIVER_VERSIONS=${{ matrix.driver }} make build-${{ matrix.dist }}-${{ matrix.driver }}
+
+  pre-compiled:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        driver: 
+          - 535
+        flavor: 
+          - generic
+          - nvidia
+          - aws
+          - azure
+        ispr:
+          - ${{github.event_name == 'pull_request'}}
+        exclude:
+          - ispr: true
+            flavor: azure
+          - ispr: true
+            flavor: aws
+          - ispr: true
+            flavor: nvidia
+    steps:
+      - uses: actions/checkout@v4
+        name: Check out code
+      - name: Calculate build vars
+        id: vars
+        run: |
+          echo "COMMIT_SHORT_SHA=${GITHUB_SHA:0:8}" >> $GITHUB_ENV
+          echo "LOWERCASE_REPO_OWNER=$(echo "${GITHUB_REPOSITORY_OWNER}" | awk '{print tolower($0)}')" >> $GITHUB_ENV
+          REPO_FULL_NAME="${{ github.event.pull_request.head.repo.full_name }}"
+          echo "${REPO_FULL_NAME}"
+          echo "LABEL_IMAGE_SOURCE=https://github.com/${REPO_FULL_NAME}" >> $GITHUB_ENV
+
+          GENERATE_ARTIFACTS="false"
+          if [[ "${{ github.actor }}" == "dependabot[bot]" ]]; then
+            GENERATE_ARTIFACTS="false"
+          elif [[ "${{ github.event_name }}" == "pull_request" && "${{ github.event.pull_request.head.repo.full_name }}" == "${{ github.repository }}" ]]; then
+            GENERATE_ARTIFACTS="true"
+          elif [[ "${{ github.event_name }}" == "push" ]]; then
+            GENERATE_ARTIFACTS="true"
+          fi
+          echo "PUSH_ON_BUILD=${GENERATE_ARTIFACTS}" >> $GITHUB_ENV
+          echo "BUILD_MULTI_ARCH_IMAGES=${GENERATE_ARTIFACTS}" >> $GITHUB_ENV
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build base image and get kernel version
+        env:
+          IMAGE_NAME: ghcr.io/nvidia/driver
+          VERSION: ${COMMIT_SHORT_SHA}
+          BASE_TARGET: jammy
+        run: |
+          make DRIVER_BRANCH=${{ matrix.driver }} KERNEL_FLAVOR=${{ matrix.flavor }} build-base-${BASE_TARGET}
+
+          trap "docker rm -f base-${BASE_TARGET}-${{ matrix.flavor }}" EXIT
+          docker run -d --name base-${BASE_TARGET}-${{ matrix.flavor }} ghcr.io/nvidia/driver:base-${BASE_TARGET}-${{ matrix.flavor }}-${{ matrix.driver }} 
+          # try 3 times every 10 seconds to get the file, if success exit the loop
+          for i in {1..3}; do
+              docker cp base-${BASE_TARGET}-${{ matrix.flavor }}:/var/kernel_version.txt kernel_version.txt && break
+              sleep 10
+          done
+      - name: Build image
+        env:
+          IMAGE_NAME: ghcr.io/nvidia/driver
+          VERSION: ${COMMIT_SHORT_SHA}
+          PRECOMPILED: "true"
+          DIST: signed_ubuntu22.04
+        run: |
+          source kernel_version.txt && \
+          make DRIVER_VERSIONS=${DRIVER_VERSIONS} DRIVER_BRANCH=${{ matrix.driver }} build-${DIST}-${DRIVER_VERSION}
