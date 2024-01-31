@@ -3,6 +3,7 @@
 
 GPU_DIRECT_RDMA_ENABLED="${GPU_DIRECT_RDMA_ENABLED:-false}"
 GDS_ENABLED="${GDS_ENABLED:-false}"
+GDRCOPY_ENABLED="${GDRCOPY_ENABLED:-false}"
 
 # Check if mellanox devices are present
 _mellanox_devices_present() {
@@ -32,7 +33,15 @@ _gpu_direct_rdma_enabled() {
 # Check if GDS is enabled
 _gpu_direct_storage_enabled() {
     if [ "${GDS_ENABLED}" = "true" ]; then
-            return 0
+        return 0
+    fi
+    return 1
+}
+
+# Check if GDRCopy is enabled
+_gdrcopy_enabled() {
+    if [ "${GDRCOPY_ENABLED}" = "true" ]; then
+        return 0
     fi
     return 1
 }
