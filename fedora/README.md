@@ -27,7 +27,7 @@ Currently built driver versions are specified in `ci/fedora/.common-ci-fcos.yml`
 The driver container is privileged, and here we choose to launch via podman instead of docker although both work.
 
 ```bash
-$ DRIVER_VERSION=535.104.12 # Check ci/fedora/.common-ci-fcos.yml for latest
+$ DRIVER_VERSION=535.154.05 # Check ci/fedora/.common-ci-fcos.yml for latest
 $ FEDORA_VERSION_ID=$(cat /etc/os-release | grep VERSION_ID | cut -d = -f2)
 $ podman run -d --privileged --pid=host \
      -v /run/nvidia:/run/nvidia:shared \
@@ -58,7 +58,7 @@ storage:
         ExecStartPre=-setenforce 0
         ExecStartPre=-/bin/mkdir -p /run/nvidia
         ExecStartPre=-/bin/sh -c 'KERNEL_VERSION=$(/bin/uname -r);FEDORA_VERSION_ID=$(cat /etc/os-release | grep VERSION_ID | cut -d = -f2); \
-            /bin/podman pull registry.gitlab.com/container-toolkit-fcos/driver:535.104.12-$$KERNEL_VERSION-fedora$$FEDORA_VERSION_ID'
+            /bin/podman pull registry.gitlab.com/container-toolkit-fcos/driver:535.154.05-$$KERNEL_VERSION-fedora$$FEDORA_VERSION_ID'
         ExecStartPre=-/usr/sbin/modprobe video
         ExecStart=/bin/sh -c 'KERNEL_VERSION=$(/bin/uname -r);FEDORA_VERSION_ID=$(cat /etc/os-release | grep VERSION_ID | cut -d = -f2); \
             /bin/podman run --name nvidia-driver \
@@ -67,7 +67,7 @@ storage:
                 --privileged --pid=host \
                 # No need for network IF using container image with pre-built kernel headers \
                 --network=none \
-                registry.gitlab.com/container-toolkit-fcos/driver:535.104.12-$$KERNEL_VERSION-fedora$$FEDORA_VERSION_ID \
+                registry.gitlab.com/container-toolkit-fcos/driver:535.154.05-$$KERNEL_VERSION-fedora$$FEDORA_VERSION_ID \
                             --accept-license'
 
         ExecStop=/bin/podman stop nvidia-driver
@@ -84,29 +84,30 @@ You should be able to step into the driver container and run the `nvidia-smi` to
 
 ```bash
 $ # Assumes you're running the driver container via podman and named nvidia-driver as above...
-$ podman exec -it nvidia-driver bash
-[root@8dc88dad905e nvidia-510.47.03]# nvidia-smi
-Wed May 25 15:24:00 2022
-+-----------------------------------------------------------------------------+
-| NVIDIA-SMI 525.85.12    Driver Version: 525.85.12    CUDA Version: 12.0     |
-|-------------------------------+----------------------+----------------------+
-| GPU  Name        Persistence-M| Bus-Id        Disp.A | Volatile Uncorr. ECC |
-| Fan  Temp  Perf  Pwr:Usage/Cap|         Memory-Usage | GPU-Util  Compute M. |
-|                               |                      |               MIG M. |
-|===============================+======================+======================|
-|   0  NVIDIA A10G         On   | 00000000:00:1E.0 Off |                    0 |
-|  0%   39C    P0   197W / 300W |  22022MiB / 23028MiB |     96%      Default |
-|                               |                      |                  N/A |
-+-------------------------------+----------------------+----------------------+
+$ podman exec -it nvidia-driver sh
+sh-5.2# nvidia-smi
+Wed Feb 14 17:58:08 2024
++---------------------------------------------------------------------------------------+
+| NVIDIA-SMI 535.154.05             Driver Version: 535.154.05   CUDA Version: 12.2     |
+|-----------------------------------------+----------------------+----------------------+
+| GPU  Name                 Persistence-M | Bus-Id        Disp.A | Volatile Uncorr. ECC |
+| Fan  Temp   Perf          Pwr:Usage/Cap |         Memory-Usage | GPU-Util  Compute M. |
+|                                         |                      |               MIG M. |
+|=========================================+======================+======================|
+|   0  NVIDIA A10G                    On  | 00000000:00:1E.0 Off |                    0 |
+|  0%   26C    P0              58W / 300W |  21216MiB / 23028MiB |      0%      Default |
+|                                         |                      |                  N/A |
++-----------------------------------------+----------------------+----------------------+
 
-+-----------------------------------------------------------------------------+
-| Processes:                                                                  |
-|  GPU   GI   CI        PID   Type   Process name                  GPU Memory |
-|        ID   ID                                                   Usage      |
-|=============================================================================|
-|  No running processes found                                                 |
-+-----------------------------------------------------------------------------+
-[root@8dc88dad905e]#
++---------------------------------------------------------------------------------------+
+| Processes:                                                                            |
+|  GPU   GI   CI        PID   Type   Process name                            GPU Memory |
+|        ID   ID                                                             Usage      |
+|=======================================================================================|
+|    0   N/A  N/A     11339      C   tensorflow_model_server                   21208MiB |
++---------------------------------------------------------------------------------------+
+|  No running processes found                                                           |
++---------------------------------------------------------------------------------------+
 ```
 
 ### Install Container Runtime / Toolkit
