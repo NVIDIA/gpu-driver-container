@@ -87,6 +87,12 @@ trigger-pipeline:
       - DRIVER_BRANCH: [525, 535]
         KERNEL_FLAVOR: [generic, nvidia, aws, azure]
 
+# Define the driver versions for jobs that can be run in parallel for rhel9
+.driver-versions-rhel9:
+  parallel:
+    matrix:
+      - DRIVER_VERSION: [525.147.05, 535.154.05]
+
 # Define the distribution targets
 .dist-ubuntu20.04:
   variables:
@@ -101,6 +107,10 @@ trigger-pipeline:
 .dist-rhel8:
   variables:
     DIST: rhel8
+
+.dist-rhel9:
+  variables:
+    DIST: rhel9
 
 .dist-centos7:
   variables:
@@ -167,6 +177,14 @@ trigger-pipeline:
   rules:
     - if: $CI_PIPELINE_SOURCE != "schedule"
 
+.release-rhel9:
+  # Perform for each DRIVER_VERSION
+  extends:
+    - .release-generic
+    - .driver-versions-rhel9
+  rules:
+    - if: $CI_PIPELINE_SOURCE != "schedule"
+
 .release:
   # Perform for each DRIVER_VERSION
   extends:
@@ -190,6 +208,15 @@ trigger-pipeline:
 .release:staging-ubuntu22.04:
   extends:
     - .release-ubuntu22.04
+  variables:
+    OUT_REGISTRY_USER: "${CI_REGISTRY_USER}"
+    OUT_REGISTRY_TOKEN: "${CI_REGISTRY_PASSWORD}"
+    OUT_REGISTRY: "${CI_REGISTRY}"
+    OUT_IMAGE_NAME: "${CI_REGISTRY_IMAGE}/staging/driver"
+
+.release:staging-rhel9:
+  extends:
+    - .release-rhel9
   variables:
     OUT_REGISTRY_USER: "${CI_REGISTRY_USER}"
     OUT_REGISTRY_TOKEN: "${CI_REGISTRY_PASSWORD}"
@@ -243,6 +270,13 @@ release:staging-rhel8:
     - .dist-rhel8
   needs:
     - image-rhel8
+
+release:staging-rhel9:
+  extends:
+    - .release:staging-rhel9
+    - .dist-rhel9
+  needs:
+    - image-rhel9
 
 release:staging-centos7:
   extends:
