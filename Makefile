@@ -54,7 +54,7 @@ OUT_IMAGE_TAG = $(OUT_IMAGE_VERSION)-$(OUT_DIST)
 OUT_IMAGE = $(OUT_IMAGE_NAME):$(OUT_IMAGE_TAG)
 
 ##### Public rules #####
-DISTRIBUTIONS := ubuntu18.04 ubuntu20.04 ubuntu22.04 signed_ubuntu20.04 signed_ubuntu22.04 rhel8 centos7 flatcar fedora36 sles15.3 precompiled_rhcos
+DISTRIBUTIONS := ubuntu18.04 ubuntu20.04 ubuntu22.04 signed_ubuntu20.04 signed_ubuntu22.04 rhel8 rhel9 centos7 flatcar fedora36 sles15.3 precompiled_rhcos
 PUSH_TARGETS := $(patsubst %, push-%, $(DISTRIBUTIONS))
 BASE_FROM := jammy focal
 PUSH_TARGETS := $(patsubst %, push-%, $(DISTRIBUTIONS))
