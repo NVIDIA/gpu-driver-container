@@ -66,7 +66,7 @@ latest_rhel_kernel() {
       "yum install -y yum-utils &> /dev/null && repoquery kernel-headers \
         | cut -d ':' -f 2 \
         | tail -n 1"
-  elif [[ "${1}" -eq 8 ]]; then
+  elif [[ "${1}" -eq 8 || "${1}" -eq 9 ]]; then
     docker run --rm centos:"${1}" /bin/bash -c\
       "dnf repoquery -q --latest-limit 1 kernel-headers \
         | cut -d ':' -f 2 | head -n 1"
@@ -187,6 +187,7 @@ done
 
 build "rhel7" "${CONTAINER_VERSION}-rhel7" "$(mk_short_version rhel7)" ""
 build "rhel8" "${CONTAINER_VERSION}-rhel8" "$(mk_short_version rhel8)" ""
+build "rhel9" "${CONTAINER_VERSION}-rhel9" "$(mk_short_version rhel9)" ""
 
 # Add rhcos tags
 docker pull "${REGISTRY}:${CONTAINER_VERSION}-rhel8"
