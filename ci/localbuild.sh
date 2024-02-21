@@ -64,6 +64,7 @@ driver_container_build_rhel()
 {
   driver_container_build_simple "rhel7"
   driver_container_build_simple "rhel8"
+  driver_container_build_simple "rhel9"
 }
 
 list_all_containers()
