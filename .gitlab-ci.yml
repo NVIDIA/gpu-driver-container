@@ -49,6 +49,16 @@ include:
   rules:
     - if: $CI_PIPELINE_SOURCE != "schedule"
 
+# Define the image build targets
+.image-build-rhel9:
+  # Perform for each DRIVER_VERSION
+  extends:
+    - .driver-versions-rhel9
+    - .image-build-generic
+  rules:
+    - if: $CI_PIPELINE_SOURCE != "schedule"
+
+
 image-ubuntu20.04:
   extends:
     - .image-build
@@ -63,6 +73,11 @@ image-rhel8:
   extends:
     - .image-build
     - .dist-rhel8
+
+image-rhel9:
+  extends:
+    - .image-build-rhel9
+    - .dist-rhel9
 
 image-centos7:
   extends:
