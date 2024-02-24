@@ -44,9 +44,9 @@ _cleanup_package_cache() {
 
 _get_rhel_version_from_kernel() {
     local rhel_version_underscore rhel_version_arr
-    rhel_version_underscore=$(echo "${KERNEL_VERSION}" | sed 's/.*el\([0-9]_[0-9]\).*/\1/g')
+    rhel_version_underscore=$(echo "${KERNEL_VERSION}" | sed 's/.*el\([0-9]\+_[0-9]\+\).*/\1/g')
     # For the Kernel version 4.18.0-513.9.1.el8_9, we expect to extract the string "8_9"
-    if [[ ${#rhel_version_underscore} -ne 3 ]]; then
+    if [[ ! ${rhel_version_underscore} =~ ^[0-9]+_[0-9]+$ ]]; then
         echo "Unable to resolve RHEL version from kernel version" >&2
         return 1
     fi
@@ -56,6 +56,7 @@ _get_rhel_version_from_kernel() {
         return 1
     fi
     RHEL_VERSION="${rhel_version_arr[0]}.${rhel_version_arr[1]}"
+    echo "RHEL VERSION successfully resolved from kernel: ${RHEL_VERSION}"
     return 0
 }
 
