@@ -1,0 +1,33 @@
+{
+  "apiVersion": "nvidia.com/v1alpha1",
+  "kind": "NVIDIADriver",
+  "metadata": {
+    "name": "gpu-driver"
+  },
+  "spec": {
+    "driverType": "gpu",
+    "usePrecompiled": true,
+    "repository": "quay.io/fabiendupont",
+    "image": "nvidia-gpu-driver",
+    "version": "550.54.14",
+    "imagePullPolicy": "Always",
+    "nodeSelector": {},
+    "manager": {},
+    "repoConfig": {
+      "name": ""
+    },
+    "certConfig": {
+      "name": ""
+    },
+    "licensingConfig": {
+      "nlsEnabled": true,
+      "name": ""
+    },
+    "virtualTopologyConfig": {
+      "name": ""
+    },
+    "kernelModuleConfig": {
+      "name": ""
+    }
+  }
+}
