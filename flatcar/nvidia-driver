@@ -40,7 +40,7 @@ _install_development_env() {
     local offset_limit=$((sector_start * sector_size))
 
     mkdir -p /mnt/coreos
-    local loop_dev="/dev/loop0"
+    local loop_dev="/dev/loop7"
     _exec mount -o loop=${loop_dev},offset=${offset_limit} ${dev_image} /mnt/coreos
 
     # add more space to the device
