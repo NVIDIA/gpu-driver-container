@@ -115,11 +115,6 @@ image-rhel8:
     - .image-pull
     - .dist-rhel8
 
-image-rhel9:
-  extends:
-    - .image-pull
-    - .dist-rhel9
-
 image-centos7:
   extends:
     - .image-pull
@@ -263,22 +258,6 @@ scan-rhel8-arm64:
     - .platform-arm64
   needs:
     - image-rhel8
-
-scan-rhel9-amd64:
-  extends:
-    - .scan
-    - .dist-rhel9
-    - .platform-amd64
-  needs:
-    - image-rhel9
-
-scan-rhel9-arm64:
-  extends:
-    - .scan
-    - .dist-rhel9
-    - .platform-arm64
-  needs:
-    - image-rhel9
 
 scan-centos7-amd64:
   extends:
