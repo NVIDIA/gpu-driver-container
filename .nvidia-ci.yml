@@ -119,6 +119,7 @@ image-rhel9:
   extends:
     - .image-pull
     - .dist-rhel9
+    - .driver-versions-rhel9
 
 image-centos7:
   extends:
@@ -269,6 +270,7 @@ scan-rhel9-amd64:
     - .scan
     - .dist-rhel9
     - .platform-amd64
+    - .driver-versions-rhel9
   needs:
     - image-rhel9
 
@@ -277,6 +279,7 @@ scan-rhel9-arm64:
     - .scan
     - .dist-rhel9
     - .platform-arm64
+    - .driver-versions-rhel9
   needs:
     - image-rhel9
 
