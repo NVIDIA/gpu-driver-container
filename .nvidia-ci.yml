@@ -409,3 +409,31 @@ release:ngc-rhel8.9:
     - .dist-rhel8
   variables:
     OUT_DIST: "rhel8.9"
+
+release:ngc-rhel9.0:
+  extends:
+    - .release:ngc
+    - .dist-rhel9
+  variables:
+    OUT_DIST: "rhel9.0"
+
+release:ngc-rhel9.1:
+  extends:
+    - .release:ngc
+    - .dist-rhel9
+  variables:
+    OUT_DIST: "rhel9.1"
+
+release:ngc-rhel9.2:
+  extends:
+    - .release:ngc
+    - .dist-rhel9
+  variables:
+    OUT_DIST: "rhel9.2"
+
+release:ngc-rhel9.3:
+  extends:
+    - .release:ngc
+    - .dist-rhel9
+  variables:
+    OUT_DIST: "rhel9.3"
