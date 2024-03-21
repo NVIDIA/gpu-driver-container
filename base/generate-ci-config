@@ -16,7 +16,7 @@ export DEBIAN_FRONTEND=noninteractive
 apt-get update -y -qq > /dev/null
 
 # Generate a list of all kernel versions which have NVIDIA precompiled driver packages available.
-SUPPORTED_KERNELS=$(apt-cache search linux-objects-nvidia-${DRIVER_BRANCH}-server.*${LTS_KERNEL}.*${KERNEL_FLAVOR} | awk '{print $1}' | grep -v "open" | sort | sed -e "s/^.*${LTS_KERNEL}/${LTS_KERNEL}/")
+SUPPORTED_KERNELS=$(apt-cache search linux-objects-nvidia-${DRIVER_BRANCH}-server.*${LTS_KERNEL}.*${KERNEL_FLAVOR} | awk '{print $1}' | grep -v "open" | sed -e "s/^.*${LTS_KERNEL}/${LTS_KERNEL}/" | sort -n -t'-' -k2)
 
 # Grab latest driver version for nvidia-utils-${DRIVER_BRANCH}-server
 DRIVER_VERSION=$(apt-cache show nvidia-utils-${DRIVER_BRANCH}-server |grep Version |awk '{print $2}' | cut -d'-' -f1 | head -n 1)
