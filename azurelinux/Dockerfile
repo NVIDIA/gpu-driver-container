@@ -1,14 +1,12 @@
-ARG CBL_MARINER_VERSION=2.0
-FROM mcr.microsoft.com/cbl-mariner/base/core:${CBL_MARINER_VERSION}
+ARG AZURE_LINUX_VERSION=''
+FROM mcr.microsoft.com/cbl-mariner/base/core:${AZURE_LINUX_VERSION}
 
-ARG CBL_MARINER_VERSION
-ARG DRIVER_BRANCH=525
+ARG AZURE_LINUX_VERSION
+ARG DRIVER_BRANCH=''
 ENV DRIVER_BRANCH=$DRIVER_BRANCH
-ARG DRIVER_VERSION=525.85.12
+ARG DRIVER_VERSION=''
 ENV DRIVER_VERSION=$DRIVER_VERSION
-
-ARG KERNEL_VERSION=5.15.145.2-1.cm2
-ENV KERNEL_VERSION=$KERNEL_VERSION
+ARG KERNEL_VERSION=''
 
 USER root
 
@@ -17,7 +15,7 @@ COPY nvidia-driver /usr/local/bin
 RUN tdnf -y install util-linux ca-certificates
 
 RUN curl -fsSL -o /etc/yum.repos.d/mariner-nvidia.repo \
-     https://raw.githubusercontent.com/microsoft/CBL-Mariner/${CBL_MARINER_VERSION}/toolkit/docs/nvidia/mariner-nvidia.repo
+     https://raw.githubusercontent.com/microsoft/CBL-Mariner/${AZURE_LINUX_VERSION}/toolkit/docs/nvidia/mariner-nvidia.repo
 
 # Create a location to store the pre-downloaded RPMs for installation during container runtime
 RUN mkdir -p /opt/nvidia
