@@ -1,4 +1,4 @@
-# CBL-Mariner (EXPERIMENTAL)
+# Azure Linux (EXPERIMENTAL)
 
 This directory contains the docker manifests used to run the precompiled gpu driver on Azure Linux/CBL-Mariner Linux,
 the fedora based Linux distribution provided by Microsoft
@@ -7,14 +7,13 @@ The container image uses the driver rpm packages hosted here: https://packages.m
 
 The following driver versions are supported:
 
-- 515.65.01
-- 525.85.12
+- 535.129.03
 
 ## Running the container
 
 1. Set the necessary environment variables
-   1. export DRIVER_VERSION=525.85.12
-   2. KERNEL_VERSION=5.15.118.1-1.cm2
+   1. export DRIVER_VERSION=535.129.03
+   2. KERNEL_VERSION=5.15.148.2-2.cm2
 
 2. Run the docker build with the following command:
    ```
