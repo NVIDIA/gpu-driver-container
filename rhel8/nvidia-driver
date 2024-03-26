@@ -213,9 +213,9 @@ _create_driver_package() (
         # lrwxrwxrwx 1 root root   36 Dec  8 20:10 default -> /etc/alternatives/ofa_kernel_headers
         # drwxr-xr-x 4 root root 4096 Dec  8 20:14 x86_64
         # lrwxrwxrwx 1 root root   44 Dec  9 19:05 5.4.0-90-generic -> /usr/src/ofa_kernel/x86_64/5.4.0-90-generic/
-        if [[ -d /run/mellanox/drivers/usr/src/ofa_kernel/$(uname -m)/$(uname -r) ]]; then
-            if [[ ! -e /usr/src/ofa_kernel/$(uname -r) ]]; then
-                ln -s /run/mellanox/drivers/usr/src/ofa_kernel/$(uname -m)/$(uname -r) /usr/src/ofa_kernel/
+        if [[ -d "/run/mellanox/drivers/usr/src/ofa_kernel/$(uname -m)/$(uname -r)" ]]; then
+            if [[ ! -e "/usr/src/ofa_kernel/$(uname -r)" ]]; then
+                ln -s "/run/mellanox/drivers/usr/src/ofa_kernel/$(uname -m)/$(uname -r)" /usr/src/ofa_kernel/
             fi
         fi
     fi
