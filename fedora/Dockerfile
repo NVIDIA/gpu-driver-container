@@ -1,6 +1,6 @@
 ARG FEDORA_VERSION=36
 
-FROM nvcr.io/nvidia/cuda:12.8.1-base-ubi8 as build
+FROM nvcr.io/nvidia/cuda:12.6.1-base-ubi8 as build
 
 ARG TARGETARCH
 
@@ -8,7 +8,7 @@ SHELL ["/bin/bash", "-c"]
 
 RUN dnf install -y git wget
 
-ENV GOLANG_VERSION=1.21.5
+ENV GOLANG_VERSION=1.22.7
 
 # download appropriate binary based on the target architecture for multi-arch builds
 RUN OS_ARCH=${TARGETARCH/x86_64/amd64} && OS_ARCH=${OS_ARCH/aarch64/arm64} && \
@@ -24,7 +24,7 @@ RUN git clone https://github.com/NVIDIA/gpu-driver-container driver && \
     go build -o vgpu-util && \
     mv vgpu-util /work
 
-ARG FEDORA_VERSION=36
+ARG FEDORA_VERSION=40
 
 FROM fedora:${FEDORA_VERSION}
 
