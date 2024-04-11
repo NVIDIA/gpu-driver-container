@@ -7,7 +7,7 @@ SHELL ["/bin/bash", "-c"]
 
 RUN dnf install -y git wget
 
-ENV GOLANG_VERSION=1.22.1
+ENV GOLANG_VERSION=1.22.2
 
 # download appropriate binary based on the target architecture for multi-arch builds
 RUN OS_ARCH=${TARGETARCH/x86_64/amd64} && OS_ARCH=${OS_ARCH/aarch64/arm64} && \
