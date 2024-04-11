@@ -41,7 +41,6 @@ jobs:
           - ubuntu20.04
           - ubuntu22.04
           - rhel8
-          - centos7
           - rhel9
           - fedora36
         ispr:

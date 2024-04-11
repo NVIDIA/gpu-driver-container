@@ -21,7 +21,6 @@ fi
 SSH_KEY=${SSH_KEY:-${HOME}/.ssh/id_rsa}
 
 UBUNTU_VERSIONS=${UBUNTU_VERSIONS:-"16.04 18.04 20.04"}
-CENTOS_VERSIONS=${CENTOS_VERSIONS:-"7 8"}
 
 mk_long_version() {
   local -r linux_version="${1}" platform="${2}"
@@ -51,13 +50,6 @@ latest_ubuntu_kernel() {
     "apt update &> /dev/null && apt-cache show linux-headers-${2} 2>> /dev/null \
       | sed -nE 's/^Version:\\s+(([0-9]+\\.){2}[0-9]+)[-.]([0-9]+).*/\\1-\\3/p' \
       | head -n 1"
-}
-
-latest_centos_kernel() {
-  docker run --rm centos:"${1}" /bin/bash -c\
-    "yum install -y yum-utils &> /dev/null && repoquery kernel-headers \
-      | cut -d ':' -f 2 \
-      | tail -n 1"
 }
 
 latest_rhel_kernel() {
@@ -169,19 +161,6 @@ for version in ${UBUNTU_VERSIONS}; do
   if [[ -n ${FORCE} ]] || ! tag_exists "${aws_tag_long}" "${tags}"; then
     aws_tag_short="$(mk_short_version "ubuntu${version}-aws")"
     build "ubuntu${version}" "${aws_tag_long}" "${aws_tag_short}" "${aws_kernel}-aws"
-  fi
-done
-
-# Resolving Centos versions
-for version in ${CENTOS_VERSIONS}; do
-  log "Generating tags for Centos ${version}"
-
-  centos_kernel=$(latest_centos_kernel "${version}")
-  centos_tag_long="$(mk_long_version "${centos_kernel}" "centos${version}")"
-
-  if [[ -n ${FORCE} ]] || ! tag_exists "${centos_tag_long}" "${tags}"; then
-    centos_tag_short="$(mk_short_version "centos${version}")"
-    build "centos${version}" "${centos_tag_long}" "${centos_tag_short}" "${centos_kernel}"
   fi
 done
 
