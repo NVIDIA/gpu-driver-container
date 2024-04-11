@@ -121,11 +121,6 @@ image-rhel9:
     - .dist-rhel9
     - .driver-versions-rhel9
 
-image-centos7:
-  extends:
-    - .image-pull
-    - .dist-centos7
-
 # The .scan step forms the base of the image scan operation performed before releasing
 # images.
 .scan-generic:
@@ -283,14 +278,6 @@ scan-rhel9-arm64:
   needs:
     - image-rhel9
 
-scan-centos7-amd64:
-  extends:
-    - .scan
-    - .dist-centos7
-    - .platform-amd64
-  needs:
-    - image-centos7
-
 .release:ngc-variables:
   variables:
     OUT_REGISTRY_USER: "${NGC_REGISTRY_USER}"
@@ -327,11 +314,6 @@ release:ngc-precompiled-ubuntu22.04:
   rules:
     # Only run NGC release job on scheduled pipelines
     - if: $CI_PIPELINE_SOURCE == "schedule"
-
-release:ngc-centos7:
-  extends:
-    - .release:ngc
-    - .dist-centos7
 
 release:ngc-rhcos4.9:
   extends:
