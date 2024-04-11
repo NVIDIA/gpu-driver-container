@@ -112,10 +112,6 @@ trigger-pipeline:
   variables:
     DIST: rhel9
 
-.dist-centos7:
-  variables:
-    DIST: centos7
-
 .dist-fedora36:
   variables:
     DIST: fedora36
@@ -277,13 +273,6 @@ release:staging-rhel9:
     - .dist-rhel9
   needs:
     - image-rhel9
-
-release:staging-centos7:
-  extends:
-    - .release:staging
-    - .dist-centos7
-  needs:
-    - image-centos7
 
 .release:staging-precompiled:
   stage: release
