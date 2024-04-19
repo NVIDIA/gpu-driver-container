@@ -106,6 +106,7 @@ jobs:
       matrix:
         driver: 
           - 535
+          - 550
         flavor: 
           - generic
           - nvidia
