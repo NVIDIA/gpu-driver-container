@@ -595,14 +595,33 @@ _start_vgpu_topology_daemon() {
     nvidia-topologyd
 }
 
+_apply_patch () {
+    # Apply a single *.patch file that has been mounted to /patch
+    if [ -d /patch ]; then
+        # Exit if multiple patches are found
+        if [ $(ls -1 /patch/*.patch | wc -l) -gt 1 ]; then
+            echo "Multiple patches found, only one patch is supported"
+            exit 1
+        fi
+        for patch in $(ls /patch/*.patch 2> /dev/null); do
+            sh NVIDIA-Linux-$DRIVER_ARCH-$DRIVER_VERSION.run --apply-patch ${patch} -m=${KERNEL_TYPE}
+            # The patched installer has by default the file name ending '-custom.run'
+            PATCHED_SUFFIX="-custom"
+            echo -e "NVIDIA Software installer patched with '/patch/${patch}'\n"
+        done
+    fi
+}
+
 _prepare() {
     if [ "${DRIVER_TYPE}" = "vgpu" ]; then
         _find_vgpu_driver_version || exit 1
     fi
 
+    _apply_patch
+
     # Install the userspace components and copy the kernel module sources.
-    sh NVIDIA-Linux-$DRIVER_ARCH-$DRIVER_VERSION.run -x -m=${KERNEL_TYPE} && \
-        cd NVIDIA-Linux-$DRIVER_ARCH-$DRIVER_VERSION && \
+    sh NVIDIA-Linux-$DRIVER_ARCH-$DRIVER_VERSION${PATCHED_SUFFIX:-}.run -x -m=${KERNEL_TYPE} && \
+        cd NVIDIA-Linux-$DRIVER_ARCH-$DRIVER_VERSION${PATCHED_SUFFIX:-} && \
         sh /tmp/install.sh nvinstall && \
         mkdir -p /usr/src/nvidia-$DRIVER_VERSION && \
         mv LICENSE mkprecompiled ${KERNEL_TYPE} /usr/src/nvidia-$DRIVER_VERSION && \
