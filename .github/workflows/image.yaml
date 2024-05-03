@@ -107,11 +107,12 @@ jobs:
         driver: 
           - 535
           - 550
-        flavor: 
-          - generic
-          - nvidia
+        flavor:
           - aws
           - azure
+          - generic
+          - nvidia
+          - oracle
         ispr:
           - ${{github.event_name == 'pull_request'}}
         exclude:
@@ -121,6 +122,8 @@ jobs:
             flavor: aws
           - ispr: true
             flavor: nvidia
+          - ispr: true
+            flavor: oracle
     steps:
       - uses: actions/checkout@v4
         name: Check out code
