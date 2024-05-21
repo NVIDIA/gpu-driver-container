@@ -119,7 +119,7 @@ _create_dev_char_directory() {
 
 # Currently _install_driver() takes care of loading nvidia modules. Just need to start necessary vgpu daemons
 _load_driver() {
-    /usr/bin/nvidia-vgpud &
+    /usr/bin/nvidia-vgpud
     /usr/bin/nvidia-vgpu-mgr &
 
     # check nvidia drivers are loaded
