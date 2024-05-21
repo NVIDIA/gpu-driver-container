@@ -5,6 +5,7 @@ set -xeu
 DRIVER_VERSION=${DRIVER_VERSION:?"Missing driver version"}
 DRIVER_ARCH=${DRIVER_ARCH:?"Missing driver arch"}
 DRIVER_RESET_RETRIES=10
+DELAY_BEFORE_VF_CREATION=${DELAY_BEFORE_VF_CREATION:-15}
 KERNEL_VERSION=$(uname -r)
 RUN_DIR=/run/nvidia
 
@@ -119,7 +120,7 @@ _install_driver() {
 
 # Currently _install_driver() takes care of loading nvidia modules. Just need to start necessary vgpu daemons
 _load_driver() {
-    /usr/bin/nvidia-vgpud &
+    /usr/bin/nvidia-vgpud
     /usr/bin/nvidia-vgpu-mgr &
 
     # check nvidia drivers are loaded
@@ -133,6 +134,11 @@ _load_driver() {
 # Enable virtual functions for all physical GPUs on the node that support SR-IOV.
 # Retry logic is to account for when the driver is busy (i.e. during driver initialization)
 _enable_vfs() {
+    # Wait before attempting to create VFs to ensure the driver has finished initializing.
+    # This is a WAR for a bug in vGPU 17.2 where sriov-manage does not return a non-zero
+    # exit code even though VF creation fails.
+    sleep $DELAY_BEFORE_VF_CREATION
+
     local retry
     for ((retry = 0 ; retry <= $DRIVER_RESET_RETRIES ; retry++)); do
         if /usr/lib/nvidia/sriov-manage -e ALL; then
