@@ -34,9 +34,9 @@ jobs:
     strategy:
       matrix:
         driver:
-          - 470.223.02
-          - 535.161.08
-          - 550.54.15
+          - 470.256.02
+          - 535.183.01
+          - 550.90.07
         dist:
           - ubuntu20.04
           - ubuntu22.04
@@ -52,13 +52,13 @@ jobs:
             dist: rhel8
           - ispr: true
             dist: ubuntu20.04
+            driver: 535.183.01
           - ispr: true
-            driver: 470.223.02
-          - ispr: true
-            driver: 535.161.07
-          - driver: 470.223.02
+            dist: ubuntu20.04
+            driver: 550.90.07
+          - driver: 470.256.02
             dist: ubuntu22.04
-          - driver: 470.223.02
+          - driver: 470.256.02
             dist: rhel9
       fail-fast: false
     steps:
