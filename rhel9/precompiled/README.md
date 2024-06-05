@@ -105,7 +105,7 @@ The procedure is based on [building custom kmod packages](https://github.com/NVI
    ```
    export CUDA_VERSION=12.3.2
    export DRIVER_EPOCH=1
-   export DRIVER_VERSION=550.54.15
+   export DRIVER_VERSION=550.90.07
    ```
 
 6. [Optional] Build the vGPU guest driver
@@ -153,7 +153,7 @@ Define the `NVIDIADDriver` custom resource to make use of the pre-compiled drive
     usePrecompiled: true
     repository: quay.io/acme
     image: nvidia-gpu-driver
-    version: 550.54.15
+    version: 550.90.07
 ```
 
 Define the `ClusterPolicy` resource to make use of the NVIDIADriver custom resource, e.g.:
