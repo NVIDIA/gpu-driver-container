@@ -15,6 +15,9 @@ NVIDIA_UVM_MODULE_PARAMS=()
 NVIDIA_MODESET_MODULE_PARAMS=()
 NVIDIA_PEERMEM_MODULE_PARAMS=()
 TARGETARCH=${TARGETARCH:?"Missing TARGETARCH env"}
+INSTALL_DIR=${INSTALL_DIR:-"/opt/nvidia/driver"}
+
+export PATH="${INSTALL_DIR}/usr/bin:${PATH}"
 
 OPEN_KERNEL_MODULES_ENABLED=${OPEN_KERNEL_MODULES_ENABLED:-false}
 [[ "${OPEN_KERNEL_MODULES_ENABLED}" == "true" ]] && KERNEL_TYPE=kernel-open || KERNEL_TYPE=kernel
@@ -73,14 +76,14 @@ _install_prerequisites() (
     mkdir -p /lib/modules/${KERNEL_VERSION}/proc
 
     echo "Installing Linux kernel headers..."
-    apt-get -qq install --no-install-recommends linux-headers-${KERNEL_VERSION} > /dev/null
+    #apt-get -qq install --no-install-recommends linux-headers-${KERNEL_VERSION} > /dev/null
 
     echo "Installing Linux kernel module files..."
     apt-get -qq download linux-image-${KERNEL_VERSION} && dpkg -x linux-image*.deb .
-    { apt-get -qq download linux-modules-${KERNEL_VERSION} && dpkg -x linux-modules*.deb . || true; } 2> /dev/null
-    mv lib/modules/${KERNEL_VERSION}/modules.* /lib/modules/${KERNEL_VERSION}
-    mv lib/modules/${KERNEL_VERSION}/kernel /lib/modules/${KERNEL_VERSION}
-    depmod ${KERNEL_VERSION}
+    #{ apt-get -qq download linux-modules-${KERNEL_VERSION} && dpkg -x linux-modules*.deb . || true; } 2> /dev/null
+    #mv lib/modules/${KERNEL_VERSION}/modules.* /lib/modules/${KERNEL_VERSION}
+    #mv lib/modules/${KERNEL_VERSION}/kernel /lib/modules/${KERNEL_VERSION}
+    #depmod ${KERNEL_VERSION}
 
     echo "Generating Linux kernel version string..."
 
@@ -290,15 +293,19 @@ _load_driver() {
 
     echo "Loading NVIDIA driver kernel modules..."
     set -o xtrace +o nounset
-    modprobe nvidia "${NVIDIA_MODULE_PARAMS[@]}"
-    modprobe nvidia-uvm "${NVIDIA_UVM_MODULE_PARAMS[@]}"
-    modprobe nvidia-modeset "${NVIDIA_MODESET_MODULE_PARAMS[@]}"
+    
+    if [[ ! -e /sys/module/nvidia ]]; then
+        insmod "${INSTALL_DIR}/lib/modules/$(uname -r)/kernel/drivers/video/nvidia.ko" "${NVIDIA_MODULE_PARAMS[@]}"
+        insmod "${INSTALL_DIR}/lib/modules/$(uname -r)/kernel/drivers/video/nvidia-uvm.ko" "${NVIDIA_UVM_MODULE_PARAMS[@]}"
+        insmod "${INSTALL_DIR}/lib/modules/$(uname -r)/kernel/drivers/video/nvidia-modeset.ko" "${NVIDIA_MODESET_MODULE_PARAMS[@]}"    
+    fi
+
     set +o xtrace -o nounset
 
     if _gpu_direct_rdma_enabled; then
         echo "Loading NVIDIA Peer Memory kernel module..."
         set -o xtrace +o nounset
-        modprobe nvidia-peermem "${NVIDIA_PEERMEM_MODULE_PARAMS[@]}"
+	insmod ${INSTALL_DIR}/lib/modules/$(uname -r)/kernel/drivers/video/nvidia-peermem.ko "${NVIDIA_PEERMEM_MODULE_PARAMS[@]}"
         set +o xtrace -o nounset
     fi
 
@@ -315,7 +322,7 @@ _load_driver() {
         fi
 
         echo "Starting nvidia-gridd.."
-        LD_LIBRARY_PATH=/usr/lib/$DRIVER_ARCH-linux-gnu/nvidia/gridd nvidia-gridd
+        LD_LIBRARY_PATH=${INSTALL_DIR}/usr/lib/$DRIVER_ARCH-linux-gnu/nvidia/gridd nvidia-gridd
 
         # Start virtual topology daemon
         _start_vgpu_topology_daemon
@@ -422,26 +429,33 @@ _install_driver() {
 
     echo "Installing NVIDIA driver kernel modules..."
     cd /usr/src/nvidia-${DRIVER_VERSION}
-    if [ -d /lib/modules/${KERNEL_VERSION}/kernel/drivers/video ]; then
-        rm -rf /lib/modules/${KERNEL_VERSION}/kernel/drivers/video
-    else
-        rm -rf /lib/modules/${KERNEL_VERSION}/video
-    fi
+    #if [ -d /lib/modules/${KERNEL_VERSION}/kernel/drivers/video ]; then
+        #rm -rf /lib/modules/${KERNEL_VERSION}/kernel/drivers/video
+    #else
+        #rm -rf /lib/modules/${KERNEL_VERSION}/video
+    #fi
 
     if [ "${ACCEPT_LICENSE}" = "yes" ]; then
         install_args+=("--accept-license")
     fi
+
+    mkdir -p /lib/modules/`uname -r`/kernel/drivers/video
+    mkdir -p ${INSTALL_DIR}/lib/modules/`uname -r`/kernel/drivers/video
+    mkdir -p ${INSTALL_DIR}/driver-workdir
+
+    mount -t overlay -o lowerdir=/lib/modules/`uname -r`/kernel/drivers/video,upperdir=${INSTALL_DIR}/lib/modules/`uname -r`/kernel/drivers/video,workdir=${INSTALL_DIR}/driver-workdir none /lib/modules/`uname -r`/kernel/drivers/video
+
     nvidia-installer --kernel-module-only --no-drm --ui=none --no-nouveau-check -m=${KERNEL_TYPE} ${install_args[@]+"${install_args[@]}"}
 }
 
 # Mount the driver rootfs into the run directory with the exception of sysfs.
-_mount_rootfs() {
-    echo "Mounting NVIDIA driver rootfs..."
-    mount --make-runbindable /sys
-    mount --make-private /sys
-    mkdir -p ${RUN_DIR}/driver
-    mount --rbind / ${RUN_DIR}/driver
-}
+#_mount_rootfs() {
+#    echo "Mounting NVIDIA driver rootfs..."
+#    mount --make-runbindable /sys
+#    mount --make-private /sys
+#    mkdir -p ${RUN_DIR}/driver
+#    mount --rbind / ${RUN_DIR}/driver
+#}
 
 # Unmount the driver rootfs from the run directory.
 _unmount_rootfs() {
@@ -523,6 +537,48 @@ init() {
     if [ "${DRIVER_TYPE}" = "vgpu" ]; then
         _find_vgpu_driver_version || exit 1
     fi
+    
+    export PATH="${INSTALL_DIR}/usr/bin:${PATH}"
+
+    first_line=""
+    second_line=""
+    if [ -e "/opt/nvidia/driver/cache" ]; then
+        first_line=$(head -n 1 "/opt/nvidia/driver/cache")
+        second_line=$(sed -n '2p' "/opt/nvidia/driver/cache")
+        echo "$first_line"
+        echo "$second_line"
+    fi
+
+    if [ "$first_line" = "DRIVER_VERSION=550.54.15" ] && [ "$second_line" = "KERNEL_VERSION=5.15.0-102-generic" ]; then
+    #if [ -f "${INSTALL_DIR}/cache" ]; then
+        echo "Container install exists. Re-using the installation and loading the driver"
+
+        # _load_driver
+	#mkdir -p /lib/modules/`uname -r`/kernel/drivers/video
+
+	mount -t overlay -o lowerdir=/usr/lib/x86_64-linux-gnu,upperdir=${INSTALL_DIR}/usr/lib/x86_64-linux-gnu,workdir=${INSTALL_DIR}/lib64-workdir none /usr/lib/x86_64-linux-gnu
+        mount -t overlay -o lowerdir=/usr/bin,upperdir=${INSTALL_DIR}/usr/bin,workdir=${INSTALL_DIR}/usr-bin-workdir none /usr/bin
+	#mount -t overlay -o lowerdir=/lib/modules/`uname -r`/kernel/drivers/video,upperdir=${INSTALL_DIR}/lib/modules/`uname -r`/kernel/drivers/video,workdir=${INSTALL_DIR}/driver-workdir none /lib/modules/`uname -r`/kernel/drivers/video
+	
+	_load_driver
+
+        echo "Done, now waiting for signal"
+        sleep infinity &
+        trap "echo 'Caught signal'; _shutdown && { kill $!; exit 0; }" HUP INT QUIT PIPE TERM
+        trap - EXIT
+        while true; do wait $! || continue; done
+        exit 0
+        return
+    fi
+
+    mkdir -p ${INSTALL_DIR}/usr/lib/x86_64-linux-gnu
+    mkdir -p ${INSTALL_DIR}/lib64-workdir
+
+    mkdir -p ${INSTALL_DIR}/usr/bin
+    mkdir -p ${INSTALL_DIR}/usr-bin-workdir
+
+    mount -t overlay -o lowerdir=/usr/lib/x86_64-linux-gnu,upperdir=${INSTALL_DIR}/usr/lib/x86_64-linux-gnu,workdir=${INSTALL_DIR}/lib64-workdir none /usr/lib/x86_64-linux-gnu
+    mount -t overlay -o lowerdir=/usr/bin,upperdir=${INSTALL_DIR}/usr/bin,workdir=${INSTALL_DIR}/usr-bin-workdir none /usr/bin
 
     # Install the userspace components and copy the kernel module sources.
     sh NVIDIA-Linux-$DRIVER_ARCH-$DRIVER_VERSION.run -x && \
@@ -558,7 +614,7 @@ init() {
     trap "_shutdown" EXIT
 
     _unload_driver || exit 1
-    _unmount_rootfs
+    #_unmount_rootfs
 
     if _kernel_requires_package; then
         _update_ca_certificates
@@ -572,8 +628,12 @@ init() {
 
     _install_driver
     _load_driver || exit 1
-    _mount_rootfs
-    _write_kernel_update_hook
+    #_mount_rootfs
+    #_write_kernel_update_hook
+
+    echo "DRIVER_VERSION=${DRIVER_VERSION}" > ${INSTALL_DIR}/cache
+    echo "KERNEL_VERSION=${KERNEL_VERSION}" >> ${INSTALL_DIR}/cache
+    # todo: add a checksum for kernel driver parameters as well
 
     echo "Done, now waiting for signal"
     sleep infinity &
