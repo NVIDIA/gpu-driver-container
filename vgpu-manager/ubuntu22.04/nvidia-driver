@@ -118,6 +118,20 @@ _create_dev_char_directory() {
     fi
 }
 
+_set_fw_search_path() {
+    local nv_fw_search_path="$RUN_DIR/driver/lib/firmware"
+    local fw_path_config_file="/sys/module/firmware_class/parameters/path"
+
+    if [[ ! -z $(grep '[^[:space:]]' $fw_path_config_file) ]]; then
+        echo "WARNING: A search path is already configured in $fw_path_config_file"
+        echo "         Retaining the current configuration. Note, GSP firmware may not be found and thus won't be used by the NVIDIA driver."
+        return
+    fi
+
+    echo "Configuring the following firmware search path in '$fw_path_config_file': $nv_fw_search_path"
+    echo -n "$nv_fw_search_path" > $fw_path_config_file
+}
+
 # Currently _install_driver() takes care of loading nvidia modules. Just need to start necessary vgpu daemons
 _load_driver() {
     /usr/bin/nvidia-vgpud
@@ -244,6 +258,7 @@ init() {
   _resolve_kernel_version || exit 1
   _install_prerequisites
   _create_dev_char_directory
+  _set_fw_search_path
   _install_driver
   _load_driver || exit 1
   _mount_rootfs
