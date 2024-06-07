@@ -18,7 +18,7 @@ ENV PATH /usr/local/go/bin:$PATH
 
 WORKDIR /work
 
-RUN git clone https://gitlab.com/nvidia/container-images/driver && \
+RUN git clone https://github.com/NVIDIA/gpu-driver-container driver && \
     cd driver/vgpu/src && \
     go build -o vgpu-util && \
     mv vgpu-util /work
