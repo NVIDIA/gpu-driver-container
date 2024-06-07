@@ -80,10 +80,6 @@ _install_prerequisites() (
 
     echo "Installing Linux kernel module files..."
     apt-get -qq download linux-image-${KERNEL_VERSION} && dpkg -x linux-image*.deb .
-    #{ apt-get -qq download linux-modules-${KERNEL_VERSION} && dpkg -x linux-modules*.deb . || true; } 2> /dev/null
-    #mv lib/modules/${KERNEL_VERSION}/modules.* /lib/modules/${KERNEL_VERSION}
-    #mv lib/modules/${KERNEL_VERSION}/kernel /lib/modules/${KERNEL_VERSION}
-    #depmod ${KERNEL_VERSION}
 
     echo "Generating Linux kernel version string..."
 
@@ -289,7 +285,7 @@ _load_driver() {
     fi
 
     echo "Loading ipmi and i2c_core kernel modules..."
-    modprobe -a i2c_core ipmi_msghandler ipmi_devintf
+    #modprobe -a i2c_core ipmi_msghandler ipmi_devintf
 
     echo "Loading NVIDIA driver kernel modules..."
     set -o xtrace +o nounset
@@ -429,11 +425,6 @@ _install_driver() {
 
     echo "Installing NVIDIA driver kernel modules..."
     cd /usr/src/nvidia-${DRIVER_VERSION}
-    #if [ -d /lib/modules/${KERNEL_VERSION}/kernel/drivers/video ]; then
-        #rm -rf /lib/modules/${KERNEL_VERSION}/kernel/drivers/video
-    #else
-        #rm -rf /lib/modules/${KERNEL_VERSION}/video
-    #fi
 
     if [ "${ACCEPT_LICENSE}" = "yes" ]; then
         install_args+=("--accept-license")
@@ -549,16 +540,12 @@ init() {
         echo "$second_line"
     fi
 
-    if [ "$first_line" = "DRIVER_VERSION=550.54.15" ] && [ "$second_line" = "KERNEL_VERSION=5.15.0-102-generic" ]; then
-    #if [ -f "${INSTALL_DIR}/cache" ]; then
+    if grep -q "DRIVER_VERSION=550.54.15" /opt/nvidia/driver/cache && grep -q "KERNEL_VERSION=5.15.0-102-generic" /opt/nvidia/driver/cache; then
+    #if [ "$first_line" = "DRIVER_VERSION=550.54.15" ] && [ "$second_line" = "KERNEL_VERSION=5.15.0-102-generic" ]; then
         echo "Container install exists. Re-using the installation and loading the driver"
-
-        # _load_driver
-	#mkdir -p /lib/modules/`uname -r`/kernel/drivers/video
 
 	mount -t overlay -o lowerdir=/usr/lib/x86_64-linux-gnu,upperdir=${INSTALL_DIR}/usr/lib/x86_64-linux-gnu,workdir=${INSTALL_DIR}/lib64-workdir none /usr/lib/x86_64-linux-gnu
         mount -t overlay -o lowerdir=/usr/bin,upperdir=${INSTALL_DIR}/usr/bin,workdir=${INSTALL_DIR}/usr-bin-workdir none /usr/bin
-	#mount -t overlay -o lowerdir=/lib/modules/`uname -r`/kernel/drivers/video,upperdir=${INSTALL_DIR}/lib/modules/`uname -r`/kernel/drivers/video,workdir=${INSTALL_DIR}/driver-workdir none /lib/modules/`uname -r`/kernel/drivers/video
 	
 	_load_driver
 
@@ -614,7 +601,6 @@ init() {
     trap "_shutdown" EXIT
 
     _unload_driver || exit 1
-    #_unmount_rootfs
 
     if _kernel_requires_package; then
         _update_ca_certificates
@@ -622,14 +608,10 @@ init() {
         _resolve_kernel_version || exit 1
         _install_prerequisites
         _create_driver_package
-        #_remove_prerequisites
-        #_cleanup_package_cache
     fi
 
     _install_driver
     _load_driver || exit 1
-    #_mount_rootfs
-    #_write_kernel_update_hook
 
     echo "DRIVER_VERSION=${DRIVER_VERSION}" > ${INSTALL_DIR}/cache
     echo "KERNEL_VERSION=${KERNEL_VERSION}" >> ${INSTALL_DIR}/cache
