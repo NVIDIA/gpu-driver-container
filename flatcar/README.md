@@ -87,7 +87,7 @@ container will first build and then load the kernel modules.
 Clone this repository and build a driver container image using the following as an example:
 
 ```bash
-$ git clone https://gitlab.com/nvidia/container-images/driver.git \
+$ git clone https://github.com/NVIDIA/gpu-driver-container driver \
     && cd driver/flatcar
 ```
 

@@ -8,7 +8,7 @@ RUN zypper --non-interactive install -y git wget tar gzip
 
 WORKDIR /work
 
-RUN git clone https://gitlab.com/nvidia/container-images/driver && \
+RUN git clone https://github.com/NVIDIA/gpu-driver-container driver && \
     cd driver/vgpu/src && \
     go build -o vgpu-util && \
     mv vgpu-util /work

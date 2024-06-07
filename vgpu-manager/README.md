@@ -22,7 +22,7 @@ Download the NVIDIA vGPU Software from the [NVIDIA Licensing Portal](https://nvi
 Clone the driver container repository:
 
 ```
-$ git clone https://gitlab.com/nvidia/container-images/driver && cd driver
+$ git clone https://github.com/NVIDIA/gpu-driver-container driver && cd driver
 ```
 
 Enter the vgpu-manager directory for your OS:
