@@ -104,7 +104,10 @@ case $1 in
         sourceVersions
         archiveImage
         ;;
+    version)
+        sourceVersions
+        ;;    
     *)
-        echo "Usage: $0 {build|push|pull|archive}"
+        echo "Usage: $0 {build|push|pull|archive|version}"
         exit 1
 esac
