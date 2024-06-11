@@ -65,7 +65,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends nvidia-driver-$
 # avoid cleaning the cache after this to retain these packages during runtime.
 RUN apt-get update && apt-get install --download-only --no-install-recommends -y linux-objects-nvidia-${DRIVER_BRANCH}-server-${KERNEL_VERSION} \
     linux-signatures-nvidia-${KERNEL_VERSION} \
-    linux-modules-nvidia-${DRIVER_BRANCH}-server-${KERNEL_VERSION}
+    linux-modules-nvidia-${DRIVER_BRANCH}-server-${KERNEL_VERSION} \
+    # add support for nvidia open source driver packages during runtime
+    linux-modules-nvidia-${DRIVER_BRANCH}-server-open-${KERNEL_VERSION}
 
 COPY nvidia-driver /usr/local/bin
 
