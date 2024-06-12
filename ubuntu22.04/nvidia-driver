@@ -298,15 +298,23 @@ _load_driver() {
     fi
 
     echo "Loading ipmi and i2c_core kernel modules..."
-    #modprobe -a i2c_core ipmi_msghandler ipmi_devintf
+    if [ "${RESTARTS_ENABLED}" = false ]; then
+        modprobe -a i2c_core ipmi_msghandler ipmi_devintf
+    fi
 
     echo "Loading NVIDIA driver kernel modules..."
     set -o xtrace +o nounset
-    
-    if [[ ! -e /sys/module/nvidia ]]; then
-        insmod "${INSTALL_DIR}/lib/modules/$(uname -r)/kernel/drivers/video/nvidia.ko" "${NVIDIA_MODULE_PARAMS[@]}"
-        insmod "${INSTALL_DIR}/lib/modules/$(uname -r)/kernel/drivers/video/nvidia-uvm.ko" "${NVIDIA_UVM_MODULE_PARAMS[@]}"
-        insmod "${INSTALL_DIR}/lib/modules/$(uname -r)/kernel/drivers/video/nvidia-modeset.ko" "${NVIDIA_MODESET_MODULE_PARAMS[@]}"    
+
+    if [ "${RESTARTS_ENABLED}" = true ]; then 
+        if [[ ! -e /sys/module/nvidia ]]; then
+            insmod "${INSTALL_DIR}/lib/modules/$(uname -r)/kernel/drivers/video/nvidia.ko" "${NVIDIA_MODULE_PARAMS[@]}"
+            insmod "${INSTALL_DIR}/lib/modules/$(uname -r)/kernel/drivers/video/nvidia-uvm.ko" "${NVIDIA_UVM_MODULE_PARAMS[@]}"
+            insmod "${INSTALL_DIR}/lib/modules/$(uname -r)/kernel/drivers/video/nvidia-modeset.ko" "${NVIDIA_MODESET_MODULE_PARAMS[@]}"    
+        fi
+    else
+        modprobe nvidia "${NVIDIA_MODULE_PARAMS[@]}"
+        modprobe nvidia-uvm "${NVIDIA_UVM_MODULE_PARAMS[@]}"
+        modprobe nvidia-modeset "${NVIDIA_MODESET_MODULE_PARAMS[@]}"
     fi
 
     set +o xtrace -o nounset
@@ -314,7 +322,11 @@ _load_driver() {
     if _gpu_direct_rdma_enabled; then
         echo "Loading NVIDIA Peer Memory kernel module..."
         set -o xtrace +o nounset
-	insmod ${INSTALL_DIR}/lib/modules/$(uname -r)/kernel/drivers/video/nvidia-peermem.ko "${NVIDIA_PEERMEM_MODULE_PARAMS[@]}"
+	if [ "${RESTARTS_ENABLED}" = true ]; then
+	    insmod ${INSTALL_DIR}/lib/modules/$(uname -r)/kernel/drivers/video/nvidia-peermem.ko "${NVIDIA_PEERMEM_MODULE_PARAMS[@]}"
+	else
+	    modprobe nvidia-peermem "${NVIDIA_PEERMEM_MODULE_PARAMS[@]}"
+	fi
         set +o xtrace -o nounset
     fi
 
@@ -331,8 +343,11 @@ _load_driver() {
         fi
 
         echo "Starting nvidia-gridd.."
-        LD_LIBRARY_PATH=${INSTALL_DIR}/usr/lib/$DRIVER_ARCH-linux-gnu/nvidia/gridd nvidia-gridd
-
+	if [ "${RESTARTS_ENABLED}" = true ]; then
+            LD_LIBRARY_PATH=${INSTALL_DIR}/usr/lib/$DRIVER_ARCH-linux-gnu/nvidia/gridd nvidia-gridd
+	else
+	    LD_LIBRARY_PATH=/usr/lib/$DRIVER_ARCH-linux-gnu/nvidia/gridd nvidia-gridd
+        fi
         # Start virtual topology daemon
         _start_vgpu_topology_daemon
     fi
@@ -439,15 +454,24 @@ _install_driver() {
     echo "Installing NVIDIA driver kernel modules..."
     cd /usr/src/nvidia-${DRIVER_VERSION}
 
+    if [ "${RESTARTS_ENABLED}" = false ]; then 
+        if [ -d /lib/modules/${KERNEL_VERSION}/kernel/drivers/video ]; then
+            rm -rf /lib/modules/${KERNEL_VERSION}/kernel/drivers/video
+        else
+            rm -rf /lib/modules/${KERNEL_VERSION}/video
+        fi
+    fi
+
     if [ "${ACCEPT_LICENSE}" = "yes" ]; then
         install_args+=("--accept-license")
     fi
-
-    mkdir -p /lib/modules/`uname -r`/kernel/drivers/video
-    mkdir -p ${INSTALL_DIR}/lib/modules/`uname -r`/kernel/drivers/video
-    mkdir -p ${INSTALL_DIR}/driver-workdir
-
-    mount -t overlay -o lowerdir=/lib/modules/`uname -r`/kernel/drivers/video,upperdir=${INSTALL_DIR}/lib/modules/`uname -r`/kernel/drivers/video,workdir=${INSTALL_DIR}/driver-workdir none /lib/modules/`uname -r`/kernel/drivers/video
+    
+    if [ "${RESTARTS_ENABLED}" = true ]; then
+        mkdir -p /lib/modules/`uname -r`/kernel/drivers/video
+        mkdir -p ${INSTALL_DIR}/lib/modules/`uname -r`/kernel/drivers/video
+        mkdir -p ${INSTALL_DIR}/driver-workdir
+        mount -t overlay -o lowerdir=/lib/modules/`uname -r`/kernel/drivers/video,upperdir=${INSTALL_DIR}/lib/modules/`uname -r`/kernel/drivers/video,workdir=${INSTALL_DIR}/driver-workdir none /lib/modules/`uname -r`/kernel/drivers/video
+    fi
 
     nvidia-installer --kernel-module-only --no-drm --ui=none --no-nouveau-check -m=${KERNEL_TYPE} ${install_args[@]+"${install_args[@]}"}
 }
