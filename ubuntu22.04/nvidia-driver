@@ -440,13 +440,13 @@ _install_driver() {
 }
 
 # Mount the driver rootfs into the run directory with the exception of sysfs.
-#_mount_rootfs() {
-#    echo "Mounting NVIDIA driver rootfs..."
-#    mount --make-runbindable /sys
-#    mount --make-private /sys
-#    mkdir -p ${RUN_DIR}/driver
-#    mount --rbind / ${RUN_DIR}/driver
-#}
+_mount_rootfs() {
+    echo "Mounting NVIDIA driver rootfs..."
+    mount --make-runbindable /sys
+    mount --make-private /sys
+    mkdir -p ${RUN_DIR}/driver
+    mount --rbind / ${RUN_DIR}/driver
+}
 
 # Unmount the driver rootfs from the run directory.
 _unmount_rootfs() {
@@ -524,30 +524,19 @@ _start_vgpu_topology_daemon() {
     nvidia-topologyd
 }
 
-init() {
-    if [ "${DRIVER_TYPE}" = "vgpu" ]; then
-        _find_vgpu_driver_version || exit 1
-    fi
-    
+restart_check() {
     export PATH="${INSTALL_DIR}/usr/bin:${PATH}"
 
-    first_line=""
-    second_line=""
-    if [ -e "/opt/nvidia/driver/cache" ]; then
-        first_line=$(head -n 1 "/opt/nvidia/driver/cache")
-        second_line=$(sed -n '2p' "/opt/nvidia/driver/cache")
-        echo "$first_line"
-        echo "$second_line"
-    fi
+    #VERIFY THAT THE INIT CALL TO METHOD WORKS
+    #FIX THIS - NEED TO CHANGE KERNEL VERSION CHECK
 
-    if grep -q "DRIVER_VERSION=550.54.15" /opt/nvidia/driver/cache && grep -q "KERNEL_VERSION=5.15.0-102-generic" /opt/nvidia/driver/cache; then
-    #if [ "$first_line" = "DRIVER_VERSION=550.54.15" ] && [ "$second_line" = "KERNEL_VERSION=5.15.0-102-generic" ]; then
+    if grep -q "${DRIVER_VERSION}" /opt/nvidia/driver/cache && grep -q "KERNEL_VERSION=5.15.0-102-generic" /opt/nvidia/driver/cache; then
         echo "Container install exists. Re-using the installation and loading the driver"
 
-	mount -t overlay -o lowerdir=/usr/lib/x86_64-linux-gnu,upperdir=${INSTALL_DIR}/usr/lib/x86_64-linux-gnu,workdir=${INSTALL_DIR}/lib64-workdir none /usr/lib/x86_64-linux-gnu
+        mount -t overlay -o lowerdir=/usr/lib/x86_64-linux-gnu,upperdir=${INSTALL_DIR}/usr/lib/x86_64-linux-gnu,workdir=${INSTALL_DIR}/lib64-workdir none /usr/lib/x86_64-linux-gnu
         mount -t overlay -o lowerdir=/usr/bin,upperdir=${INSTALL_DIR}/usr/bin,workdir=${INSTALL_DIR}/usr-bin-workdir none /usr/bin
-	
-	_load_driver
+
+        _load_driver
 
         echo "Done, now waiting for signal"
         sleep infinity &
@@ -566,6 +555,15 @@ init() {
 
     mount -t overlay -o lowerdir=/usr/lib/x86_64-linux-gnu,upperdir=${INSTALL_DIR}/usr/lib/x86_64-linux-gnu,workdir=${INSTALL_DIR}/lib64-workdir none /usr/lib/x86_64-linux-gnu
     mount -t overlay -o lowerdir=/usr/bin,upperdir=${INSTALL_DIR}/usr/bin,workdir=${INSTALL_DIR}/usr-bin-workdir none /usr/bin
+
+}
+
+init() {
+    if [ "${DRIVER_TYPE}" = "vgpu" ]; then
+        _find_vgpu_driver_version || exit 1
+    fi
+    
+    
 
     # Install the userspace components and copy the kernel module sources.
     sh NVIDIA-Linux-$DRIVER_ARCH-$DRIVER_VERSION.run -x && \
@@ -601,6 +599,7 @@ init() {
     trap "_shutdown" EXIT
 
     _unload_driver || exit 1
+    _unmount_rootfs
 
     if _kernel_requires_package; then
         _update_ca_certificates
@@ -612,6 +611,8 @@ init() {
 
     _install_driver
     _load_driver || exit 1
+    _mount_rootfs
+    _write_kernel_update_hook
 
     echo "DRIVER_VERSION=${DRIVER_VERSION}" > ${INSTALL_DIR}/cache
     echo "KERNEL_VERSION=${KERNEL_VERSION}" >> ${INSTALL_DIR}/cache
