@@ -18,7 +18,7 @@ RUN curl -fsSL -o /etc/yum.repos.d/mariner-nvidia.repo \
 # Create a location to store the pre-downloaded RPMs for installation during container runtime
 RUN mkdir -p /opt/nvidia
 RUN tdnf -y --downloadonly --downloaddir=/opt/nvidia install cuda-${DRIVER_VERSION}-${KERNEL_VERSION} \
-        nvidia-fabric-manager-${DRIVER_VERSION}
+        nvidia-fabric-manager-${DRIVER_VERSION} libnvidia-nscq-${DRIVER_VERSION}
 
 LABEL io.k8s.display-name="NVIDIA Driver Container"
 LABEL name="NVIDIA Driver Container"
