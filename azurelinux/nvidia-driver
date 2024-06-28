@@ -93,8 +93,8 @@ _install_driver() {
     echo "Installing the NVIDIA driver modules"
     tdnf install -y ${PACKAGE_DIR}/cuda-${DRIVER_VERSION}*${KERNEL_VERSION//-/.}*.rpm
 
-    echo "Installing the NVIDIA fabricmanager"
-    tdnf install -y ${PACKAGE_DIR}/nvidia-fabric-manager-${DRIVER_VERSION}*.rpm
+    echo "Installing the NVIDIA fabricmanager and NSCQ"
+    tdnf install -y ${PACKAGE_DIR}/nvidia-fabric-manager-${DRIVER_VERSION}*.rpm ${PACKAGE_DIR}/libnvidia-nscq-${DRIVER_VERSION}*.rpm
 }
 
 # Load the kernel modules and start persistenced.
