@@ -16,7 +16,7 @@ NVIDIA_MODESET_MODULE_PARAMS=()
 NVIDIA_PEERMEM_MODULE_PARAMS=()
 TARGETARCH=${TARGETARCH:?"Missing TARGETARCH env"}
 INSTALL_DIR=${INSTALL_DIR:-"/opt/nvidia/driver"}
-RESTARTS_ENABLED="${RESTARTS_ENABLED:-false}"
+PERSIST_DRIVER="${PERSIST_DRIVER:-false}"
 
 export PATH="${INSTALL_DIR}/usr/bin:${PATH}"
 
@@ -73,7 +73,7 @@ _install_prerequisites() (
     trap "rm -rf ${tmp_dir}" EXIT
     cd ${tmp_dir}
     
-    if [ "${RESTARTS_ENABLED}" = false ]; then
+    if [ "${PERSIST_DRIVER}" = false ]; then
         rm -rf /lib/modules/${KERNEL_VERSION}
     fi
 
@@ -85,7 +85,7 @@ _install_prerequisites() (
 
     echo "Installing Linux kernel module files..."
     apt-get -qq download linux-image-${KERNEL_VERSION} && dpkg -x linux-image*.deb .
-    if [ "${RESTARTS_ENABLED}" = false ]; then
+    if [ "${PERSIST_DRIVER}" = false ]; then
         mv lib/modules/${KERNEL_VERSION}/modules.* /lib/modules/${KERNEL_VERSION}
 	mv lib/modules/${KERNEL_VERSION}/kernel /lib/modules/${KERNEL_VERSION}
 	depmod ${KERNEL_VERSION}
@@ -298,14 +298,14 @@ _load_driver() {
     fi
 
     echo "Loading ipmi and i2c_core kernel modules..."
-    if [ "${RESTARTS_ENABLED}" = false ]; then
+    if [ "${PERSIST_DRIVER}" = false ]; then
         modprobe -a i2c_core ipmi_msghandler ipmi_devintf
     fi
 
     echo "Loading NVIDIA driver kernel modules..."
     set -o xtrace +o nounset
 
-    if [ "${RESTARTS_ENABLED}" = true ]; then 
+    if [ "${PERSIST_DRIVER}" = true ]; then 
         if [[ ! -e /sys/module/nvidia ]]; then
             insmod "${INSTALL_DIR}/lib/modules/$(uname -r)/kernel/drivers/video/nvidia.ko" "${NVIDIA_MODULE_PARAMS[@]}"
             insmod "${INSTALL_DIR}/lib/modules/$(uname -r)/kernel/drivers/video/nvidia-uvm.ko" "${NVIDIA_UVM_MODULE_PARAMS[@]}"
@@ -322,7 +322,7 @@ _load_driver() {
     if _gpu_direct_rdma_enabled; then
         echo "Loading NVIDIA Peer Memory kernel module..."
         set -o xtrace +o nounset
-	if [ "${RESTARTS_ENABLED}" = true ]; then
+	if [ "${PERSIST_DRIVER}" = true ]; then
 	    insmod ${INSTALL_DIR}/lib/modules/$(uname -r)/kernel/drivers/video/nvidia-peermem.ko "${NVIDIA_PEERMEM_MODULE_PARAMS[@]}"
 	else
 	    modprobe nvidia-peermem "${NVIDIA_PEERMEM_MODULE_PARAMS[@]}"
@@ -343,7 +343,7 @@ _load_driver() {
         fi
 
         echo "Starting nvidia-gridd.."
-	if [ "${RESTARTS_ENABLED}" = true ]; then
+	if [ "${PERSIST_DRIVER}" = true ]; then
             LD_LIBRARY_PATH=${INSTALL_DIR}/usr/lib/$DRIVER_ARCH-linux-gnu/nvidia/gridd nvidia-gridd
 	else
 	    LD_LIBRARY_PATH=/usr/lib/$DRIVER_ARCH-linux-gnu/nvidia/gridd nvidia-gridd
@@ -454,7 +454,7 @@ _install_driver() {
     echo "Installing NVIDIA driver kernel modules..."
     cd /usr/src/nvidia-${DRIVER_VERSION}
 
-    if [ "${RESTARTS_ENABLED}" = false ]; then 
+    if [ "${PERSIST_DRIVER}" = false ]; then 
         if [ -d /lib/modules/${KERNEL_VERSION}/kernel/drivers/video ]; then
             rm -rf /lib/modules/${KERNEL_VERSION}/kernel/drivers/video
         else
@@ -466,7 +466,7 @@ _install_driver() {
         install_args+=("--accept-license")
     fi
     
-    if [ "${RESTARTS_ENABLED}" = true ]; then
+    if [ "${PERSIST_DRIVER}" = true ]; then
         mkdir -p /lib/modules/`uname -r`/kernel/drivers/video
         mkdir -p ${INSTALL_DIR}/lib/modules/`uname -r`/kernel/drivers/video
         mkdir -p ${INSTALL_DIR}/driver-workdir
@@ -600,7 +600,7 @@ init() {
         _find_vgpu_driver_version || exit 1
     fi
 
-    if [ "${RESTARTS_ENABLED}" = true ]; then
+    if [ "${PERSIST_DRIVER}" = true ]; then
         restart_check
     fi
 
@@ -678,6 +678,15 @@ update() {
     fi
     exec 3>&-
 
+    mkdir -p ${INSTALL_DIR}/usr/lib/x86_64-linux-gnu
+    mkdir -p ${INSTALL_DIR}/lib64-workdir
+
+    mkdir -p ${INSTALL_DIR}/usr/bin
+    mkdir -p ${INSTALL_DIR}/usr-bin-workdir
+
+    mount -t overlay -o lowerdir=/usr/lib/x86_64-linux-gnu,upperdir=${INSTALL_DIR}/usr/lib/x86_64-linux-gnu,workdir=${INSTALL_DIR}/lib64-workdir none /usr/lib/x86_64-linux-gnu
+    mount -t overlay -o lowerdir=/usr/bin,upperdir=${INSTALL_DIR}/usr/bin,workdir=${INSTALL_DIR}/usr-bin-workdir none /usr/bin
+
     # vgpu driver version is choosen dynamically during runtime, so pre-compile modules for
     # only non-vgpu driver types
     if [ "${DRIVER_TYPE}" != "vgpu" ]; then
@@ -718,6 +727,9 @@ update() {
     _remove_prerequisites
     _cleanup_package_cache
 
+    echo "DRIVER_VERSION=${DRIVER_VERSION}" > ${INSTALL_DIR}/cache
+    echo "KERNEL_VERSION=${KERNEL_VERSION}" >> ${INSTALL_DIR}/cache
+    
     echo "Done"
     exit 0
 }
