@@ -4,6 +4,7 @@
 set -eu
 
 KERNEL_VERSION=$(uname -r)
+OPEN_KERNEL_MODULES_ENABLED="${OPEN_KERNEL_MODULES_ENABLED:-false}"
 RUN_DIR=/run/nvidia
 PID_FILE=${RUN_DIR}/${0##*/}.pid
 DRIVER_BRANCH=${DRIVER_BRANCH:?"Missing driver version"}
@@ -210,10 +211,18 @@ _unload_driver() {
 
 # Link and install the kernel modules from a precompiled packages
 _install_driver() {
-    echo "Installing NVIDIA driver kernel modules..."
-    apt-get install --no-install-recommends -y linux-objects-nvidia-${DRIVER_BRANCH}-server-${KERNEL_VERSION} \
-    linux-signatures-nvidia-${KERNEL_VERSION} \
-	linux-modules-nvidia-${DRIVER_BRANCH}-server-${KERNEL_VERSION}
+    if [ "$OPEN_KERNEL_MODULES_ENABLED" = true ]; then
+        echo "Installing Open NVIDIA driver kernel modules..."
+        apt-get install --no-install-recommends -y \
+            linux-signatures-nvidia-${KERNEL_VERSION} \
+            linux-modules-nvidia-${DRIVER_BRANCH}-server-open-${KERNEL_VERSION}
+    else
+        echo "Installing Closed NVIDIA driver kernel modules..."
+        apt-get install --no-install-recommends -y \
+            linux-objects-nvidia-${DRIVER_BRANCH}-server-${KERNEL_VERSION} \
+            linux-signatures-nvidia-${KERNEL_VERSION} \
+            linux-modules-nvidia-${DRIVER_BRANCH}-server-${KERNEL_VERSION}
+    fi
 }
 
 # Mount the driver rootfs into the run directory with the exception of sysfs.
