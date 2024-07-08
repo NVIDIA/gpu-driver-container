@@ -1,5 +1,4 @@
-ARG CUDA_VERSION
-FROM nvcr.io/nvidia/cuda:${CUDA_VERSION}-base-ubuntu20.04
+FROM nvcr.io/nvidia/cuda:12.5.0-base-ubuntu20.04
 
 ENV DEBIAN_FRONTEND=noninteractive
 
