@@ -1,6 +1,5 @@
 ARG SLES_VERSION
-ARG CUDA_VERSION=11.7.0
-FROM nvcr.io/nvidia/cuda:$CUDA_VERSION-base-ubi8 as license
+FROM nvcr.io/nvidia/cuda:12.5.0-base-ubi8 as license
 
 FROM registry.suse.com/bci/golang:1.17 as build
 

@@ -1,7 +1,5 @@
-ARG CUDA_VERSION
-
 # Ubuntu 22.04
-FROM nvcr.io/nvidia/cuda:${CUDA_VERSION}-base-ubuntu22.04 as jammy
+FROM nvcr.io/nvidia/cuda:12.5.0-base-ubuntu22.04 as jammy
 
 SHELL ["/bin/bash", "-c"]
 
@@ -36,7 +34,7 @@ RUN chmod +x /usr/local/bin/generate-ci-config && \
 ENTRYPOINT ["/usr/bin/sleep","1000"]
 
 # Ubuntu 20.04
-FROM nvcr.io/nvidia/cuda:${CUDA_VERSION}-base-ubuntu20.04 as focal
+FROM nvcr.io/nvidia/cuda:12.5.0-base-ubuntu20.04 as focal
 
 SHELL ["/bin/bash", "-c"]
 

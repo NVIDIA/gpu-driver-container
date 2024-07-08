@@ -1,7 +1,6 @@
 ARG FEDORA_VERSION=36
-ARG CUDA_VERSION
 
-FROM nvcr.io/nvidia/cuda:${CUDA_VERSION}-base-ubi8 as build
+FROM nvcr.io/nvidia/cuda:12.5.0-base-ubi8 as build
 
 ARG TARGETARCH
 
@@ -26,7 +25,6 @@ RUN git clone https://github.com/NVIDIA/gpu-driver-container driver && \
     mv vgpu-util /work
 
 ARG FEDORA_VERSION=36
-ARG CUDA_VERSION=11.7.0
 
 FROM fedora:${FEDORA_VERSION}
 
