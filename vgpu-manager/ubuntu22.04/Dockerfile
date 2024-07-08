@@ -1,5 +1,5 @@
 ARG CUDA_VERSION
-FROM nvidia/cuda:${CUDA_VERSION}-base-ubuntu22.04
+FROM nvcr.io/nvidia/cuda:${CUDA_VERSION}-base-ubuntu22.04
 
 ARG DRIVER_VERSION
 ENV DRIVER_VERSION=$DRIVER_VERSION

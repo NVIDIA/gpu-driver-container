@@ -1,5 +1,5 @@
 ARG CUDA_VERSION
-FROM nvidia/cuda:${CUDA_VERSION}-base-centos7
+FROM nvcr.io/nvidia/cuda:${CUDA_VERSION}-base-centos7
 
 ENV NVIDIA_VISIBLE_DEVICES=void
 

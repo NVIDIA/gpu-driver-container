@@ -1,5 +1,5 @@
 ARG CUDA_VERSION
-FROM nvidia/cuda:${CUDA_VERSION}-base-ubuntu18.04
+FROM nvcr.io/nvidia/cuda:${CUDA_VERSION}-base-ubuntu18.04
 
 #ARG BASE_URL=http://us.download.nvidia.com/XFree86/Linux-x86_64
 ARG BASE_URL=https://us.download.nvidia.com/tesla
