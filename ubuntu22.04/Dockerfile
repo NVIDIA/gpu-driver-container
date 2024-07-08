@@ -1,5 +1,5 @@
 ARG CUDA_VERSION
-FROM nvidia/cuda:${CUDA_VERSION}-base-ubuntu22.04 as build
+FROM nvcr.io/nvidia/cuda:${CUDA_VERSION}-base-ubuntu22.04 as build
 
 ARG TARGETARCH
 
@@ -34,7 +34,7 @@ RUN git clone https://github.com/NVIDIA/gpu-driver-container driver && \
     go build -o vgpu-util && \
     mv vgpu-util /work
 
-FROM nvidia/cuda:${CUDA_VERSION}-base-ubuntu22.04
+FROM nvcr.io/nvidia/cuda:${CUDA_VERSION}-base-ubuntu22.04
 
 SHELL ["/bin/bash", "-c"]
 

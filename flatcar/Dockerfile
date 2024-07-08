@@ -1,4 +1,4 @@
-FROM nvidia/cuda:11.7.1-base-ubuntu22.04
+FROM nvcr.io/nvidia/cuda:11.7.1-base-ubuntu22.04
 
 ENV NVIDIA_VISIBLE_DEVICES=void
 
