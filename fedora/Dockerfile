@@ -1,7 +1,7 @@
 ARG FEDORA_VERSION=36
 ARG CUDA_VERSION
 
-FROM nvidia/cuda:${CUDA_VERSION}-base-ubi8 as build
+FROM nvcr.io/nvidia/cuda:${CUDA_VERSION}-base-ubi8 as build
 
 ARG TARGETARCH
 
