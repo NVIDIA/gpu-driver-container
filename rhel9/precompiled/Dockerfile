@@ -1,5 +1,4 @@
 ARG DRIVER_TOOLKIT_IMAGE=''
-ARG CUDA_VERSION=''
 ARG CUDA_DIST=''
 
 FROM ${DRIVER_TOOLKIT_IMAGE} as builder
@@ -66,7 +65,7 @@ RUN export KVER=$(echo ${KERNEL_VERSION} | cut -d '-' -f 1) \
         --define "driver_branch ${DRIVER_STREAM}" \
         -v -bb SPECS/kmod-nvidia.spec
 
-FROM nvcr.io/nvidia/cuda:${CUDA_VERSION}-base-${CUDA_DIST}
+FROM nvcr.io/nvidia/cuda:12.5.0-base-${CUDA_DIST}
 
 ARG BASE_URL='https://us.download.nvidia.com/tesla'
 
@@ -74,7 +73,6 @@ ARG KERNEL_VERSION=''
 ARG KERNEL_VERSION_NOARCH=''
 ARG RHEL_VERSION=''
 
-ARG CUDA_VERSION=''
 ARG DRIVER_STREAM_TYPE=''
 
 ARG DRIVER_TYPE=passthrough
