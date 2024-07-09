@@ -35,7 +35,7 @@ jobs:
       matrix:
         driver:
           - 470.256.02
-          - 535.183.01
+          - 535.183.06
           - 550.90.07
         dist:
           - ubuntu20.04
@@ -52,7 +52,7 @@ jobs:
             dist: rhel8
           - ispr: true
             dist: ubuntu20.04
-            driver: 535.183.01
+            driver: 535.183.06
           - ispr: true
             dist: ubuntu20.04
             driver: 550.90.07
