@@ -65,7 +65,7 @@ RUN export KVER=$(echo ${KERNEL_VERSION} | cut -d '-' -f 1) \
         --define "driver_branch ${DRIVER_STREAM}" \
         -v -bb SPECS/kmod-nvidia.spec
 
-FROM nvcr.io/nvidia/cuda:12.5.0-base-${CUDA_DIST}
+FROM nvcr.io/nvidia/cuda:12.5.1-base-${CUDA_DIST}
 
 ARG BASE_URL='https://us.download.nvidia.com/tesla'
 
