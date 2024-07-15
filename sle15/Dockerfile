@@ -1,5 +1,5 @@
 ARG SLES_VERSION
-FROM nvcr.io/nvidia/cuda:12.5.0-base-ubi8 as license
+FROM nvcr.io/nvidia/cuda:12.5.1-base-ubi8 as license
 
 FROM registry.suse.com/bci/golang:1.17 as build
 
