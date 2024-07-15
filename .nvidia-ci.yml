@@ -315,27 +315,6 @@ release:ngc-precompiled-ubuntu22.04:
     # Only run NGC release job on scheduled pipelines
     - if: $CI_PIPELINE_SOURCE == "schedule"
 
-release:ngc-rhcos4.9:
-  extends:
-    - .release:ngc
-    - .dist-rhel8
-  variables:
-    OUT_DIST: "rhcos4.9"
-
-release:ngc-rhcos4.10:
-  extends:
-    - .release:ngc
-    - .dist-rhel8
-  variables:
-    OUT_DIST: "rhcos4.10"
-
-release:ngc-rhcos4.11:
-  extends:
-    - .release:ngc
-    - .dist-rhel8
-  variables:
-    OUT_DIST: "rhcos4.11"
-
 release:ngc-rhcos4.12:
   extends:
     - .release:ngc
@@ -364,19 +343,19 @@ release:ngc-rhcos4.15:
   variables:
     OUT_DIST: "rhcos4.15"
 
+release:ngc-rhcos4.16:
+  extends:
+    - .release:ngc
+    - .dist-rhel8
+  variables:
+    OUT_DIST: "rhcos4.16"
+
 release:ngc-rhel8.6:
   extends:
     - .release:ngc
     - .dist-rhel8
   variables:
     OUT_DIST: "rhel8.6"
-
-release:ngc-rhel8.7:
-  extends:
-    - .release:ngc
-    - .dist-rhel8
-  variables:
-    OUT_DIST: "rhel8.7"
 
 release:ngc-rhel8.8:
   extends:
@@ -385,12 +364,12 @@ release:ngc-rhel8.8:
   variables:
     OUT_DIST: "rhel8.8"
 
-release:ngc-rhel8.9:
+release:ngc-rhel8.10:
   extends:
     - .release:ngc
     - .dist-rhel8
   variables:
-    OUT_DIST: "rhel8.9"
+    OUT_DIST: "rhel8.10"
 
 release:ngc-rhel9.0:
   extends:
