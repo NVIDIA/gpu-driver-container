@@ -1,0 +1,5 @@
+#! /bin/bash
+
+if [ ! -d "/usr/src/linux-headers-$(uname -r)/" ]; then
+    echo 'Hello'
+fi
