@@ -1,5 +1,5 @@
 ARG AZURE_LINUX_VERSION=''
-FROM mcr.microsoft.com/cbl-mariner/base/core:${AZURE_LINUX_VERSION}
+FROM mcr.microsoft.com/azurelinux/base/core:${AZURE_LINUX_VERSION}
 
 ARG AZURE_LINUX_VERSION
 ARG DRIVER_VERSION=''
@@ -13,7 +13,7 @@ COPY nvidia-driver /usr/local/bin
 RUN tdnf -y install util-linux ca-certificates
 
 RUN curl -fsSL -o /etc/yum.repos.d/mariner-nvidia.repo \
-     https://raw.githubusercontent.com/microsoft/CBL-Mariner/${AZURE_LINUX_VERSION}/toolkit/docs/nvidia/mariner-nvidia.repo
+     https://raw.githubusercontent.com/microsoft/azurelinux/${AZURE_LINUX_VERSION}/toolkit/docs/nvidia/mariner-nvidia.repo
 
 # Create a location to store the pre-downloaded RPMs for installation during container runtime
 RUN mkdir -p /opt/nvidia
