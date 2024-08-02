@@ -32,7 +32,7 @@ variables:
   RELEASE_DEVEL_BRANCH: "DISABLED"
   DEVEL_RELEASE_IMAGE_VERSION: "devel"
   # Define the public staging registry
-  STAGING_REGISTRY: registry.gitlab.com/nvidia/container-images/driver/staging
+  STAGING_REGISTRY: ghcr.io/nvidia
   STAGING_VERSION: "${CI_COMMIT_SHORT_SHA}"
 
 .image-pull-rules:
