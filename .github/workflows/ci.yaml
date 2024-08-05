@@ -1,0 +1,109 @@
+# Copyright 2024 NVIDIA CORPORATION
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+name: CI
+
+on:
+  pull_request:
+    types:
+      - opened
+      - synchronize
+    branches:
+      # - main
+      # - release-*
+      - validatedriver
+  push:
+    branches:
+      # - main
+      # - release-*
+      - validatedriver
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Check out code
+      uses: actions/checkout@v4
+
+    - name: Print  Environment Variable
+      run: |
+        echo "SSH_PRIVATE_CERT_KEY is set: ${{ secrets.SSH_PRIVATE_CERT_KEY }}"
+        echo "TEST_SYSTEM_PASSWORD is set: ${{ secrets.TEST_SYSTEM_PASSWORD }}"
+        echo "AWS_ACCESS_KEY_ID is set: ${{ secrets.AWS_ACCESS_KEY_ID }}"
+        echo "AWS_SSH_KEY is set: ${{ secrets.AWS_SSH_KEY }}"
+        echo "TEST_SYSTEM_PASSWORD is set: ${{ secrets.TEST_SYSTEM_PASSWORD }}"
+        echo "instance_hostname is set: ${{ secrets.instance_hostname }}"
+        echo "private_key is set: ${{ secrets.private_key }}"
+
+    - name: Set up Holodeck
+      uses: NVIDIA/holodeck@main
+      with:
+        aws_access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws_ssh_key: ${{ secrets.AWS_SSH_KEY }}
+        holodeck_config: "tests/holodeck.yaml"
+
+
+    - name: Get public dns name
+      id: get_public_dns_name
+      uses: mikefarah/yq@master
+      with:
+        cmd: yq '.status.properties[] | select(.name == "public-dns-name") | .value' /github/workspace/.cache/holodeck.yaml  
+
+    - name:  set env variables
+      run: |
+        echo "IMAGE_NAME=ghcr.io/nvidia/driver"  >> $GITHUB_ENV
+        echo "instance_hostname=ubuntu@${{ steps.get_public_dns_name.outputs.result }}" >> $GITHUB_ENV
+        echo "private_key=${{ github.workspace }}/key.pem" >> $GITHUB_ENV
+        
+    - name: Run e2e tests
+      env:
+        GPU_PRODUCT_NAME: "Tesla-T4"
+        SKIP_LAUNCH: "true"
+        CONTAINER_RUNTIME: "containerd"
+        TEST_CASE: "./tests/cases/defaults.sh"
+      run: |
+        echo "${{ secrets.AWS_SSH_KEY }}" > ${private_key} && chmod 400 ${private_key}
+       # ./tests/ci-run-e2e.sh ${OPERATOR_IMAGE} ${OPERATOR_VERSION} ${VALIDATOR_IMAGE} ${VALIDATOR_VERSION} ${GPU_PRODUCT_NAME} ${TEST_CASE} || rc=$?
+       # exit $rc
+     
+
+
+
+    # - name: Configure SSH
+    #   run: |
+    #     mkdir -p ~/.ssh
+    #     echo -e "Host 24.51.7.3\n  User shivaku\n  IdentityFile ~/.ssh/id_rsa_intermediate\n\nHost 10.150.187.99\n  User nv\n  ProxyJump 24.51.7.3" > ~/.ssh/config
+    #     chmod 600 ~/.ssh/config
+
+    # - name: Install sshpass
+    #   run: sudo apt-get install -y sshpass
+
+    # - name: Test Network Connectivity
+    #   run: |
+    #     nc -zv 24.51.7.3 22  
+
+    # - name: Run e2e tests
+    #   env:
+    #     TEST_SYSTEM_PASSWORD: ${{ secrets.TEST_SYSTEM_PASSWORD }}
+    #     SSH_PRIVATE_CERT_KEY: ${{ secrets.SSH_PRIVATE_CERT_KEY }}
+    #   run: |
+    #     echo "$SSH_PRIVATE_CERT_KEY" > ~/.ssh/id_rsa-cert.pub
+    #     chmod 644 ~/.ssh/id_rsa-cert.pub
+    #     ssh -v -o CertificateFile=~/.ssh/id_rsa-cert.pub -J shivaku@24.51.7.3 nvidia@10.150.187.99 <<EOF
+    #       echo "Running deployment commands on the Linux system"
+    #       #./deploy.sh
+    #     EOF
+  
+  
