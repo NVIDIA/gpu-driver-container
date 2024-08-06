@@ -9,6 +9,11 @@ ARG GOLANG_VERSION
 ARG DRIVER_TYPE=passthrough
 ENV DRIVER_TYPE=$DRIVER_TYPE
 
+# Args needed when using a local driver
+ARG DRIVER_VERSION
+ARG DRIVER_TYPE=passthrough
+ARG LOCAL_DRIVER=false
+
 SHELL ["/bin/bash", "-c"]
 
 RUN echo 'debconf debconf/frontend select Noninteractive' | debconf-set-selections
@@ -40,6 +45,17 @@ RUN if [ "$DRIVER_TYPE" = "vgpu" ]; then \
     go build -o vgpu-util && \
     mv vgpu-util /work; fi
 
+ADD drivers local-driver/
+
+RUN if [ "$DRIVER_TYPE" != "vgpu" ] && [ "$LOCAL_DRIVER" == "false" ]; then \
+        rm local-driver/*; \
+    elif [ "$TARGETARCH" == "amd64" ]; then \
+        chmod +x local-driver/NVIDIA-Linux-x86_64-${DRIVER_VERSION}.run; \
+        rm local-driver/NVIDIA-Linux-aarch64-${DRIVER_VERSION}.run || true; \
+    else \
+        chmod +x local-driver/NVIDIA-Linux-x86_64-${DRIVER_VERSION}.run; \
+        rm local-driver/NVIDIA-Linux-aarch64-${DRIVER_VERSION}.run || true; fi
+
 FROM ${BASE_IMAGE}
 
 SHELL ["/bin/bash", "-c"]
@@ -64,6 +80,9 @@ ARG DISABLE_VGPU_VERSION_CHECK=true
 ENV DISABLE_VGPU_VERSION_CHECK=$DISABLE_VGPU_VERSION_CHECK
 ENV NVIDIA_VISIBLE_DEVICES=void
 
+# Args needed when using a local driver
+ARG LOCAL_DRIVER=false
+
 RUN echo 'debconf debconf/frontend select Noninteractive' | debconf-set-selections
 
 RUN echo "TARGETARCH=$TARGETARCH"
@@ -78,11 +97,10 @@ RUN usermod -o -u 0 -g 0 _apt && \
 COPY nvidia-driver /usr/local/bin
 
 COPY --from=build /work/vgpu-util* /usr/local/bin
-
-ADD drivers drivers/
+COPY --from=build /work/local-driver drivers/
 
 # Fetch the installer, fabricmanager and libnvidia-nscq automatically for passthrough/baremetal types
-RUN if [ "$DRIVER_TYPE" != "vgpu" ]; then \
+RUN if [ "$DRIVER_TYPE" != "vgpu" ] && [ "$LOCAL_DRIVER" == "false" ]; then \
     cd drivers && \
     /tmp/install.sh download_installer; fi
 
