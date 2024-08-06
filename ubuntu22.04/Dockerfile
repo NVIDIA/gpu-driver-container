@@ -2,6 +2,11 @@ FROM nvcr.io/nvidia/cuda:12.5.1-base-ubuntu22.04 as build
 
 ARG TARGETARCH
 
+# Args needed when using a local driver
+ARG DRIVER_VERSION
+ARG DRIVER_TYPE=passthrough
+ARG LOCAL_DRIVER=false
+
 SHELL ["/bin/bash", "-c"]
 
 RUN echo 'debconf debconf/frontend select Noninteractive' | debconf-set-selections
@@ -33,6 +38,17 @@ RUN git clone https://github.com/NVIDIA/gpu-driver-container driver && \
     go build -o vgpu-util && \
     mv vgpu-util /work
 
+ADD drivers local-driver/
+
+RUN if [ "$DRIVER_TYPE" != "vgpu" ] && [ "$LOCAL_DRIVER" == "false" ]; then \
+        rm local-driver/*; \
+    elif [ "$TARGETARCH" == "amd64" ]; then \
+        chmod +x local-driver/NVIDIA-Linux-x86_64-${DRIVER_VERSION}.run; \
+        rm local-driver/NVIDIA-Linux-aarch64-${DRIVER_VERSION}.run || true; \
+    else \
+        chmod +x local-driver/NVIDIA-Linux-x86_64-${DRIVER_VERSION}.run; \
+        rm local-driver/NVIDIA-Linux-aarch64-${DRIVER_VERSION}.run || true; fi
+
 FROM nvcr.io/nvidia/cuda:12.5.1-base-ubuntu22.04
 
 SHELL ["/bin/bash", "-c"]
@@ -56,6 +72,9 @@ ARG DISABLE_VGPU_VERSION_CHECK=true
 ENV DISABLE_VGPU_VERSION_CHECK=$DISABLE_VGPU_VERSION_CHECK
 ENV NVIDIA_VISIBLE_DEVICES=void
 
+# Args needed when using a local driver
+ARG LOCAL_DRIVER=false
+
 RUN echo 'debconf debconf/frontend select Noninteractive' | debconf-set-selections
 
 RUN echo "TARGETARCH=$TARGETARCH"
@@ -73,19 +92,23 @@ RUN /tmp/install.sh reposetup && /tmp/install.sh depinstall && \
 COPY nvidia-driver /usr/local/bin
 
 COPY --from=build /work/vgpu-util /usr/local/bin
-
-ADD drivers drivers/
+COPY --from=build /work/local-driver drivers/
 
 # Fetch the installer automatically for passthrough/baremetal types
-RUN if [ "$DRIVER_TYPE" != "vgpu" ]; then \
+RUN if [ "$DRIVER_TYPE" != "vgpu" ] && [ "$LOCAL_DRIVER" == "false" ]; then \
     cd drivers && \
     /tmp/install.sh download_installer; fi
 
 # Fabric manager packages are not available for arm64
-RUN if [ "$DRIVER_TYPE" != "vgpu" ] && [ "$TARGETARCH" != "arm64" ]; then \
-    apt-get update && \
-    apt-get install -y --no-install-recommends nvidia-fabricmanager-${DRIVER_BRANCH}=${DRIVER_VERSION}-1 \
-    libnvidia-nscq-${DRIVER_BRANCH}=${DRIVER_VERSION}-1; fi
+RUN if [ "$DRIVER_TYPE" == "vgpu" ] || [ "$TARGETARCH" == "arm64" ]; then \
+        echo "do nothing"; \
+    elif [ "$LOCAL_DRIVER" == "true" ]; then \
+        dpkg -i drivers/nvidia-fabricmanager-${DRIVER_BRANCH}_${DRIVER_VERSION}*.deb && \
+        dpkg -i drivers/libnvidia-nscq-${DRIVER_BRANCH}_${DRIVER_VERSION}*.deb; \
+    else \
+        apt-get update && \
+        apt-get install -y --no-install-recommends nvidia-fabricmanager-${DRIVER_BRANCH}=${DRIVER_VERSION}-1 \
+        libnvidia-nscq-${DRIVER_BRANCH}=${DRIVER_VERSION}-1; fi
 
 WORKDIR  /drivers
 
