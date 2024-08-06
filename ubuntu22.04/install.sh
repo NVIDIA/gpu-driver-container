@@ -102,17 +102,26 @@ imex_install() {
 }
 
 extra_pkgs_install() {
-  if [ "$DRIVER_TYPE" != "vgpu" ]; then
-      apt-get update
-
-      fabricmanager_install
-      nscq_install
-      nvsdm_install
-      nvlink5_pkgs_install
-      imex_install
-
-      rm -rf /var/lib/apt/lists/*
+  if [ "$DRIVER_TYPE" == "vgpu" ]; then
+    return 0
   fi
+
+  if [ "$LOCAL_DRIVER" == "true" ]; then
+    # TODO: add nvsdm, nvlink5, and imex packages here
+    dpkg -i drivers/nvidia-fabricmanager-${DRIVER_BRANCH}_${DRIVER_VERSION}*.deb
+    dpkg -i drivers/libnvidia-nscq-${DRIVER_BRANCH}_${DRIVER_VERSION}*.deb
+    return 0
+  fi
+
+  apt-get update
+
+  fabricmanager_install
+  nscq_install
+  nvsdm_install
+  nvlink5_pkgs_install
+  imex_install
+
+  rm -rf /var/lib/apt/lists/*
 }
 
 if [ "$1" = "setup_cuda_repo" ]; then
