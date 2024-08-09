@@ -10,7 +10,13 @@ updates:
       interval: "weekly"
       day: "sunday"
     labels:
-    - dependencies
+      - dependencies
+    groups:
+      k8sio:
+        patterns:
+          - k8s.io/*
+        exclude-patterns:
+          - k8s.io/klog/*
 
   - package-ecosystem: "github-actions"
     directory: "/"
