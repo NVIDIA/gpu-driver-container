@@ -41,36 +41,21 @@ jobs:
         echo "SSH_PRIVATE_CERT_KEY is set: ${{ secrets.SSH_PRIVATE_CERT_KEY }}"
         echo "TEST_SYSTEM_PASSWORD is set: ${{ secrets.TEST_SYSTEM_PASSWORD }}"
         echo "AWS_ACCESS_KEY_ID is set: ${{ secrets.AWS_ACCESS_KEY_ID }}"
-        echo "AWS_SSH_KEY is set: ${{ secrets.AWS_SSH_KEY }}"
+        echo "AWS_SECRET_ACCESS_KEY is set: ${{ secrets.AWS_SECRET_ACCESS_KEY }}"
+        echo "private_key is set: ${{ secrets.private_key }}"
         echo "TEST_SYSTEM_PASSWORD is set: ${{ secrets.TEST_SYSTEM_PASSWORD }}"
         echo "instance_hostname is set: ${{ secrets.instance_hostname }}"
         echo "private_key is set: ${{ secrets.private_key }}"
-
-    - name: Check if the system is reachable
-      run: |
-        ping -c 4 10.150.187.99
-        ping -c 4 24.51.7.3
-
-    - name: Run e2e tests
-      env:
-        TEST_SYSTEM_PASSWORD: ${{ secrets.TEST_SYSTEM_PASSWORD }}
-        SSH_PRIVATE_CERT_KEY: ${{ secrets.SSH_PRIVATE_CERT_KEY }}
-      run: |
-        echo "$SSH_PRIVATE_CERT_KEY" > ~/.ssh/id_rsa-cert.pub
-        chmod 644 ~/.ssh/id_rsa-cert.pub
-        ssh -v  nvidia@10.150.187.99 <<EOF
-          echo "Running deployment commands on the Linux system"
-          #./deploy.sh
-        EOF
         
+
     - name: Set up Holodeck
       uses: NVIDIA/holodeck@main
       with:
         aws_access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
         aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         # aws_ssh_key: ${{ secrets.AWS_SSH_KEY }}
+        aws_ssh_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         holodeck_config: "tests/holodeck.yaml"
-
 
     - name: Get public dns name
       id: get_public_dns_name
@@ -91,12 +76,10 @@ jobs:
         CONTAINER_RUNTIME: "containerd"
         TEST_CASE: "./tests/cases/defaults.sh"
       run: |
-        echo "${{ secrets.AWS_SSH_KEY }}" > ${private_key} && chmod 400 ${private_key}
+        echo "${{ secrets.AWS_SECRET_ACCESS_KEY }}" > ${private_key} && chmod 400 ${private_key}
        # ./tests/ci-run-e2e.sh ${OPERATOR_IMAGE} ${OPERATOR_VERSION} ${VALIDATOR_IMAGE} ${VALIDATOR_VERSION} ${GPU_PRODUCT_NAME} ${TEST_CASE} || rc=$?
        # exit $rc
      
-
-
 
     # - name: Configure SSH
     #   run: |
