@@ -1,0 +1,5 @@
+vendor/
+.git
+aws-kube-ci
+cnt-ci
+key.pem
