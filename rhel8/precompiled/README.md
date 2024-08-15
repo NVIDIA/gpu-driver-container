@@ -45,13 +45,13 @@ The procedure is based on [building custom kmod packages](https://github.com/NVI
 
     export DRIVER_TOOLKIT_IMAGE=quay.io/openshift-release-dev/ocp-v4.0-art-dev@sha256:6afc764e57b39493f57dd20a714cf9bee8cd02a34bf361570f68888b4af753ad
 
-    export KERNEL_VERSION=4.18.0-372.51.1.el8_6.x86_64
-    export RHEL_VERSION=8.6
+    export KERNEL_VERSION=4.18.0-513.9.1.el8_9.x86_64
+    export RHEL_VERSION=8.9
     export CUDA_VERSION=12.1.0
     export CUDA_DIST=ubi8
     export DRIVER_EPOCH=1
-    export DRIVER_VERSION=525.105.17
-    export OS_TAG=rhcos4.12
+    export DRIVER_VERSION=535.183.06
+    export OS_TAG=rhcos4.13
 
     make image image-push
     ```
@@ -66,7 +66,7 @@ The procedure is based on [building custom kmod packages](https://github.com/NVI
 
 ## NVIDIA GPU operator
 
-In order to be used with the NVIDIA GPU Operator on Red Hat OpenShift, the image tag must follow the format `${DRIVER_VERSION}-${KERNEL_VERSION}-${OS_TAG}`, and the full name will look like `nvcr.io/nvidia/driver:525.105.17-4.18.0-372.51.1.el8_6.x86_64-rhcos4.12`.
+In order to be used with the NVIDIA GPU Operator on Red Hat OpenShift, the image tag must follow the format `${DRIVER_VERSION}-${KERNEL_VERSION}-${OS_TAG}`, and the full name will look like `nvcr.io/nvidia/driver:535.183.06-4.18.0-513.9.1.el8_9.x86_64-rhcos4.13`.
 
 
 Define the `ClusterPolicy` resource to make use of the pre-compiled driver image, e.g.:
@@ -76,7 +76,7 @@ Define the `ClusterPolicy` resource to make use of the pre-compiled driver image
     usePrecompiled: true
     image: driver
     repository: nvcr.io/nvidia
-    version: 525.105.17
+    version: 535.183.06
 ```
 
 Find more information in the [Precompiled Driver Containers](https://docs.nvidia.com/datacenter/cloud-native/gpu-operator/latest/precompiled-drivers.html) documentation.
