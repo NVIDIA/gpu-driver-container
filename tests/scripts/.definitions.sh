@@ -19,3 +19,8 @@ CASES_DIR="$( cd "${TEST_DIR}/cases" && pwd )"
 : ${HELM_NVIDIA_REPO:="https://helm.ngc.nvidia.com/nvidia"}
 
 : ${TARGET_DRIVER_VERSION:="550.90.07"}
+
+: ${DAEMON_POD_STATUS_TIME_OUT:="15m"}
+: ${POD_STATUS_TIME_OUT:="2m"}
+
+: ${LOG_DIR:="/tmp/logs"}
