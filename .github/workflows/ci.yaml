@@ -30,16 +30,16 @@ on:
       - opened
       - synchronize
     branches:
-      - main
+      # - main
       # - release-*
       # - drivervalidation
-      # - draftawsvalidation
+      - draftawsvalidation
   push:
     branches:
-      - main
+      # - main
       # - release-*
       # - drivervalidation
-      # - draftawsvalidation
+      - draftawsvalidation
 
 jobs:
   e2e-tests-nvidiadriver:

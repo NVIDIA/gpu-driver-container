@@ -21,14 +21,14 @@ on:
       - opened
       - synchronize
     branches:
-      - main
+      # - main
       # - release-*
-      # - draftawsvalidation
+      - draftawsvalidation
   push:
     branches:
-      - main
+      # - main
       # - release-*
-      # - draftawsvalidation
+      - draftawsvalidation
 
 jobs:
   image:
