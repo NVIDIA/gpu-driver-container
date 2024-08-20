@@ -80,7 +80,7 @@ jobs:
           # ./tests/ci-run-e2e.sh ${TEST_CASE} ${COMMIT_SHORT_SHA}-${driver_version} ${SSH_RETRY} || status=$?
           ./tests/ci-run-e2e.sh ${TEST_CASE} ${driver_version} ${SSH_RETRY} || status=$?
           if [ $status -ne 0 ]; then
-            echo "Kernel upgrade failed"
+            echo "Kernel upgrade failed"   SHIVA
             rc=$status
           fi
         done

@@ -4,11 +4,6 @@ SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 source ${SCRIPT_DIR}/.definitions.sh
 source ${SCRIPT_DIR}/.local.sh
 
-# keep alive 60sec and timeout after 30 tries
-ssh -o ServerAliveInterval=60 -o ServerAliveCountMax=30 -i ${private_key} ${instance_hostname} "${@}"
-SSH_PID=$!
-wait $SSH_PID
-
 if [ "${SSH_RETRY}" == "1" ]; then
     echo "Waiting for aws system to come back online..."
     START_TIME=$(date +%s)
@@ -26,3 +21,6 @@ if [ "${SSH_RETRY}" == "1" ]; then
         sleep 60
     done
 fi
+
+# keep alive 60sec and timeout after 30 tries
+ssh -o ServerAliveInterval=60 -o ServerAliveCountMax=30 -i ${private_key} ${instance_hostname} "${@}"

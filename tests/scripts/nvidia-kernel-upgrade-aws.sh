@@ -38,8 +38,12 @@ CURRENT_KERNEL=$(uname -r)
 echo "Upgraded kernel version: $CURRENT_KERNEL"
 
 echo "update grub ..."
-sudo update-grub || true
+sudo update-grub
 echo "Rebooting ..."
-sudo reboot || true
+# Run the reboot command with nohup to avoid abrupt SSH closure issues
+nohup sudo reboot &
 
 echo "--------------Installation of kernel completed --------------"
+
+# Exit with a success code since the reboot command was issued successfully
+exit 0
