@@ -37,8 +37,9 @@ echo "Checking the upgraded kernel version ${KERNEL_VERSION}..."
 CURRENT_KERNEL=$(uname -r)
 echo "Upgraded kernel version: $CURRENT_KERNEL"
 
+echo "update grub ..."
+sudo update-grub || true
 echo "Rebooting ..."
-sudo update-grub
-sudo reboot
+sudo reboot || true
 
 echo "--------------Installation of kernel completed --------------"
