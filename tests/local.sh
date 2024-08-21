@@ -12,11 +12,18 @@ SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )"/scripts && pwd )"
 source ${SCRIPT_DIR}/.definitions.sh
 source ${SCRIPT_DIR}/.local.sh
 
+if [ "${SSH_RETRY}" == "1" ]; then
+    remote_retry
+fi
+
 # Sync the project folder to the remote
 ${SCRIPT_DIR}/push.sh
 
 # We trigger the installation of prerequisites on the remote instance
 remote SKIP_PREREQUISITES="${SKIP_PREREQUISITES}" ./tests/scripts/prerequisites.sh
+
+# SHIVA 
+echo "SHIVA TOKEN ${DOCKER_GITHUB_TOKEN}"
 
 # We trigger the specified test case on the remote instance.
 # Note: We need to ensure that the required environment variables
@@ -24,4 +31,5 @@ remote SKIP_PREREQUISITES="${SKIP_PREREQUISITES}" ./tests/scripts/prerequisites.
 remote \
     PROJECT="${PROJECT}" \
         TARGET_DRIVER_VERSION="${TARGET_DRIVER_VERSION}" \
+        DOCKER_GITHUB_TOKEN="${DOCKER_GITHUB_TOKEN}" \
         ${TEST_CASE}

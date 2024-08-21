@@ -5,12 +5,21 @@ if [[ "${SKIP_INSTALL}" == "true" ]]; then
     exit 0
 fi
 
+echo "Checking current kernel version..."
+CURRENT_KERNEL=$(uname -r)
+echo "Current kernel version: $CURRENT_KERNEL"
+
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 source ${SCRIPT_DIR}/.definitions.sh
 
-OPERATOR_OPTIONS="${OPERATOR_OPTIONS} --set driver.repository=${PRIVATE_REGISTRY}/nvidia --set driver.version=${TARGET_DRIVER_VERSION}"
 
-# add helm driver repo 
+OPERATOR_OPTIONS="${OPERATOR_OPTIONS} --set driver.repository=${PRIVATE_REGISTRY}/nvidia --set driver.version=${TARGET_DRIVER_VERSION} --set driver.imagePullSecrets=${DOCKER_GITHUB_TOKEN}"
+
+# add helm driver repo
+# SHIVA 
+echo "SHIVA TOKEN_TARGET ${DOCKER_GITHUB_TOKEN}"
+#docker login ${HELM_NVIDIA_REPO} -u x-access-token --password $DOCKER_GITHUB_TOKEN
+
 helm repo add nvidia ${HELM_NVIDIA_REPO} && helm repo update
 
 # Create the test namespace
