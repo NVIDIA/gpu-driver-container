@@ -8,6 +8,9 @@ fi
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 source "${SCRIPT_DIR}"/.definitions.sh
 
+echo "Create log dir ${LOG_DIR}"
+mkdir -p "${LOG_DIR}"
+
 export DEBIAN_FRONTEND=noninteractive
 
 echo "Load kernel modules i2c_core and ipmi_msghandler"
