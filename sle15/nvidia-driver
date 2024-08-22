@@ -44,7 +44,7 @@ _resolve_kernel_version() {
     fi
     local version_without_flavor=$(echo ${KERNEL_VERSION} | cut -d- -f-2)
     local version=$(zypper -x se -s -t package --match-exact "kernel-devel$package_flavor"  |
-      grep "solvable "| grep $version_without_flavor | sed -e 's/.*edition="\([^"]*\).*/\1/g;s/\(.*\)\..*/\1/')
+      grep "solvable "| grep $version_without_flavor | grep "Basesystem" | sed -e 's/.*edition="\([^"]*\).*/\1/g;s/\(.*\)\..*/\1/')
 
     if [ -z "${version}" ]; then
         echo "Could not resolve Linux kernel version" >&2
