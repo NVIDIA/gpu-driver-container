@@ -72,7 +72,7 @@ jobs:
           fi
         done
         source ./tests/scripts/.definitions.sh
-        ./tests/scripts/pull.sh ${LOG_DIR} logs
+        ./tests/scripts/pull.sh /tmp/logs logs
         exit $rc
 
     - name: Archive test logs
