@@ -49,8 +49,6 @@ jobs:
         registry: ghcr.io
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
-      env:
-        DOCKER_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  
 
     - name: Set up Holodeck
       uses: NVIDIA/holodeck@main
@@ -80,7 +78,7 @@ jobs:
         echo "COMMIT_SHORT_SHA=shivaku" >> $GITHUB_ENV
         DRIVER_VERSIONS=$(grep '^DRIVER_VERSIONS ?=' versions.mk | awk -F' ?= ' '{print $2}')
         echo "DRIVER_VERSIONS=$DRIVER_VERSIONS" >> $GITHUB_ENV
-        echo "DOCKER_GITHUB_TOKEN=$DOCKER_GITHUB_TOKEN" >> $GITHUB_ENV
+        echo "DOCKER_GITHUB_TOKEN=${{ secrets.GITHUB_TOKEN }}" >> $GITHUB_ENV
         
     - name: Validate gpu driver
       env:
