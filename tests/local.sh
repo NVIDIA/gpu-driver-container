@@ -22,8 +22,6 @@ ${SCRIPT_DIR}/push.sh
 # We trigger the installation of prerequisites on the remote instance
 remote SKIP_PREREQUISITES="${SKIP_PREREQUISITES}" ./tests/scripts/prerequisites.sh
 
-# SHIVA 
-echo "SHIVA TOKEN ${DOCKER_GITHUB_TOKEN}"
 
 # We trigger the specified test case on the remote instance.
 # Note: We need to ensure that the required environment variables

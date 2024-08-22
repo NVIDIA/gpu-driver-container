@@ -14,7 +14,6 @@ source ${SCRIPT_DIR}/.definitions.sh
 
 # add helm driver repo
 # SHIVA 
-echo "SHIVA TOKEN_TARGET ${DOCKER_GITHUB_TOKEN}"
 #docker login ${HELM_NVIDIA_REPO} -u x-access-token --password $DOCKER_GITHUB_TOKEN
 
 helm repo add nvidia ${HELM_NVIDIA_REPO} && helm repo update

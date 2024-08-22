@@ -93,7 +93,7 @@ jobs:
           IMAGE_NAME: ghcr.io/nvidia/driver
           VERSION: ${COMMIT_SHORT_SHA}
         run: |
-          # DRIVER_VERSIONS=${{ matrix.driver }} make build-${{ matrix.dist }}-${{ matrix.driver }}
+          DRIVER_VERSIONS=${{ matrix.driver }} make build-${{ matrix.dist }}-${{ matrix.driver }}
           echo "SHIVA"
 
   pre-compiled:
@@ -161,7 +161,7 @@ jobs:
           VERSION: ${COMMIT_SHORT_SHA}
           BASE_TARGET: jammy
         run: |
-          # make DRIVER_BRANCH=${{ matrix.driver }} KERNEL_FLAVOR=${{ matrix.flavor }} build-base-${BASE_TARGET}
+          make DRIVER_BRANCH=${{ matrix.driver }} KERNEL_FLAVOR=${{ matrix.flavor }} build-base-${BASE_TARGET}
 
           # trap "docker rm -f base-${BASE_TARGET}-${{ matrix.flavor }}" EXIT
           # docker run -d --name base-${BASE_TARGET}-${{ matrix.flavor }} ghcr.io/nvidia/driver:base-${BASE_TARGET}-${{ matrix.flavor }}-${{ matrix.driver }} 
@@ -173,7 +173,6 @@ jobs:
           # echo "KUMAR"
           # echo "cat kernel_version.txt"
           # echo "=============="
-          echo "SHIVA   ${{ secrets.GITHUB_TOKEN }}"
       - name: Build image
         env:
           IMAGE_NAME: ghcr.io/nvidia/driver
@@ -186,5 +185,5 @@ jobs:
           echo "cat kernel_version.txt"
           echo "=============="
           # source kernel_version.txt && \
-          # make DRIVER_VERSIONS=${DRIVER_VERSIONS} DRIVER_BRANCH=${{ matrix.driver }} build-${DIST}-${DRIVER_VERSION}
+          make DRIVER_VERSIONS=${DRIVER_VERSIONS} DRIVER_BRANCH=${{ matrix.driver }} build-${DIST}-${DRIVER_VERSION}
           echo "SHIVA"
