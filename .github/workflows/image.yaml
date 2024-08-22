@@ -173,7 +173,7 @@ jobs:
           # echo "KUMAR"
           # echo "cat kernel_version.txt"
           # echo "=============="
-          echo "SHIVA"
+          echo "SHIVA   ${{ secrets.GITHUB_TOKEN }}"
       - name: Build image
         env:
           IMAGE_NAME: ghcr.io/nvidia/driver
