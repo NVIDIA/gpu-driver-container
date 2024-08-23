@@ -90,7 +90,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
       - name: Build image
         env:
-          IMAGE_NAME: ghcr.io/nvidia/driver
+          IMAGE_NAME: ghcr.io/${LOWERCASE_REPO_OWNER}/driver
           VERSION: ${COMMIT_SHORT_SHA}
         run: |
           DRIVER_VERSIONS=${{ matrix.driver }} make build-${{ matrix.dist }}-${{ matrix.driver }}
@@ -154,7 +154,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
       - name: Build base image and get kernel version
         env:
-          IMAGE_NAME: ghcr.io/nvidia/driver
+          IMAGE_NAME: ghcr.io/${LOWERCASE_REPO_OWNER}/driver
           VERSION: ${COMMIT_SHORT_SHA}
           BASE_TARGET: jammy
         run: |
@@ -169,7 +169,7 @@ jobs:
           done
       - name: Build image
         env:
-          IMAGE_NAME: ghcr.io/nvidia/driver
+          IMAGE_NAME: ghcr.io/${LOWERCASE_REPO_OWNER}/driver
           VERSION: ${COMMIT_SHORT_SHA}
           PRECOMPILED: "true"
           DIST: signed_ubuntu22.04
