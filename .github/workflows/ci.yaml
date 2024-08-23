@@ -60,7 +60,6 @@ jobs:
       env:
         TEST_CASE: "./tests/cases/nvidia-driver.sh"
       run: |
-        sudo chmod 644 ${{ github.workspace }}/.cache/key
         echo "${{ secrets.AWS_SSH_KEY }}" > ${private_key} && chmod 400 ${private_key}
         rc=0
         for driver_version in ${DRIVER_VERSIONS}; do
