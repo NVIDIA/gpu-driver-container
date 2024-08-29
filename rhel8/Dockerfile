@@ -1,4 +1,4 @@
-FROM nvcr.io/nvidia/cuda:12.5.1-base-ubi8 as build
+FROM nvcr.io/nvidia/cuda:12.6.0-base-ubi8 as build
 
 ARG TARGETARCH
 
@@ -22,7 +22,7 @@ RUN git clone https://github.com/NVIDIA/gpu-driver-container driver && \
     go build -o vgpu-util && \
     mv vgpu-util /work
 
-FROM nvcr.io/nvidia/cuda:12.5.1-base-ubi8
+FROM nvcr.io/nvidia/cuda:12.6.0-base-ubi8
 
 ARG TARGETARCH
 ENV TARGETARCH=$TARGETARCH
