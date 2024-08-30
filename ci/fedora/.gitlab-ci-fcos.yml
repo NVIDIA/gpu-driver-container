@@ -35,9 +35,9 @@
 # the commit sha).  This release stage is purely to test out the CICD code that
 # would for the 'fedora' branch publish to a remote repository.
 #
-# Branches == "fedora" and tags == .*fedora$
+# Tags == .*fedora$
 #
-# The protected branch 'fedora' will cause container image builds on all three
+# Matching pipelines will cause container image builds on all three
 # fcos runner types and build ALL_DRIVER_VERSIONS.  The images will then be scan-
 # ned and providing there are no detected vulnerabilities will be pushed to the
 # remote repository defined by RELEASE_REGISTRY_PROJECT.
@@ -49,7 +49,7 @@
 #
 # Branches == "fedora.+"
 #
-# Any other protected branch with the word fedora in it will do the same - build
+# Any protected branch with the word fedora in it will do the same - build
 # all the NVIDIA driver versions on all the fcos releases - and scan them, but
 # will not publish them to the remote registry.
 #
@@ -96,10 +96,10 @@ variables:
   # To survey latest Data Center driver versions available:
   # https://www.nvidia.com/Download/Find.aspx
   # https://www.nvidia.com/en-us/drivers/unix/
-  DRIVER_VERSION: "535.154.05"
-  DRIVER_VERSIONS: 535.154.05 525.147.05
+  DRIVER_VERSION: "550.90.07"
+  DRIVER_VERSIONS: 550.90.07 535.183.01
 
-  CUDA_VERSION: 12.2.0
+  CUDA_VERSION: 12.4.1
 
   CVE_UPDATES: "curl libc6"
 
@@ -115,9 +115,9 @@ variables:
   RELEASE_REGISTRY_TOKEN: ""
 
 default:
-  image: docker:20.10.10-git
+  image: docker:25.0.2-git
   services:
-    - name: docker:20.10.10-dind
+    - name: docker:25.0.2-dind
 
 stages:
   - build
@@ -199,8 +199,9 @@ build-push-next-one-only:
     - for driver_version in ${DRIVER_VERSION}; do build_push_fn ${driver_version} $OVERWRITE_TAGS ${CI_COMMIT_SHORT_SHA}-; done
   tags:
     - fcos-next
-  except:
-    - /fedora/
+  rules:
+    # Only run on branches (not tags) which do not start with fedora
+    - if: $CI_COMMIT_REF_NAME !~ /^fedora/ && $CI_COMMIT_TAG == null
 
 build-push:
   stage: build
@@ -212,8 +213,8 @@ build-push:
       - STREAM: [next, testing, stable]
   tags:
     - fcos-${STREAM}
-  only:
-    - /fedora/
+  rules:
+    - if: $CI_COMMIT_REF_NAME =~ /^fedora/ || $CI_COMMIT_TAG =~ /fedora$/
 
 .common-scan:
   image: registry.gitlab.com/security-products/container-scanning:6
@@ -273,8 +274,9 @@ scan-next-one-only:
     - scan_fn ${DRIVER_VERSION} ${CI_COMMIT_SHORT_SHA}-
   tags:
     - fcos-next
-  except:
-    - /fedora/
+  rules:
+    # Only run on branches (not tags) which do not matching fedora
+    - if: $CI_COMMIT_REF_NAME !~ /^fedora/ && $CI_COMMIT_TAG == null
 
 # Gitlab does not yet support matrix jobs with dynamic matrix-based dependencies.
 # https://forum.gitlab.com/t/ci-specifying-artifact-dependencies-when-using-parallel-matrix/45026/2
@@ -288,24 +290,24 @@ scan-next:
   needs: ["build-push: [next]"]
   tags:
     - fcos-next
-  only:
-    - /fedora/
+  rules:
+    - if: $CI_COMMIT_REF_NAME =~ /^fedora/ || $CI_COMMIT_TAG =~ /fedora$/
 
 scan-testing:
   extends: .common-scan
   needs: ["build-push: [testing]"]
   tags:
     - fcos-testing
-  only:
-    - /fedora/
+  rules:
+    - if: $CI_COMMIT_REF_NAME =~ /^fedora/ || $CI_COMMIT_TAG =~ /fedora$/
 
 scan-stable:
   extends: .common-scan
   needs: ["build-push: [stable]"]
   tags:
     - fcos-stable
-  only:
-    - /fedora/
+  rules:
+    - if: $CI_COMMIT_REF_NAME =~ /^fedora/ || $CI_COMMIT_TAG =~ /fedora$/
 
 .common-release-fn-script: &common-release-fn-script
   - |
@@ -347,7 +349,7 @@ scan-stable:
     - docker login -u "${RELEASE_REGISTRY_USER}" -p "${RELEASE_REGISTRY_TOKEN}" "${RELEASE_REGISTRY}"
     - for driver_version in ${DRIVER_VERSIONS:-${DRIVER_VERSION}}; do release_fn ${driver_version};done
   rules:
-    - if: $CI_COMMIT_TAG =~ /fedora$/ || $CI_COMMIT_REF_NAME == 'fedora'
+    - if: $CI_COMMIT_TAG =~ /fedora$/
 
 release-next-one-only:
   stage: release
@@ -370,8 +372,9 @@ release-next-one-only:
     - for driver_version in ${DRIVER_VERSION}; do release_fn ${driver_version} ${OVERWRITE_REMOTE_TAGS} ${CI_COMMIT_SHORT_SHA}-; done
   tags:
     - fcos-next
-  except:
-    - /fedora/
+  rules:
+    # Only run on branches (not tags) which do not matching ^fedora
+    - if: $CI_COMMIT_REF_NAME !~ /^fedora/ && $CI_COMMIT_TAG == null
 
 # Gitlab does not yet support matrix jobs with dynamic matrix-based dependencies.
 # https://forum.gitlab.com/t/ci-specifying-artifact-dependencies-when-using-parallel-matrix/45026/2
