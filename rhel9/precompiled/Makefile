@@ -9,7 +9,7 @@ KERNEL_VERSION_NOARCH=$(shell echo "${KERNEL_VERSION}" | sed "s/\.${TARGET_ARCH}
 KERNEL_VERSION_TAG = $(shell echo "${KERNEL_VERSION_NOARCH}.${BUILD_ARCH}" | sed "s/+/_/")
 BASE_URL ?= https://us.download.nvidia.com/tesla
 
-CUDA_VERSION ?= 12.1.0
+CUDA_VERSION ?= 12.6.0
 CUDA_DIST = ubi${RHEL_VERSION_MAJOR}
 
 DRIVER_VERSION ?= ''
