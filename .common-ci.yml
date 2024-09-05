@@ -85,7 +85,7 @@ trigger-pipeline:
 .driver-versions-precompiled-ubuntu22.04:
   parallel:
     matrix:
-      - DRIVER_BRANCH: [535, 550]
+      - DRIVER_BRANCH: [535, 550, 560]
         KERNEL_FLAVOR: [aws, azure, generic, nvidia, oracle]
 
 # Define the driver versions for jobs that can be run in parallel for rhel9
