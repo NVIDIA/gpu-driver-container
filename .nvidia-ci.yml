@@ -315,27 +315,6 @@ release:ngc-precompiled-ubuntu22.04:
     # Only run NGC release job on scheduled pipelines
     - if: $CI_PIPELINE_SOURCE == "schedule"
 
-release:ngc-rhcos4.9:
-  extends:
-    - .release:ngc
-    - .dist-rhel8
-  variables:
-    OUT_DIST: "rhcos4.9"
-
-release:ngc-rhcos4.10:
-  extends:
-    - .release:ngc
-    - .dist-rhel8
-  variables:
-    OUT_DIST: "rhcos4.10"
-
-release:ngc-rhcos4.11:
-  extends:
-    - .release:ngc
-    - .dist-rhel8
-  variables:
-    OUT_DIST: "rhcos4.11"
-
 release:ngc-rhcos4.12:
   extends:
     - .release:ngc
@@ -364,19 +343,12 @@ release:ngc-rhcos4.15:
   variables:
     OUT_DIST: "rhcos4.15"
 
-release:ngc-rhel8.6:
+release:ngc-rhcos4.16:
   extends:
     - .release:ngc
     - .dist-rhel8
   variables:
-    OUT_DIST: "rhel8.6"
-
-release:ngc-rhel8.7:
-  extends:
-    - .release:ngc
-    - .dist-rhel8
-  variables:
-    OUT_DIST: "rhel8.7"
+    OUT_DIST: "rhcos4.16"
 
 release:ngc-rhel8.8:
   extends:
@@ -385,12 +357,12 @@ release:ngc-rhel8.8:
   variables:
     OUT_DIST: "rhel8.8"
 
-release:ngc-rhel8.9:
+release:ngc-rhel8.10:
   extends:
     - .release:ngc
     - .dist-rhel8
   variables:
-    OUT_DIST: "rhel8.9"
+    OUT_DIST: "rhel8.10"
 
 release:ngc-rhel9.0:
   extends:
@@ -425,7 +397,7 @@ release:ngc-rhel9.3:
 .ngccli-setup:
   before_script:
     - apt-get update && apt-get install -y curl unzip jq bash make
-    - export REGCTL_VERSION=v0.4.7
+    - export REGCTL_VERSION=v0.7.1
     - mkdir -p bin
     - curl -sSLo bin/regctl https://github.com/regclient/regclient/releases/download/${REGCTL_VERSION}/regctl-linux-amd64
     - chmod a+x bin/regctl
@@ -507,8 +479,8 @@ sign:ngc-ubuntu-rhel-rhcos:
       VERSION: ["20.04"]
       DRIVER_VERSION: ["535.183.06", "550.90.07", "560.35.03"]
     - SIGN_JOB_NAME: ["rhel"]
-      VERSION: ["8.6", "8.7", "8.8", "8.9","8.10"]
+      VERSION: ["8.8", "8.10"]
       DRIVER_VERSION: ["535.183.06", "550.90.07", "560.35.03"]
     - SIGN_JOB_NAME: ["rhcos"]
-      VERSION: ["4.9", "4.10", "4.11", "4.12","4.13","4.14","4.15"]
+      VERSION: ["4.12","4.13","4.14","4.15", "4.16"]
       DRIVER_VERSION: ["535.183.06", "550.90.07", "560.35.03"]
