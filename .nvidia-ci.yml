@@ -491,6 +491,9 @@ sign:ngc-precompiled-ubuntu22.04:
     PRECOMPILED: "true"
   needs:
     - release:ngc-precompiled-ubuntu22.04
+  rules:
+    # Only run NGC release job on scheduled pipelines
+    - if: $CI_PIPELINE_SOURCE == "schedule"
 
 sign:ngc-ubuntu-rhel-rhcos:
   extends:
