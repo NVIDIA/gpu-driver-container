@@ -42,12 +42,9 @@ jobs:
           - ubuntu22.04
           - rhel8
           - rhel9
-          - fedora36
         ispr:
           - ${{github.event_name == 'pull_request'}}
         exclude:
-          - ispr: true
-            dist: fedora36
           - ispr: true
             dist: rhel8
           - ispr: true
