@@ -23,5 +23,4 @@ remote SKIP_PREREQUISITES="${SKIP_PREREQUISITES}" ./tests/scripts/prerequisites.
 # are forwarded to the remote shell.
 remote \
     PROJECT="${PROJECT}" \
-        TARGET_DRIVER_VERSION="${TARGET_DRIVER_VERSION}" \
-        ${TEST_CASE}
+        "$@"

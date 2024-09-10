@@ -20,19 +20,34 @@ on:
     - cron: '00 09 * * *' # scheduled job
 
 jobs:
-  pre-compiled:
+  set-driver-version-matrix:
+    runs-on: ubuntu-latest
+    outputs:
+      driver_branch: ${{ steps.extract_driver_branch.outputs.driver_branch }}
+      kernel_flavors: ${{ steps.extract_driver_branch.outputs.kernel_flavors }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Read driver versions
+        id: extract_driver_branch
+        run: |
+          # get driver-branch
+          DRIVER_BRANCH=("535" "550")
+          driver_branch_json=$(printf '%s\n' "${DRIVER_BRANCH[@]}" | jq -R . | jq -cs .)
+          echo "driver_branch=$driver_branch_json" >> $GITHUB_OUTPUT
+
+          # get kernel flavors
+          KERNEL_FLAVORS=("aws" "azure" "generic" "nvidia" "oracle")
+          kernel_flavors_json=$(printf '%s\n' "${KERNEL_FLAVORS[@]}" | jq -R . | jq -cs .)
+          echo "kernel_flavors=$kernel_flavors_json" >> $GITHUB_OUTPUT
+
+  precompiled-image:
+    needs: set-driver-version-matrix
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        driver:
-          - 535
-          - 550
-        flavor:
-          - aws
-          - azure
-          - generic
-          - nvidia
-          - oracle
+        driver-branch: ${{ fromJson(needs.set-driver-version-matrix.outputs.driver_branch) }}
+        flavor: ${{ fromJson(needs.set-driver-version-matrix.outputs.kernel_flavors) }}
     steps:
       - uses: actions/checkout@v4
         name: Check out code
@@ -64,10 +79,10 @@ jobs:
           VERSION: ${COMMIT_SHORT_SHA}
           BASE_TARGET: jammy
         run: |
-          make DRIVER_BRANCH=${{ matrix.driver }} KERNEL_FLAVOR=${{ matrix.flavor }} build-base-${BASE_TARGET}
+          make DRIVER_BRANCH=${{ matrix.driver-branch }} KERNEL_FLAVOR=${{ matrix.flavor }} build-base-${BASE_TARGET}
 
           trap "docker rm -f base-${BASE_TARGET}-${{ matrix.flavor }}" EXIT
-          docker run -d --name base-${BASE_TARGET}-${{ matrix.flavor }} ghcr.io/nvidia/driver:base-${BASE_TARGET}-${{ matrix.flavor }}-${{ matrix.driver }} 
+          docker run -d --name base-${BASE_TARGET}-${{ matrix.flavor }} ghcr.io/nvidia/driver:base-${BASE_TARGET}-${{ matrix.flavor }}-${{ matrix.driver-branch }}
           # try 3 times every 10 seconds to get the file, if success exit the loop
           for i in {1..3}; do
               docker cp base-${BASE_TARGET}-${{ matrix.flavor }}:/var/kernel_version.txt kernel_version.txt && break
@@ -81,4 +96,155 @@ jobs:
           DIST: signed_ubuntu22.04
         run: |
           source kernel_version.txt && \
-          make DRIVER_VERSIONS=${DRIVER_VERSIONS} DRIVER_BRANCH=${{ matrix.driver }} build-${DIST}-${DRIVER_VERSION}
+          make DRIVER_VERSIONS=${DRIVER_VERSIONS} DRIVER_BRANCH=${{ matrix.driver-branch }} build-${DIST}-${DRIVER_VERSION}
+
+  determine-e2e-test-matrix:
+    runs-on: ubuntu-latest
+    needs:
+      - precompiled-image
+      - set-driver-version-matrix
+    outputs:
+      matrix_values_not_empty: ${{ steps.set_kernel_version.outputs.matrix_values_not_empty }}
+      matrix_values: ${{ steps.set_kernel_version.outputs.matrix_values }}
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set kernel version
+        id: set_kernel_version
+        env:
+          BASE_TARGET: "jammy"
+          DIST: "ubuntu22.04"
+        run: |
+          echo "matrix_values_not_empty=0" >> $GITHUB_OUTPUT
+
+          kernel_flavors_json='${{ needs.set-driver-version-matrix.outputs.kernel_flavors }}'
+          kernel_flavors=$(echo "$kernel_flavors_json" | jq -r '.[]')
+          driver_branch_json='${{ needs.set-driver-version-matrix.outputs.driver_branch }}'
+          driver_branch=$(echo "$driver_branch_json" | jq -r '.[]')
+
+          kernel_versions=()
+          for kernel_flavor in $kernel_flavors; do
+            # FIXME -- remove if condition, once azure kernel upgrade starts working
+            if [[ "$kernel_flavor" == "azure" ]]; then
+              echo "skipping azure kernel testing"
+              continue
+            fi
+            for DRIVER_BRANCH in $driver_branch; do
+              source ./tests/scripts/findkernelversion.sh "$BASE_TARGET" "${kernel_flavor}" "$DRIVER_BRANCH" "$DIST"
+              if [[ "$should_continue" == true ]]; then
+                echo "matrix_values_not_empty=1" >> $GITHUB_OUTPUT
+                break
+              fi
+            done
+            if [[ "$should_continue" == false ]]; then
+                echo "Skipping e2e tests for the following driver tag: ${KERNEL_VERSION}-${kernel_flavor}-${DIST}"
+            else
+              KERNEL_VERSION=$(echo "$KERNEL_VERSION" | tr -d ' \n')
+              kernel_versions+=("$KERNEL_VERSION")
+               echo "Adding the following tag to the e2e test matrix: ${KERNEL_VERSION}-${kernel_flavor}-${DIST}"
+            fi
+          done
+
+          # Convert array to JSON format and assign
+          echo "[]" > $GITHUB_WORKSPACE/matrix_values.json
+          printf '%s\n' "${kernel_versions[@]}" | jq -R . | jq -s . > $GITHUB_WORKSPACE/matrix_values.json
+          echo "matrix_values=$(cat $GITHUB_WORKSPACE/matrix_values.json | jq -c .)" >> $GITHUB_OUTPUT
+
+  e2e-tests-nvidiadriver:
+    runs-on: ubuntu-latest
+    needs:
+      - determine-e2e-test-matrix
+      - set-driver-version-matrix
+    if: ${{ needs.determine-e2e-test-matrix.outputs.matrix_values_not_empty == '1' }}
+    strategy:
+      matrix:
+        kernel_version: ${{ fromJson(needs.determine-e2e-test-matrix.outputs.matrix_values) }}
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+      - name: Set up Holodeck
+        uses: NVIDIA/holodeck@v0.2.1
+        env:
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SSH_KEY: ${{ secrets.AWS_SSH_KEY }}
+        with:
+          aws_access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws_ssh_key: ${{ secrets.AWS_SSH_KEY }}
+          holodeck_config: "tests/holodeck.yaml"
+
+      - name: Get public dns name
+        id: get_public_dns_name
+        uses: mikefarah/yq@master
+        with:
+          cmd: yq '.status.properties[] | select(.name == "public-dns-name") | .value' /github/workspace/.cache/holodeck.yaml
+      - name:  Set and Calculate test vars
+        run: |
+          echo "instance_hostname=ubuntu@${{ steps.get_public_dns_name.outputs.result }}" >> $GITHUB_ENV
+          echo "private_key=${{ github.workspace }}/key.pem" >> $GITHUB_ENV
+          echo "${{ secrets.AWS_SSH_KEY }}" > ${{ github.workspace }}/key.pem && chmod 400 ${{ github.workspace }}/key.pem
+          echo "COMMIT_SHORT_SHA=${GITHUB_SHA:0:8}" >> $GITHUB_ENV
+          echo "PRIVATE_REGISTRY=ghcr.io" >> $GITHUB_ENV
+          KERNEL_VERSION="${{ matrix.kernel_version }}"
+          echo "KERNEL_VERSION=$KERNEL_VERSION" >> $GITHUB_ENV
+
+      - name: Upgrade the kernel for Precompiled e2e test
+        env:
+          UPGRADE_KERNEL_SCRIPT: "./tests/scripts/upgrade-kernel.sh"
+        run: |
+          status=0
+          ./tests/ci-remote-exec.sh "${UPGRADE_KERNEL_SCRIPT}" "${KERNEL_VERSION}" || status=$?
+          # On the target system, all scripts/test-case exit with code 1 for error handling.
+          # However, since reboot-related disconnections break the SSH connection
+          # and can cause the entire job to exit, we should ignore all errors except
+          # exit code 1. During a reboot, exit code 1 will not be thrown, so handling
+          # other errors as code 1 will ensure proper management of reboot scenarios
+          if [ $status -eq 1 ]; then
+            echo "Kernel version $KERNEL_VERSION upgrade failed"
+            exit 1
+          fi
+          ./tests/scripts/remote_retry.sh || status=$?
+          if [ $status -ne 0 ]; then
+              echo "Failed to connect to remote instance"
+              exit $status
+          fi
+
+      - name: Precompiled e2e test gpu driver validation
+        env:
+          TEST_CASE: "./tests/cases/nvidia-driver.sh"
+          GPU_OPERATOR_OPTIONS: "--set driver.repository=${{ env.PRIVATE_REGISTRY }}/nvidia --set driver.usePrecompiled=true"
+        run: |
+          rc=0
+          # for precompiled driver we are setting driver branch as driver version
+          driver_versions_json='${{ needs.set-driver-version-matrix.outputs.driver_branch }}'
+          driver_versions=$(echo "$driver_versions_json" | jq -r '.[]')
+          for DRIVER_VERSION in $driver_versions; do
+            echo "Running e2e for DRIVER_VERSION=$DRIVER_VERSION"
+            status=0
+            TEST_CASE_ARGS="${GPU_OPERATOR_OPTIONS} --set driver.version=${DRIVER_VERSION}"
+            # add escape character for space
+            TEST_CASE_ARGS=$(printf '%q ' "$TEST_CASE_ARGS")
+            ./tests/ci-run-e2e.sh "${TEST_CASE}" "${TEST_CASE_ARGS}" || status=$?
+            if [ $status -eq 1 ]; then
+              echo "e2e validation failed for driver version $DRIVER_VERSION with status $status"
+              rc=$status
+            fi
+          done
+          ./tests/scripts/pull.sh /tmp/logs logs
+          exit $rc
+
+      - name: Archive test logs
+        if: ${{ failure() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: nvidiadriver-Precompiled-e2e-test-logs
+          path: ./logs/
+          retention-days: 15

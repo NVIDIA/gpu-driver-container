@@ -3,14 +3,10 @@
 set -xe
 
 if [[ $# -ne 2 ]]; then
-	echo "TEST_CASE TARGET_DRIVER_VERSION are required"
+	echo "TEST_CASE TEST_CASE_ARGS are required"
 	exit 1
 fi
 
-export TEST_CASE=${1}
-export TARGET_DRIVER_VERSION=${2}
-
-
 TEST_DIR="$(pwd)/tests"
 
-${TEST_DIR}/local.sh
+${TEST_DIR}/local.sh "$@"
