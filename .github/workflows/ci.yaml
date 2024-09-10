@@ -20,12 +20,10 @@ on:
       - opened
       - synchronize
     branches:
-      - main
-      - release-*
+      - e2eprecompiletest
   push:
     branches:
-      - main
-      - release-*
+      - e2eprecompiletest
 
 jobs:
   e2e-tests-nvidiadriver:
