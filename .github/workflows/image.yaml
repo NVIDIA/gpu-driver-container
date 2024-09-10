@@ -21,10 +21,12 @@ on:
       - opened
       - synchronize
     branches:
-      - enhancegpuvalidation
+      - main
+      - release-*
   push:
     branches:
-      - enhancegpuvalidation
+      - main
+      - release-*
 
 jobs:
   image:

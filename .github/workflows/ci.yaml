@@ -20,7 +20,7 @@ on:
     types:
       - completed
     branches:
-      - enhancegpuvalidation
+      - main
 
 jobs:
   e2e-tests-nvidiadriver:
