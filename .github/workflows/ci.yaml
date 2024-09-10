@@ -15,12 +15,17 @@
 name: End-to-end tests
 
 on:
-  workflow_run:
-    workflows: [image]
+  pull_request:
     types:
-      - completed
+      - opened
+      - synchronize
     branches:
       - main
+      - release-*
+  push:
+    branches:
+      - main
+      - release-*
 
 jobs:
   e2e-tests-nvidiadriver:
