@@ -35,7 +35,7 @@ jobs:
       matrix:
         driver:
           - 535.183.06
-          - 550.90.07
+          - 550.90.12
           - 560.35.03
         dist:
           - ubuntu20.04
@@ -52,7 +52,7 @@ jobs:
             driver: 535.183.06
           - ispr: true
             dist: ubuntu20.04
-            driver: 550.90.07
+            driver: 550.90.12
       fail-fast: false
     steps:
       - uses: actions/checkout@v4
