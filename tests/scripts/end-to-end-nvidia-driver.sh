@@ -11,7 +11,7 @@ ${SCRIPT_DIR}/install-operator.sh
 
 "${SCRIPT_DIR}"/verify-operator.sh
 
-echo "--------------Verification completed for GPU Operator, uninstalling the operator--------------"
+echo "--------------Verification completed for GPU Operator, uninstalling the GPU operator--------------"
 
 ${SCRIPT_DIR}/uninstall-operator.sh ${TEST_NAMESPACE} "gpu-operator"
 

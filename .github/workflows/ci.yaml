@@ -46,31 +46,36 @@ jobs:
       id: get_public_dns_name
       uses: mikefarah/yq@master
       with:
-        cmd: yq '.status.properties[] | select(.name == "public-dns-name") | .value' /github/workspace/.cache/holodeck.yaml  
+        cmd: yq '.status.properties[] | select(.name == "public-dns-name") | .value' /github/workspace/.cache/holodeck.yaml
 
     - name:  Set and Calculate test vars
       run: |
         echo "instance_hostname=ubuntu@${{ steps.get_public_dns_name.outputs.result }}" >> $GITHUB_ENV
         echo "private_key=${{ github.workspace }}/key.pem" >> $GITHUB_ENV
+        echo "${{ secrets.AWS_SSH_KEY }}" > ${{ github.workspace }}/key.pem && chmod 400 ${{ github.workspace }}/key.pem
         echo "COMMIT_SHORT_SHA=${GITHUB_SHA:0:8}" >> $GITHUB_ENV
         DRIVER_VERSIONS=$(grep '^DRIVER_VERSIONS ?=' versions.mk | awk -F' ?= ' '{print $2}')
         echo "DRIVER_VERSIONS=$DRIVER_VERSIONS" >> $GITHUB_ENV
-        
+        echo "PRIVATE_REGISTRY=ghcr.io" >> $GITHUB_ENV
+
     - name: Validate gpu driver
       env:
         TEST_CASE: "./tests/cases/nvidia-driver.sh"
+        GPU_OPERATOR_OPTIONS: "--set driver.repository=${{ env.PRIVATE_REGISTRY }}/nvidia"
       run: |
-        echo "${{ secrets.AWS_SSH_KEY }}" > ${private_key} && chmod 400 ${private_key}
         rc=0
-        for driver_version in ${DRIVER_VERSIONS}; do
-          echo "Running e2e for DRIVER_VERSION=$driver_version"
-          ./tests/ci-run-e2e.sh ${TEST_CASE} ${COMMIT_SHORT_SHA}-${driver_version} || status=$?
+        for DRIVER_VERSION in ${DRIVER_VERSIONS}; do
+          echo "Running e2e for DRIVER_VERSION=$DRIVER_VERSION"
+          status=0
+          OPERATOR_OPTIONS="${GPU_OPERATOR_OPTIONS} --set driver.version=${COMMIT_SHORT_SHA}-${DRIVER_VERSION}"
+          # add escape character for space
+          OPERATOR_OPTIONS=$(printf '%q ' "$OPERATOR_OPTIONS")
+          ./tests/ci-run-e2e.sh "${TEST_CASE}" "${OPERATOR_OPTIONS}" || status=$?
           if [ $status -ne 0 ]; then
-            echo "e2e validation failed for driver version $driver_version with status $status"
+            echo "e2e validation failed for driver version $DRIVER_VERSION with status $status"
             rc=$status
           fi
         done
-        source ./tests/scripts/.definitions.sh
         ./tests/scripts/pull.sh /tmp/logs logs
         exit $rc
 
@@ -80,4 +85,4 @@ jobs:
       with:
         name: nvidiadriver-e2e-test-logs
         path: ./logs/
-        retention-days: 15  
+        retention-days: 15

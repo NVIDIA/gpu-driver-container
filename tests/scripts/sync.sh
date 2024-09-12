@@ -12,6 +12,7 @@ source ${SCRIPT_DIR}/.local.sh
 
 rsync -e "ssh -i ${private_key} -o StrictHostKeyChecking=no" \
     -avz --delete \
-    --exclude-from="${SCRIPT_DIR}/.rsync-excludes" \
+    --include-from="${SCRIPT_DIR}/.rsync-includes" \
+    --exclude='*' \
         ${@}
         
