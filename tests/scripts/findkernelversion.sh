@@ -10,7 +10,7 @@ export KERNEL_FLAVOR="${2}"
 export DRIVER_BRANCH="${3}"
 export DIST="${4}"
 
-export REGCTL_VERSION=v0.4.7
+export REGCTL_VERSION=v0.7.1
 mkdir -p bin
 curl -sSLo bin/regctl https://github.com/regclient/regclient/releases/download/${REGCTL_VERSION}/regctl-linux-amd64
 chmod a+x bin/regctl
@@ -22,8 +22,6 @@ export $(grep -oP 'KERNEL_VERSION=[^ ]+' ./kernel_version.txt)
 
 # calculate driver tag
 status=0
-echo "regctl tag ls  nvcr.io/nvidia/driver | grep "^${DRIVER_BRANCH}-${KERNEL_VERSION}-${DIST}$""
-
 regctl tag ls  nvcr.io/nvidia/driver | grep "^${DRIVER_BRANCH}-${KERNEL_VERSION}-${DIST}$" || status=$?
 if [[ $status -eq 0 ]]; then
     export should_continue=false
