@@ -75,11 +75,11 @@ trigger-pipeline:
     matrix:
       - DRIVER_VERSION: [535.183.06, 550.90.12, 560.35.03]
 
-# Define the driver versions for jobs that can be run in parallel for ubuntu22.04
-.driver-versions-ubuntu22.04:
+# Define the driver versions for jobs that can be run in parallel for ubuntu24.04
+.driver-versions-ubuntu24.04:
   parallel:
     matrix:
-      - DRIVER_VERSION: [535.183.06, 550.90.12, 560.35.03]
+      - DRIVER_VERSION: [550.90.12, 560.35.03]
 
 # Define the matrix of precompiled jobs that can be run in parallel for ubuntu22.04
 .driver-versions-precompiled-ubuntu22.04:
@@ -87,12 +87,6 @@ trigger-pipeline:
     matrix:
       - DRIVER_BRANCH: [535, 550]
         KERNEL_FLAVOR: [aws, azure, generic, nvidia, oracle]
-
-# Define the driver versions for jobs that can be run in parallel for rhel9
-.driver-versions-rhel9:
-  parallel:
-    matrix:
-      - DRIVER_VERSION: [535.183.06, 550.90.12, 560.35.03]
 
 # Define the distribution targets
 .dist-ubuntu20.04:
@@ -104,6 +98,10 @@ trigger-pipeline:
   variables:
     DIST: ubuntu22.04
     CVE_UPDATES: "openssl"
+
+.dist-ubuntu24.04:
+  variables:
+    DIST: ubuntu24.04
 
 .dist-rhel8:
   variables:
@@ -170,7 +168,15 @@ trigger-pipeline:
   # Perform for each DRIVER_VERSION
   extends:
     - .release-generic
-    - .driver-versions-ubuntu22.04
+    - .driver-versions
+  rules:
+    - if: $CI_PIPELINE_SOURCE != "schedule"
+
+.release-ubuntu24.04:
+  # Perform for each DRIVER_VERSION
+  extends:
+    - .release-generic
+    - .driver-versions-ubuntu24.04
   rules:
     - if: $CI_PIPELINE_SOURCE != "schedule"
 
@@ -178,7 +184,7 @@ trigger-pipeline:
   # Perform for each DRIVER_VERSION
   extends:
     - .release-generic
-    - .driver-versions-rhel9
+    - .driver-versions
   rules:
     - if: $CI_PIPELINE_SOURCE != "schedule"
 
@@ -205,6 +211,15 @@ trigger-pipeline:
 .release:staging-ubuntu22.04:
   extends:
     - .release-ubuntu22.04
+  variables:
+    OUT_REGISTRY_USER: "${CI_REGISTRY_USER}"
+    OUT_REGISTRY_TOKEN: "${CI_REGISTRY_PASSWORD}"
+    OUT_REGISTRY: "${CI_REGISTRY}"
+    OUT_IMAGE_NAME: "${CI_REGISTRY_IMAGE}/staging/driver"
+
+.release:staging-ubuntu24.04:
+  extends:
+    - .release-ubuntu24.04
   variables:
     OUT_REGISTRY_USER: "${CI_REGISTRY_USER}"
     OUT_REGISTRY_TOKEN: "${CI_REGISTRY_PASSWORD}"
