@@ -39,6 +39,7 @@ jobs:
         dist:
           - ubuntu20.04
           - ubuntu22.04
+          - ubuntu24.04
           - rhel8
         ispr:
           - ${{github.event_name == 'pull_request'}}
@@ -49,6 +50,9 @@ jobs:
           - ispr: true
             dist: ubuntu20.04
             driver: 550.127.08
+          - ispr: true
+            dist: ubuntu24.04
+            driver: 535.216.03
       fail-fast: false
     steps:
       - uses: actions/checkout@v4
