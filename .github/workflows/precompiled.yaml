@@ -118,26 +118,26 @@ jobs:
           source kernel_version.txt && \
           make DRIVER_VERSIONS=${DRIVER_VERSIONS} DRIVER_BRANCH=${{ matrix.driver_branch }} build-${DIST}-${DRIVER_VERSION}
 
-      - name: Save build image as a tar
-        env:
-          DIST: ${{ matrix.dist }}
-          PRIVATE_REGISTRY: "ghcr.io"
-          COMMIT_SHORT_SHA: ${COMMIT_SHORT_SHA}
-        run: |
-          source kernel_version.txt
-          docker images "${PRIVATE_REGISTRY}/nvidia/driver:${{ matrix.driver_branch }}-${KERNEL_VERSION}-${DIST}"
-          docker save "${PRIVATE_REGISTRY}/nvidia/driver:${{ matrix.driver_branch }}-${KERNEL_VERSION}-${DIST}" \
-            -o  ./driver-images-${{ matrix.driver_branch }}-${KERNEL_VERSION}-${DIST}.tar
-          # set env for artifacts upload
-          echo "KERNEL_VERSION=$KERNEL_VERSION" >> $GITHUB_ENV
-          echo "DIST=$DIST" >> $GITHUB_ENV
+      # - name: Save build image as a tar
+      #   env:
+      #     DIST: ${{ matrix.dist }}
+      #     PRIVATE_REGISTRY: "ghcr.io"
+      #     COMMIT_SHORT_SHA: ${COMMIT_SHORT_SHA}
+      #   run: |
+      #     source kernel_version.txt
+      #     docker images "${PRIVATE_REGISTRY}/nvidia/driver:${{ matrix.driver_branch }}-${KERNEL_VERSION}-${DIST}"
+      #     docker save "${PRIVATE_REGISTRY}/nvidia/driver:${{ matrix.driver_branch }}-${KERNEL_VERSION}-${DIST}" \
+      #       -o  ./driver-images-${{ matrix.driver_branch }}-${KERNEL_VERSION}-${DIST}.tar
+      #     # set env for artifacts upload
+      #     echo "KERNEL_VERSION=$KERNEL_VERSION" >> $GITHUB_ENV
+      #     echo "DIST=$DIST" >> $GITHUB_ENV
 
-      - name: Upload build image as an artifact
-        uses: actions/upload-artifact@v4
-        with:
-           name: driver-images-${{ matrix.driver_branch }}-${{ env.KERNEL_VERSION }}-${{ env.DIST }}
-           path: ./driver-images-${{ matrix.driver_branch }}-${{ env.KERNEL_VERSION }}-${{ env.DIST }}.tar
-           retention-days: 1
+      # - name: Upload build image as an artifact
+      #   uses: actions/upload-artifact@v4
+      #   with:
+      #      name: driver-images-${{ matrix.driver_branch }}-${{ env.KERNEL_VERSION }}-${{ env.DIST }}
+      #      path: ./driver-images-${{ matrix.driver_branch }}-${{ env.KERNEL_VERSION }}-${{ env.DIST }}.tar
+      #      retention-days: 1
 
   determine-e2e-test-matrix:
     runs-on: ubuntu-latest
@@ -147,7 +147,7 @@ jobs:
     outputs:
       matrix_values_not_empty: ${{ steps.set_kernel_version.outputs.matrix_values_not_empty }}
       matrix_values: ${{ steps.set_kernel_version.outputs.matrix_values }}
-      dist: ${{ fromJson(needs.set-driver-version-matrix.outputs.dist) }}
+      dist: ${{ steps.set-driver-version-matrix.outputs.dist }}
     steps:
       - name: Check out code
         uses: actions/checkout@v4
