@@ -141,6 +141,9 @@ jobs:
 
   determine-e2e-test-matrix:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        dist: ${{ fromJson(needs.set-driver-version-matrix.outputs.dist) }}
     needs:
       - precompiled-build-image
       - set-driver-version-matrix
