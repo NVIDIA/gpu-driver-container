@@ -17,7 +17,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         git && \
     rm -rf /var/lib/apt/lists/*
 
-ENV GOLANG_VERSION=1.22.5
+ENV GOLANG_VERSION=1.22.7
 
 # download appropriate binary based on the target architecture for multi-arch builds
 RUN OS_ARCH=${TARGETARCH/x86_64/amd64} && OS_ARCH=${OS_ARCH/aarch64/arm64} && \
