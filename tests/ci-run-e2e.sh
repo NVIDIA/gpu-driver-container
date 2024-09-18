@@ -2,7 +2,7 @@
 
 set -xe
 
-if [[ $# -ne 2 ]]; then
+if [[ $# -lt 2 ]]; then
 	echo "TEST_CASE TEST_CASE_ARGS are required"
 	exit 1
 fi

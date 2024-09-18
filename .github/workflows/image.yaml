@@ -16,17 +16,19 @@
 name: image
 
 on:
-  pull_request:
-    types:
-      - opened
-      - synchronize
-    branches:
-      - main
-      - release-*
+  # SHIVA
+  # pull_request:
+  #   types:
+  #     - opened
+  #     - synchronize
+  #   branches:
+  #     - main
+  #     - release-*
   push:
     branches:
-      - main
-      - release-*
+      # - main
+      # - release-*
+      - no-test
 
 jobs:
   image:
