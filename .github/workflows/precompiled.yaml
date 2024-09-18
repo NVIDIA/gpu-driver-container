@@ -38,6 +38,7 @@ jobs:
     outputs:
       driver_branch: ${{ steps.extract_driver_branch.outputs.driver_branch }}
       kernel_flavors: ${{ steps.extract_driver_branch.outputs.kernel_flavors }}
+      dist: ${{ steps.extract_driver_branch.outputs.dist }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -54,6 +55,11 @@ jobs:
           kernel_flavors_json=$(printf '%s\n' "${KERNEL_FLAVORS[@]}" | jq -R . | jq -cs .)
           echo "kernel_flavors=$kernel_flavors_json" >> $GITHUB_OUTPUT
 
+          # get ubuntu distributions
+          DIST=("ubuntu22.04")
+          dist_json=$(printf '%s\n' "${DIST[@]}" | jq -R . | jq -cs .)
+          echo "dist=$dist_json" >> $GITHUB_OUTPUT
+
   precompiled-build-image:
     needs: set-driver-version-matrix
     runs-on: ubuntu-latest
@@ -61,6 +67,7 @@ jobs:
       matrix:
         driver_branch: ${{ fromJson(needs.set-driver-version-matrix.outputs.driver_branch) }}
         flavor: ${{ fromJson(needs.set-driver-version-matrix.outputs.kernel_flavors) }}
+        dist: ${{ fromJson(needs.set-driver-version-matrix.outputs.dist) }}
     steps:
       - uses: actions/checkout@v4
         name: Check out code
@@ -106,14 +113,14 @@ jobs:
           IMAGE_NAME: ghcr.io/nvidia/driver
           VERSION: ${COMMIT_SHORT_SHA}
           PRECOMPILED: "true"
-          DIST: signed_ubuntu22.04
+          DIST: signed_${{ matrix.dist }}
         run: |
           source kernel_version.txt && \
           make DRIVER_VERSIONS=${DRIVER_VERSIONS} DRIVER_BRANCH=${{ matrix.driver_branch }} build-${DIST}-${DRIVER_VERSION}
 
       - name: Save build image as a tar
         env:
-          DIST: "ubuntu22.04"
+          DIST: ${{ matrix.dist }}
           PRIVATE_REGISTRY: "ghcr.io"
           COMMIT_SHORT_SHA: ${COMMIT_SHORT_SHA}
         run: |
@@ -140,6 +147,7 @@ jobs:
     outputs:
       matrix_values_not_empty: ${{ steps.set_kernel_version.outputs.matrix_values_not_empty }}
       matrix_values: ${{ steps.set_kernel_version.outputs.matrix_values }}
+      dist: ${{ fromJson(needs.set-driver-version-matrix.outputs.dist) }}
     steps:
       - name: Check out code
         uses: actions/checkout@v4
@@ -154,7 +162,7 @@ jobs:
         id: set_kernel_version
         env:
           BASE_TARGET: "jammy"
-          DIST: "ubuntu22.04"
+          DIST: ${{ matrix.dist }}
         run: |
           echo "matrix_values_not_empty=0" >> $GITHUB_OUTPUT
 
@@ -186,6 +194,7 @@ jobs:
     strategy:
       matrix:
         kernel_version: ${{ fromJson(needs.determine-e2e-test-matrix.outputs.matrix_values) }}
+        dist: ${{ fromJson(needs.set-driver-version-matrix.outputs.dist) }}
     steps:
       - name: Check out code
         uses: actions/checkout@v4
@@ -221,7 +230,7 @@ jobs:
           echo "PRIVATE_REGISTRY=ghcr.io" >> $GITHUB_ENV
           KERNEL_VERSION="${{ matrix.kernel_version }}"
           echo "KERNEL_VERSION=$KERNEL_VERSION" >> $GITHUB_ENV
-          echo "DIST=ubuntu22.04" >> $GITHUB_ENV
+          echo "DIST=${{ matrix.dist }}" >> $GITHUB_ENV
           driver_branch_json="${{ needs.set-driver-version-matrix.outputs.driver_branch }}"
           DRIVER_BRANCHES=($(echo "$driver_branch_json" | jq -r '.[]'))
           echo "DRIVER_BRANCHES=${DRIVER_BRANCHES[*]}" >> $GITHUB_ENV
@@ -300,6 +309,7 @@ jobs:
       matrix:
         driver_branch: ${{ fromJson(needs.set-driver-version-matrix.outputs.driver_branch) }}
         kernel_version: ${{ fromJson(needs.determine-e2e-test-matrix.outputs.matrix_values) }}
+        dist: ${{ fromJson(needs.set-driver-version-matrix.outputs.dist) }}     
     steps:
       - name: Check out code
         uses: actions/checkout@v4
@@ -313,7 +323,7 @@ jobs:
       - name:  Set image vars
         run: |
           echo "PRIVATE_REGISTRY=ghcr.io" >> $GITHUB_ENV
-          echo "DIST=ubuntu22.04" >> $GITHUB_ENV
+          echo "DIST=${{ matrix.dist }}" >> $GITHUB_ENV
 
       - name: Download built image artifact
         uses: actions/download-artifact@v4
