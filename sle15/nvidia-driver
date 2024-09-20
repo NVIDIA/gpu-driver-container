@@ -20,6 +20,7 @@ _update_package_cache() {
         echo "Updating the package cache..."
     	FLAVOR="$(echo ${KERNEL_VERSION} | cut -d- -f3)"
     	if [ "$FLAVOR" == "azure" ]; then
+	    # consumed by container-suseconnect when calling `zypper refresh`
 	    export ADDITIONAL_MODULES="sle-module-public-cloud"
 	fi
         if ! zypper refresh; then
