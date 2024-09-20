@@ -12,6 +12,9 @@ NVIDIA_MODULE_PARAMS=()
 NVIDIA_UVM_MODULE_PARAMS=()
 NVIDIA_MODESET_MODULE_PARAMS=()
 
+OPEN_KERNEL_MODULES_ENABLED=${OPEN_KERNEL_MODULES_ENABLED:-true}
+[[ "${OPEN_KERNEL_MODULES_ENABLED}" == "false" ]] && KERNEL_TYPE=kernel-open || KERNEL_TYPE=kernel
+
 _update_package_cache() {
     if [ "${PACKAGE_TAG:-}" != "builtin" ]; then
         echo "Updating the package cache..."
@@ -96,8 +99,8 @@ _kernel_requires_package() {
 
     echo "Checking NVIDIA driver packages..."
 
-    [[ ! -d /usr/src/nvidia-${DRIVER_VERSION}/kernel ]] && return 0
-    cd /usr/src/nvidia-${DRIVER_VERSION}/kernel
+    [[ ! -d /usr/src/nvidia-${DRIVER_VERSION}/${KERNEL_TYPE} ]] && return 0
+    cd /usr/src/nvidia-${DRIVER_VERSION}/${KERNEL_TYPE}
 
     proc_mount_arg="--proc-mount-point /lib/modules/${KERNEL_VERSION}/proc"
     for pkg_name in $(ls -d -1 precompiled/** 2> /dev/null); do
@@ -120,7 +123,7 @@ _create_driver_package() (
     trap "make -s -j ${MAX_THREADS} SYSSRC=/lib/modules/${KERNEL_VERSION}/source clean > /dev/null" EXIT
 
     echo "Compiling NVIDIA driver kernel modules..."
-    cd /usr/src/nvidia-${DRIVER_VERSION}/kernel
+    cd /usr/src/nvidia-${DRIVER_VERSION}/${KERNEL_TYPE}
     make -s -j ${MAX_THREADS} SYSSRC=/lib/modules/${KERNEL_VERSION}/source nv-linux.o nv-modeset-linux.o > /dev/null
 
     echo "Relinking NVIDIA driver kernel modules..."
@@ -331,7 +334,7 @@ _install_driver() {
     if [ "${ACCEPT_LICENSE}" = "yes" ]; then
         install_args+=("--accept-license")
     fi
-    nvidia-installer --kernel-module-only --no-drm --ui=none --no-nouveau-check ${install_args[@]+"${install_args[@]}"}
+    IGNORE_CC_MISMATCH=1 nvidia-installer --kernel-module-only --no-drm --ui=none --no-nouveau-check -m=${KERNEL_TYPE} --no-rebuild-initramfs ${install_args[@]+"${install_args[@]}"}
 }
 
 # Mount the driver rootfs into the run directory with the exception of sysfs.
@@ -429,7 +432,7 @@ _prepare() {
         cd NVIDIA-Linux-$DRIVER_ARCH-$DRIVER_VERSION && \
         sh /tmp/install.sh nvinstall && \
         mkdir -p /usr/src/nvidia-$DRIVER_VERSION && \
-        mv LICENSE mkprecompiled kernel /usr/src/nvidia-$DRIVER_VERSION && \
+        mv LICENSE mkprecompiled $KERNEL_TYPE /usr/src/nvidia-$DRIVER_VERSION && \
         sed '9,${/^\(kernel\|LICENSE\)/!d}' .manifest > /usr/src/nvidia-$DRIVER_VERSION/.manifest
 
     echo -e "\n========== NVIDIA Software Installer ==========\n"
