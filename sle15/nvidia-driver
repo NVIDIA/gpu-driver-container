@@ -268,9 +268,11 @@ _load_driver() {
 _unload_driver() {
     local rmmod_args=()
     local nvidia_deps=0
+    local nvidia_modeset_deps=0
     local nvidia_refs=0
     local nvidia_uvm_refs=0
     local nvidia_modeset_refs=0
+    local nvidia_drm_refs=0
 
     echo "Stopping NVIDIA persistence daemon..."
     if [ -f /var/run/nvidia-persistenced/nvidia-persistenced.pid ]; then
@@ -318,6 +320,11 @@ _unload_driver() {
     fi
 
     echo "Unloading NVIDIA driver kernel modules..."
+    if [ -f /sys/module/nvidia_drm/refcnt ]; then
+        nvidia_drm_refs=$(< /sys/module/nvidia_drm/refcnt)
+        rmmod_args+=("nvidia-drm")
+        ((++nvidia_modeset_deps))
+    fi
     if [ -f /sys/module/nvidia_modeset/refcnt ]; then
         nvidia_modeset_refs=$(< /sys/module/nvidia_modeset/refcnt)
         rmmod_args+=("nvidia-modeset")
@@ -332,7 +339,7 @@ _unload_driver() {
         nvidia_refs=$(< /sys/module/nvidia/refcnt)
         rmmod_args+=("nvidia")
     fi
-    if [ ${nvidia_refs} -gt ${nvidia_deps} ] || [ ${nvidia_uvm_refs} -gt 0 ] || [ ${nvidia_modeset_refs} -gt 0 ]; then
+    if [ ${nvidia_refs} -gt ${nvidia_deps} ] || [ ${nvidia_uvm_refs} -gt 0 ] || [ ${nvidia_modeset_refs} -gt ${nvidia_modeset_deps} ] || [ ${nvidia_drm_refs} -gt 0 ]; then
         echo "Could not unload NVIDIA driver kernel modules, driver is in use" >&2
         return 1
     fi
