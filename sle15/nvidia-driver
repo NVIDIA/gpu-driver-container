@@ -419,7 +419,7 @@ _start_vgpu_topology_daemon() {
     nvidia-topologyd
 }
 
-init() {
+_prepare() {
     if [ "${DRIVER_TYPE}" = "vgpu" ]; then
         _find_vgpu_driver_version || exit 1
     fi
@@ -434,6 +434,10 @@ init() {
 
     echo -e "\n========== NVIDIA Software Installer ==========\n"
     echo -e "Starting installation of NVIDIA driver version ${DRIVER_VERSION} for Linux kernel version ${KERNEL_VERSION}\n"
+}
+
+_prepare_exclusive() {
+    _prepare
 
     exec 3> ${PID_FILE}
     if ! flock -n 3; then
@@ -447,7 +451,10 @@ init() {
 
     _unload_driver || exit 1
     _unmount_rootfs
+}
 
+_build() {
+    local cleanup=false
 
     # Install dependencies
     if _kernel_requires_package; then
@@ -455,14 +462,21 @@ init() {
         _resolve_kernel_version || exit 1
         _install_prerequisites
         _create_driver_package
-        #_remove_prerequisites
-        _cleanup_package_cache
+	cleanup=true
     fi
 
-    # Build the driver
+    # Build the driver - rootfs needs to be mounted as the build magic attempts to
+    # load the driver.
     _install_driver
-    _load_driver || exit 1
+    if $cleanup; then
+        # Do not call _remove_prerequisites as this will delete depmod information
+        _cleanup_package_cache
+    fi
+}
+
+_load() {
     _mount_rootfs
+    _load_driver || exit 1
     _write_kernel_update_hook
 
     echo "Done, now waiting for signal"
@@ -471,6 +485,26 @@ init() {
     trap - EXIT
     while true; do wait $! || continue; done
     exit 0
+}
+
+init() {
+    _prepare_exclusive
+
+    _build
+
+    _load
+}
+
+build() {
+    _prepare
+
+    _build
+}
+
+load() {
+    _prepare_exclusive
+
+    _load
 }
 
 update() {
@@ -511,7 +545,7 @@ update() {
     if _kernel_requires_package; then
         _create_driver_package
     fi
-    #_remove_prerequisites
+    # Do not call _remove_prerequisites as this will delete demod information
     _cleanup_package_cache
 
     echo "Done"
@@ -524,6 +558,8 @@ Usage: $0 COMMAND [ARG...]
 
 Commands:
   init   [-a | --accept-license] [-m | --max-threads MAX_THREADS]
+  build  [-a | --accept-license] [-m | --max-threads MAX_THREADS]
+  load
   update [-k | --kernel VERSION] [-s | --sign KEYID] [-t | --tag TAG] [-m | --max-threads MAX_THREADS]
 EOF
     exit 1
@@ -535,6 +571,8 @@ fi
 command=$1; shift
 case "${command}" in
     init) options=$(getopt -l accept-license,max-threads: -o am: -- "$@") ;;
+    build) options=$(getopt -l accept-license,tag:,max-threads: -o a:t:m: -- "$@") ;;
+    load) options="" ;;
     update) options=$(getopt -l kernel:,sign:,tag:,max-threads: -o k:s:t:m: -- "$@") ;;
     *) usage ;;
 esac
