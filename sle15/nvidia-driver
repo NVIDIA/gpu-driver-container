@@ -70,10 +70,13 @@ _install_prerequisites() (
 
     echo "Installing Linux kernel source..."
     local version_without_flavor=$(echo ${KERNEL_VERSION} | cut -d- -f-2)
+    export ZYPP_MODALIAS_SYSFS=$(mktemp /tmp/modalias-XXXX)
     if ! zypper --non-interactive in -y --no-recommends --capability kernel-${FLAVOR} = ${version_without_flavor} kernel-${FLAVOR}-devel = ${version_without_flavor} ; then
 	echo "FATAL: failed to install kernel packages. Ensure SLES subscription is available."
+	rm -f ${ZYPP_MODALIAS_SYSFS}
         exit 1
     fi
+    rm -f ${ZYPP_MODALIAS_SYSFS}; unset ZYPP_MODALIAS_SYSFS
 
     echo "Generating Linux kernel version string..."
     extract-vmlinux /boot/vmlinuz-${KERNEL_VERSION} | strings | grep -E '^Linux version' | sed 's/^\(.*\)\s\+(.*)$/\1/' > version
