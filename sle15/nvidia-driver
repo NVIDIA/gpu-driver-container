@@ -354,7 +354,7 @@ _install_driver() {
     if [ "${ACCEPT_LICENSE}" = "yes" ]; then
         install_args+=("--accept-license")
     fi
-    IGNORE_CC_MISMATCH=1 nvidia-installer --kernel-module-only --no-drm --ui=none --no-nouveau-check -m=${KERNEL_TYPE} --no-rebuild-initramfs ${install_args[@]+"${install_args[@]}"}
+    IGNORE_CC_MISMATCH=1 nvidia-installer --kernel-module-only --ui=none --no-nouveau-check -m=${KERNEL_TYPE} --no-rebuild-initramfs ${install_args[@]+"${install_args[@]}"} --skip-module-load # --no-drm
 }
 
 # Mount the driver rootfs into the run directory with the exception of sysfs.
