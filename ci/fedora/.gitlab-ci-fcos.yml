@@ -174,7 +174,8 @@ stages:
                   build-kernel-modules-${_driver_version} ${DOCKER_IMAGE}
               echo "Pushing ${DOCKER_IMAGE} with compiled kernel interface modules."
             else
-              cat /tmp/kernel-module-build.log | grep -Ev "'naked' return found in RETHUNK build|missing int3 after ret"
+              cat /tmp/kernel-module-build.log | grep -Ev "'naked' return found in RETHUNK build|missing int3 after ret" | \
+                grep -v "'naked' return found in MITIGATION_RETHUNK build"
               export DOCKER_IMAGE_NO_PRECOMPILED_KERNEL_MODULES=${IMAGE_BASE_NAME}:${_tag_prefix}${_driver_version}-fedora${FEDORA_VERSION}
               docker tag ${DOCKER_IMAGE} ${DOCKER_IMAGE_NO_PRECOMPILED_KERNEL_MODULES}
               export DOCKER_IMAGE=${DOCKER_IMAGE_NO_PRECOMPILED_KERNEL_MODULES}
