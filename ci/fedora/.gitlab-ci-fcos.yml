@@ -164,12 +164,14 @@ stages:
         if ! $(docker manifest inspect ${DOCKER_IMAGE} > /dev/null 2>&1) || [[ "${_overwrite_tag}" == "1" ]]; then
           if [[ "${COMPILE_KERNEL_MODULES}" == "1" ]]; then
             if ((docker run --privileged --pid=host --name build-kernel-modules-${_driver_version} \
+              --env HTTP_PROXY=${HTTP_PROXY} --env HTTPS_PROXY=${HTTPS_PROXY} \
               --entrypoint nvidia-driver ${DOCKER_IMAGE} update -t builtin 2>&1 ) > /tmp/kernel-module-build.log); then
               cat /tmp/kernel-module-build.log | grep -Ev "'naked' return found in RETHUNK build|missing int3 after ret" | \
                 grep -v "'naked' return found in MITIGATION_RETHUNK build"
               echo "Suppressing many compiliation warnings re MITIGATION_RETHUNK and RETHUNK because they overload pipeline logs."
               docker commit -m '"Compile Linux kernel modules version ${FEDORA_UNAME} for NVIDIA driver version ${_driver_version}"' \
-                --change='ENTRYPOINT ["nvidia-driver", "init"]' build-kernel-modules-${_driver_version} ${DOCKER_IMAGE}
+                --change='ENTRYPOINT ["nvidia-driver", "init"]' -c 'ENV HTTP_PROXY=' -c 'ENV HTTPS_PROXY=' \
+                  build-kernel-modules-${_driver_version} ${DOCKER_IMAGE}
               echo "Pushing ${DOCKER_IMAGE} with compiled kernel interface modules."
             else
               cat /tmp/kernel-module-build.log | grep -Ev "'naked' return found in RETHUNK build|missing int3 after ret"
