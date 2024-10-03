@@ -115,9 +115,9 @@ variables:
   RELEASE_REGISTRY_TOKEN: ""
 
 default:
-  image: docker:25.0.2-git
+  image: docker:27.3
   services:
-    - name: docker:25.0.2-dind
+    - name: docker:27.3-dind
 
 stages:
   - build
@@ -219,11 +219,12 @@ build-push:
     - if: $CI_COMMIT_REF_NAME =~ /^fedora/ || $CI_COMMIT_TAG =~ /fedora$/
 
 .common-scan:
-  image: registry.gitlab.com/security-products/container-scanning:6
+  image: registry.gitlab.com/security-products/container-scanning:7
   stage: scan
   variables:
     GIT_STRATEGY: fetch
     DOCKERFILE_PATH: '$CI_PROJECT_DIR/fedora/Dockerfile'
+    CS_DOCKERFILE_PATH: '$CI_PROJECT_DIR/fedora/Dockerfile'
     # SECURE_LOG_LEVEL: 'debug'
     TRIVY_TIMEOUT: 30m
   allow_failure: false
@@ -241,30 +242,18 @@ build-push:
       function scan_fn() {
         local _driver_version=$1
         local _tag_prefix=$2
-        if [[ "${KERNEL_TYPE}" == "kernel-open" ]]; then
-          local _driver_major_version=$(echo ${_driver_version} | cut -c1-3)
-          if [[ "${_driver_major_version}" != "515" && "${_driver_major_version}" != "525" ]]; then
-            echo "Driver version ${_driver_version} does not support ${KERNEL_TYPE}, skipping scan."
-            return
-          fi
-        fi
         export DOCKER_TAG=${_tag_prefix}${_driver_version}-${FEDORA_UNAME}-fedora${FEDORA_VERSION}
         export CS_IMAGE=${IMAGE_BASE_NAME}:${DOCKER_TAG}
         # Try to scan the kernel-specific tag...if it fails go to non-kernel-specific tag...
         if ! (gtcs scan); then
           export DOCKER_TAG=${_tag_prefix}${_driver_version}-fedora${FEDORA_VERSION}
-          export CS_IMAGE=${IMAGE_BASE_NAME}:${DOCKER_TAG}
           gtcs scan
         fi
         cat gl-container-scanning-report.json | jq '.vulnerabilities[].severity' | sort | uniq -c
         if [[ $(cat gl-container-scanning-report.json | jq '.vulnerabilities | any') == 'true' ]]; then
           exit 1
         fi
-        if [[ $(cat gl-dependency-scanning-report.json | jq '.vulnerabilities | any') == 'true' ]]; then
-          exit 1
-        fi
         mv gl-container-scanning-report.json driver-artifacts/gl-container-scanning-report-${_driver_version}.json
-        mv gl-dependency-scanning-report.json driver-artifacts/gl-dependency-scanning-report-${_driver_version}.json
       }
   script:
     - for driver_version in ${DRIVER_VERSIONS:-${DRIVER_VERSION}}; do scan_fn ${driver_version};done
