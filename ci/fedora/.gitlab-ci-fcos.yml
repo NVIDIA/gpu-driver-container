@@ -250,6 +250,7 @@ build-push:
         # Try to scan the kernel-specific tag...if it fails go to non-kernel-specific tag...
         if ! (gtcs scan); then
           export DOCKER_TAG=${_tag_prefix}${_driver_version}-fedora${FEDORA_VERSION}
+          export CS_IMAGE=${IMAGE_BASE_NAME}:${DOCKER_TAG}
           gtcs scan
         fi
         cat gl-container-scanning-report.json | jq '.vulnerabilities[].severity' | sort | uniq -c
