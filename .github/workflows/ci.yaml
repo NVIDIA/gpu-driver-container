@@ -15,12 +15,22 @@
 name: End-to-end tests
 
 on:
-  workflow_run:
-    workflows: [image]
+  # workflow_run:
+  #   workflows: [image]
+  #   types:
+  #     - completed
+  #   branches:
+  #     - main
+  pull_request:
     types:
-      - completed
+      - opened
+      - synchronize
     branches:
-      - main
+      - amazonlinuxsupport
+  push:
+    branches:
+      - amazonlinuxsupport
+
 
 jobs:
   e2e-tests-nvidiadriver:
