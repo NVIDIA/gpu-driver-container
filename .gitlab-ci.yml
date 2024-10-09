@@ -50,6 +50,15 @@ include:
     - if: $CI_PIPELINE_SOURCE != "schedule"
 
 # Define the image build targets
+.image-build-amzn2023:
+  # Perform for each DRIVER_VERSION
+  extends:
+    - .driver-versions-amzn2023
+    - .image-build-generic
+  rules:
+    - if: $CI_PIPELINE_SOURCE != "schedule"
+
+# Define the image build targets
 .image-build-rhel9:
   # Perform for each DRIVER_VERSION
   extends:
@@ -68,6 +77,11 @@ image-ubuntu22.04:
   extends:
     - .image-build-ubuntu22.04
     - .dist-ubuntu22.04
+
+image-amzn2023:
+  extends:
+    - .image-build-amzn2023
+    - .dist-amzn2023
 
 image-rhel8:
   extends:
