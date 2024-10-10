@@ -15,21 +15,21 @@
 name: End-to-end tests
 
 on:
-  # workflow_run:
-  #   workflows: [image]
-  #   types:
-  #     - completed
-  #   branches:
-  #     - main
+  workflow_run:
+    workflows: [image]
+    types:
+      - completed
+    branches:
+      - main
   pull_request:
     types:
       - opened
       - synchronize
     branches:
-      - amazonlinuxsupport
+      - testshivaku
   push:
     branches:
-      - amazonlinuxsupport
+      - testshivaku
 
 
 jobs:
