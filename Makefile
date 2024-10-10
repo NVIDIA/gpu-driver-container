@@ -54,7 +54,7 @@ OUT_IMAGE_TAG = $(OUT_IMAGE_VERSION)-$(OUT_DIST)
 OUT_IMAGE = $(OUT_IMAGE_NAME):$(OUT_IMAGE_TAG)
 
 ##### Public rules #####
-DISTRIBUTIONS := ubuntu18.04 ubuntu20.04 ubuntu22.04 signed_ubuntu20.04 signed_ubuntu22.04 rhel8 rhel9 flatcar fedora36 sles15.3 precompiled_rhcos
+DISTRIBUTIONS := ubuntu18.04 ubuntu20.04 ubuntu22.04 amzn2023 signed_ubuntu20.04 signed_ubuntu22.04 rhel8 rhel9 flatcar fedora36 sles15.3 precompiled_rhcos
 PUSH_TARGETS := $(patsubst %, push-%, $(DISTRIBUTIONS))
 BASE_FROM := jammy focal
 PUSH_TARGETS := $(patsubst %, push-%, $(DISTRIBUTIONS))
@@ -92,6 +92,10 @@ pull-signed_ubuntu22.04%: DIST = ubuntu22.04
 pull-signed_ubuntu22.04%: DRIVER_TAG = $(DRIVER_BRANCH)
 pull-signed_ubuntu22.04%: IMAGE_TAG = $(DRIVER_BRANCH)-$(KERNEL_VERSION)-$(DIST)
 
+pull-signed_amzn2023%: DIST = amzn2023
+pull-signed_amzn2023%: DRIVER_TAG = $(DRIVER_BRANCH)
+pull-signed_amzn2023%: IMAGE_TAG = $(DRIVER_BRANCH)-$(KERNEL_VERSION)-$(DIST)
+
 PLATFORM ?= linux/amd64
 $(DRIVER_PULL_TARGETS): pull-%:
 	$(DOCKER) pull "--platform=$(PLATFORM)" "$(IMAGE)"
@@ -108,6 +112,10 @@ archive-signed_ubuntu20.04%: DRIVER_TAG = $(DRIVER_BRANCH)
 archive-signed_ubuntu22.04%: DIST = ubuntu22.04
 archive-signed_ubuntu22.04%: DRIVER_TAG = $(DRIVER_BRANCH)
 archive-signed_ubuntu22.04%: IMAGE_TAG = $(DRIVER_BRANCH)-$(KERNEL_VERSION)-$(DIST)
+
+archive-signed_amzn2023%: DIST = amzn2023
+archive-signed_amzn2023%: DRIVER_TAG = $(DRIVER_BRANCH)
+archive-signed_amzn2023%: IMAGE_TAG = $(DRIVER_BRANCH)-$(KERNEL_VERSION)-$(DIST)
 
 $(DRIVER_ARCHIVE_TARGETS): archive-%:
 	$(DOCKER) save "$(IMAGE)" -o "archive.tar"
@@ -129,6 +137,11 @@ push-signed_ubuntu22.04%: DIST = ubuntu22.04
 push-signed_ubuntu22.04%: DRIVER_TAG = $(DRIVER_BRANCH)
 push-signed_ubuntu22.04%: IMAGE_TAG = $(DRIVER_BRANCH)-$(KERNEL_VERSION)-$(DIST)
 push-signed_ubuntu22.04%: OUT_IMAGE_TAG = $(DRIVER_BRANCH)-$(KERNEL_VERSION)-$(DIST)
+
+push-signed_amzn2023%: DIST = amzn2023
+push-signed_amzn2023%: DRIVER_TAG = $(DRIVER_BRANCH)
+push-signed_amzn2023%: IMAGE_TAG = $(DRIVER_BRANCH)-$(KERNEL_VERSION)-$(DIST)
+push-signed_amzn2023%: OUT_IMAGE_TAG = $(DRIVER_BRANCH)-$(KERNEL_VERSION)-$(DIST)
 
 # $(DRIVER_BUILD_TARGETS) is in the form of build-$(DIST)-$(DRIVER_VERSION)
 # Parse the target to set the required variables.
@@ -174,6 +187,13 @@ build-signed_ubuntu22.04%: SUBDIR = ubuntu22.04/precompiled
 build-signed_ubuntu22.04%: DRIVER_TAG = $(DRIVER_BRANCH)
 build-signed_ubuntu22.04%: IMAGE_TAG = $(DRIVER_BRANCH)-$(KERNEL_VERSION)-$(DIST)
 build-signed_ubuntu22.04%: DOCKER_BUILD_ARGS =  --build-arg KERNEL_VERSION="$(KERNEL_VERSION)"
+
+# amzn2023 Precompiled Driver
+build-signed_amzn2023%: DIST = amzn2023
+build-signed_amzn2023%: DRIVER_TAG = $(DRIVER_BRANCH)
+build-signed_amzn2023%: IMAGE_TAG = $(DRIVER_BRANCH)-$(KERNEL_VERSION)-$(DIST)
+build-signed_amzn2023%: DOCKER_BUILD_ARGS =  --build-arg KERNEL_VERSION="$(KERNEL_VERSION)"
+# build-signed_amzn2023%: DOCKER_BUILD_PLATFORM_OPTIONS = --platform=linux/amd64
 
 # base is an image used to poll Canonical for the latest kernel version
 build-base-%: DOCKERFILE = $(CURDIR)/base/Dockerfile
