@@ -15,10 +15,13 @@
 name: End-to-end tests
 
 on:
-  workflow_run:
-    workflows: [image]
+  pull_request:
     types:
-      - completed
+      - opened
+      - synchronize
+    branches:
+      - main
+  push:
     branches:
       - main
 
