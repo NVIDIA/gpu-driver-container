@@ -121,6 +121,12 @@ image-rhel9:
     - .dist-rhel9
     - .driver-versions-rhel9
 
+image-amzn2023:
+  extends:
+    - .image-pull
+    - .dist-amzn2023
+    - .driver-versions-amzn2023
+
 # The .scan step forms the base of the image scan operation performed before releasing
 # images.
 .scan-generic:
@@ -190,6 +196,18 @@ image-rhel9:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
     - !reference [.pipeline-trigger-rules, rules]
 
+.scan-amzn2023:
+  # Repeat for each DRIVER_VERSION
+  extends:
+    - .driver-versions-amzn2023
+    - .scan-generic
+  rules:
+    - !reference [.scan-rules-common, rules]
+    - if: $CI_PIPELINE_SOURCE == "schedule"
+      when: never
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - !reference [.pipeline-trigger-rules, rules]
+
 .scan-precompiled-ubuntu22.04:
   variables:
     DIST: signed_ubuntu22.04
@@ -234,6 +252,14 @@ scan-ubuntu22.04-arm64:
     - .platform-arm64
   needs:
     - image-ubuntu22.04
+
+scan-amzn2023-amd64:
+  extends:
+    - .scan-amzn2023
+    - .dist-amzn2023
+    - .platform-amd64
+  needs:
+    - image-amzn2023
 
 scan-precompiled-ubuntu22.04-amd64:
   variables:
@@ -301,6 +327,12 @@ release:ngc-ubuntu22.04:
     - .release:ngc
     - .dist-ubuntu22.04
     - .driver-versions-ubuntu22.04
+
+release:ngc-amzn2023:
+  extends:
+    - .release:ngc
+    - .dist-amzn2023
+    - .driver-versions-amzn2023
 
 release:ngc-precompiled-ubuntu22.04:
   variables:
@@ -478,6 +510,9 @@ sign:ngc-ubuntu-rhel-rhcos:
     - SIGN_JOB_NAME: ["ubuntu"]
       VERSION: ["20.04"]
       DRIVER_VERSION: ["535.183.06", "550.90.12", "560.35.03"]
+    - SIGN_JOB_NAME: ["amzn"]
+      VERSION: ["2023"]
+      DRIVER_VERSION: ["560.35.03"]
     - SIGN_JOB_NAME: ["rhel"]
       VERSION: ["8.8", "8.10"]
       DRIVER_VERSION: ["535.183.06", "550.90.12", "560.35.03"]
