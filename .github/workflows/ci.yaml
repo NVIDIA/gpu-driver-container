@@ -68,7 +68,7 @@ jobs:
       run: |
         rc=0
         for DRIVER_VERSION in ${DRIVER_VERSIONS}; do
-          echo " SHIVA Running e2e for DRIVER_VERSION=$DRIVER_VERSION"
+          echo "Running e2e for DRIVER_VERSION=$DRIVER_VERSION"
           status=0
           OPERATOR_OPTIONS="${GPU_OPERATOR_OPTIONS} --set driver.version=${COMMIT_SHORT_SHA}-${DRIVER_VERSION}"
           # add escape character for space

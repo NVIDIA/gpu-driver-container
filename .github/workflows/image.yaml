@@ -40,6 +40,7 @@ jobs:
         dist:
           - ubuntu20.04
           - ubuntu22.04
+          - amzn2023
           - rhel8
           - rhel9
         ispr:
@@ -52,6 +53,10 @@ jobs:
             driver: 535.183.06
           - ispr: true
             dist: ubuntu20.04
+            driver: 550.90.12
+          - dist: amzn2023
+            driver: 535.183.06
+          - dist: amzn2023
             driver: 550.90.12
       fail-fast: false
     steps:
