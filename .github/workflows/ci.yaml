@@ -26,10 +26,10 @@ on:
       - opened
       - synchronize
     branches:
-      - amazonlinuxsupport
+      - main
   push:
     branches:
-      - amazonlinuxsupport
+      - main
 
 
 jobs:
