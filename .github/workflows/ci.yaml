@@ -53,7 +53,8 @@ jobs:
 
     - name:  Set and Calculate test vars
       run: |
-        echo "instance_hostname=ubuntu@${{ steps.get_public_dns_name.outputs.result }}" >> $GITHUB_ENV
+        echo "SHIVA --- instance_hostname=ec2-user@${{ steps.get_public_dns_name.outputs.result }}"
+        echo "instance_hostname=ec2-user@${{ steps.get_public_dns_name.outputs.result }}" >> $GITHUB_ENV
         echo "private_key=${{ github.workspace }}/key.pem" >> $GITHUB_ENV
         echo "${{ secrets.AWS_SSH_KEY }}" > ${{ github.workspace }}/key.pem && chmod 400 ${{ github.workspace }}/key.pem
         echo "COMMIT_SHORT_SHA=${GITHUB_SHA:0:8}" >> $GITHUB_ENV
