@@ -10,12 +10,12 @@ spec:
     privateKey: HOLODECK_PRIVATE_KEY
   instance:
     type: g4dn.xlarge
-    region: us-west-1
+    region: us-east-1
     ingressIpRanges:
       - 0.0.0.0/0
     image:
       architecture: x86_64
-      imageId: ami-04f5ed712c9aa1acf
+      imageId: ami-089f365c7b6a04f00
   containerRuntime:
     install: true
     name: containerd
