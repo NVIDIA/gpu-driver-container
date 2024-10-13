@@ -14,7 +14,7 @@ spec:
     ingressIpRanges:
       - 0.0.0.0/0
     image:
-      architecture: amd64
+      architecture: x86_64
       imageId: ami-04f5ed712c9aa1acf
   containerRuntime:
     install: true
