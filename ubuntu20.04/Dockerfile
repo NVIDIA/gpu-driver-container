@@ -1,4 +1,4 @@
-FROM nvcr.io/nvidia/cuda:12.6.1-base-ubuntu20.04 as build
+FROM nvcr.io/nvidia/cuda:12.6.2-base-ubuntu20.04 as build
 
 ARG TARGETARCH
 
@@ -33,7 +33,7 @@ RUN git clone https://github.com/NVIDIA/gpu-driver-container driver && \
     go build -o vgpu-util && \
     mv vgpu-util /work
 
-FROM nvcr.io/nvidia/cuda:12.6.1-base-ubuntu20.04
+FROM nvcr.io/nvidia/cuda:12.6.2-base-ubuntu20.04
 
 SHELL ["/bin/bash", "-c"]
 
