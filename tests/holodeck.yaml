@@ -10,7 +10,7 @@ spec:
     privateKey: HOLODECK_PRIVATE_KEY
   instance:
     type: g4dn.xlarge
-    region: us-east-1
+    region: us-west-1
     ingressIpRanges:
       - 0.0.0.0/0
     image:
