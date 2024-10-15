@@ -149,6 +149,7 @@ $(DRIVER_BUILD_TARGETS):
 				$(DOCKER_BUILD_PLATFORM_OPTIONS) \
 				--tag $(IMAGE) \
 				--build-arg DRIVER_VERSION="$(DRIVER_VERSION)" \
+				--build-arg GOLANG_VERSION="$(GOLANG_VERSION)" \
 				--build-arg DRIVER_BRANCH="$(DRIVER_BRANCH)" \
 				--build-arg CUDA_VERSION="$(CUDA_VERSION)" \
 				--build-arg CVE_UPDATES="$(CVE_UPDATES)" \
@@ -186,6 +187,7 @@ $(BASE_BUILD_TARGETS):
 				--tag $(IMAGE)  \
 				--target $(TARGET) \
 				--build-arg CUDA_VERSION="$(CUDA_VERSION)" \
+				--build-arg GOLANG_VERSION="$(GOLANG_VERSION)" \
 				--build-arg DRIVER_BRANCH="$(DRIVER_BRANCH)" \
 				--build-arg KERNEL_FLAVOR="$(KERNEL_FLAVOR)" \
 				--file $(DOCKERFILE) \
