@@ -1,6 +1,7 @@
 FROM nvcr.io/nvidia/cuda:12.6.2-base-ubuntu22.04 as build
 
 ARG TARGETARCH
+ARG GOLANG_VERSION
 
 SHELL ["/bin/bash", "-c"]
 
@@ -16,8 +17,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         curl \
         git && \
     rm -rf /var/lib/apt/lists/*
-
-ENV GOLANG_VERSION=1.22.7
 
 # download appropriate binary based on the target architecture for multi-arch builds
 RUN OS_ARCH=${TARGETARCH/x86_64/amd64} && OS_ARCH=${OS_ARCH/aarch64/arm64} && \
