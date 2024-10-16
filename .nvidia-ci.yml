@@ -80,7 +80,7 @@ variables:
 .image-pull-ubuntu22.04:
   # Perform for each DRIVER_VERSION
   extends:
-    - .driver-versions-ubuntu22.04
+    - .driver-versions
     - .image-pull-generic
   rules:
     - if: $CI_PIPELINE_SOURCE == "schedule"
@@ -119,7 +119,7 @@ image-rhel9:
   extends:
     - .image-pull
     - .dist-rhel9
-    - .driver-versions-rhel9
+    - .driver-versions
 
 # The .scan step forms the base of the image scan operation performed before releasing
 # images.
@@ -181,7 +181,19 @@ image-rhel9:
 .scan-ubuntu22.04:
   # Repeat for each DRIVER_VERSION
   extends:
-    - .driver-versions-ubuntu22.04
+    - .driver-versions
+    - .scan-generic
+  rules:
+    - !reference [.scan-rules-common, rules]
+    - if: $CI_PIPELINE_SOURCE == "schedule"
+      when: never
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - !reference [.pipeline-trigger-rules, rules]
+
+.scan-ubuntu24.04:
+  # Repeat for each DRIVER_VERSION
+  extends:
+    - .driver-versions-ubuntu24.04
     - .scan-generic
   rules:
     - !reference [.scan-rules-common, rules]
@@ -235,6 +247,22 @@ scan-ubuntu22.04-arm64:
   needs:
     - image-ubuntu22.04
 
+scan-ubuntu24.04-amd64:
+  extends:
+    - .scan-ubuntu24.04
+    - .dist-ubuntu24.04
+    - .platform-amd64
+  needs:
+    - image-ubuntu24.04
+
+scan-ubuntu24.04-arm64:
+  extends:
+    - .scan-ubuntu24.04
+    - .dist-ubuntu24.04
+    - .platform-arm64
+  needs:
+    - image-ubuntu24.04
+
 scan-precompiled-ubuntu22.04-amd64:
   variables:
     PLATFORM: linux/amd64
@@ -265,7 +293,7 @@ scan-rhel9-amd64:
     - .scan
     - .dist-rhel9
     - .platform-amd64
-    - .driver-versions-rhel9
+    - .driver-versions
   needs:
     - image-rhel9
 
@@ -274,7 +302,7 @@ scan-rhel9-arm64:
     - .scan
     - .dist-rhel9
     - .platform-arm64
-    - .driver-versions-rhel9
+    - .driver-versions
   needs:
     - image-rhel9
 
@@ -300,7 +328,13 @@ release:ngc-ubuntu22.04:
   extends:
     - .release:ngc
     - .dist-ubuntu22.04
-    - .driver-versions-ubuntu22.04
+    - .driver-versions
+
+release:ngc-ubuntu24.04:
+  extends:
+    - .release:ngc
+    - .dist-ubuntu24.04
+    - .driver-versions-ubuntu24.04
 
 release:ngc-precompiled-ubuntu22.04:
   variables:
@@ -478,6 +512,9 @@ sign:ngc-ubuntu-rhel-rhcos:
     - SIGN_JOB_NAME: ["ubuntu"]
       VERSION: ["20.04"]
       DRIVER_VERSION: ["535.183.06", "550.90.12", "560.35.03"]
+    - SIGN_JOB_NAME: ["ubuntu"]
+      VERSION: ["24.04"]
+      DRIVER_VERSION: ["550.90.12", "560.35.03"]
     - SIGN_JOB_NAME: ["rhel"]
       VERSION: ["8.8", "8.10"]
       DRIVER_VERSION: ["535.183.06", "550.90.12", "560.35.03"]
