@@ -14,8 +14,8 @@ spec:
     ingressIpRanges:
       - 0.0.0.0/0
     image:
-      architecture: amd64
-      imageId: ami-0ce2cb35386fc22e9
+      architecture: x86_64
+      imageId: ami-0cf4e1fcfd8494d5b
   containerRuntime:
     install: true
     name: containerd
