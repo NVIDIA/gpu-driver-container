@@ -49,7 +49,7 @@ RUN export KVER=$(echo ${KERNEL_VERSION} | cut -d '-' -f 1) \
         --define "driver_branch ${DRIVER_STREAM}" \
         -v -bb SPECS/kmod-nvidia.spec
 
-FROM nvcr.io/nvidia/cuda:12.5.1-base-${CUDA_DIST}
+FROM nvcr.io/nvidia/cuda:12.6.2-base-${CUDA_DIST}
 
 ARG KERNEL_VERSION=''
 ARG RHEL_VERSION=''
