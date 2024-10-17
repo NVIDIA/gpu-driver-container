@@ -1,4 +1,4 @@
-FROM nvcr.io/nvidia/cuda:12.5.1-base-ubuntu20.04
+FROM nvcr.io/nvidia/cuda:12.6.2-base-ubuntu20.04
 
 ENV DEBIAN_FRONTEND=noninteractive
 
