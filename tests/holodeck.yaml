@@ -15,7 +15,7 @@ spec:
       - 0.0.0.0/0
     image:
       architecture: amd64
-      imageId: ami-0ce2cb35386fc22e9
+      imageId: ami-09b2477d43bc5d0ac
   containerRuntime:
     install: true
     name: containerd
