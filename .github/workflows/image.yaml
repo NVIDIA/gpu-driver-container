@@ -34,8 +34,8 @@ jobs:
     strategy:
       matrix:
         driver:
-          - 535.183.06
-          - 550.90.12
+          - 535.216.01
+          - 550.127.05
           - 560.35.03
         dist:
           - ubuntu20.04
@@ -49,10 +49,10 @@ jobs:
             dist: rhel8
           - ispr: true
             dist: ubuntu20.04
-            driver: 535.183.06
+            driver: 535.216.01
           - ispr: true
             dist: ubuntu20.04
-            driver: 550.90.12
+            driver: 550.127.05
       fail-fast: false
     steps:
       - uses: actions/checkout@v4
