@@ -36,17 +36,13 @@ jobs:
         driver:
           - 535.216.01
           - 550.127.05
-          - 560.35.03
         dist:
           - ubuntu20.04
           - ubuntu22.04
           - rhel8
-          - rhel9
         ispr:
           - ${{github.event_name == 'pull_request'}}
         exclude:
-          - ispr: true
-            dist: rhel8
           - ispr: true
             dist: ubuntu20.04
             driver: 535.216.01
