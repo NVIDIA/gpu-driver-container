@@ -115,12 +115,6 @@ image-rhel8:
     - .image-pull
     - .dist-rhel8
 
-image-rhel9:
-  extends:
-    - .image-pull
-    - .dist-rhel9
-    - .driver-versions-rhel9
-
 # The .scan step forms the base of the image scan operation performed before releasing
 # images.
 .scan-generic:

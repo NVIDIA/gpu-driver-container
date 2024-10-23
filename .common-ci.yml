@@ -268,13 +268,6 @@ release:staging-rhel8:
   needs:
     - image-rhel8
 
-release:staging-rhel9:
-  extends:
-    - .release:staging-rhel9
-    - .dist-rhel9
-  needs:
-    - image-rhel9
-
 .release:staging-precompiled:
   stage: release
   variables:
