@@ -44,7 +44,16 @@ include:
 .image-build-ubuntu22.04:
   # Perform for each DRIVER_VERSION
   extends:
-    - .driver-versions-ubuntu22.04
+    - .driver-versions
+    - .image-build-generic
+  rules:
+    - if: $CI_PIPELINE_SOURCE != "schedule"
+
+# Define the image build targets
+.image-build-ubuntu24.04:
+  # Perform for each DRIVER_VERSION
+  extends:
+    - .driver-versions-ubuntu24.04
     - .image-build-generic
   rules:
     - if: $CI_PIPELINE_SOURCE != "schedule"
@@ -53,7 +62,7 @@ include:
 .image-build-rhel9:
   # Perform for each DRIVER_VERSION
   extends:
-    - .driver-versions-rhel9
+    - .driver-versions
     - .image-build-generic
   rules:
     - if: $CI_PIPELINE_SOURCE != "schedule"
@@ -68,6 +77,11 @@ image-ubuntu22.04:
   extends:
     - .image-build-ubuntu22.04
     - .dist-ubuntu22.04
+
+image-ubuntu24.04:
+  extends:
+    - .image-build-ubuntu24.04
+    - .dist-ubuntu24.04
 
 image-rhel8:
   extends:
