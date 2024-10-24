@@ -86,6 +86,14 @@ RUN if [ "$DRIVER_TYPE" != "vgpu" ] && [ "$TARGETARCH" != "arm64" ]; then \
     apt-get install -y --no-install-recommends nvidia-fabricmanager-${DRIVER_BRANCH}=${DRIVER_VERSION}-1 \
     libnvidia-nscq-${DRIVER_BRANCH}=${DRIVER_VERSION}-1; fi
 
+# For now install imex only on arm64 and R560+
+# https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2204/sbsa/nvidia-imex_560.28.03-1_arm64.deb
+RUN DRIVER_MAJOR_VERSION=$(echo "$DRIVER_VERSION" | cut -d '.' -f 1)
+RUN if [ "$DRIVER_MAJOR_VERSION" -ge 560 ] && [ "$TARGETARCH" = "arm64" ]; then \
+    curl -fsSL -o /tmp/nvidia-imex_$DRIVER_VERSION-1_$TARGETARCH.deb https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2204/sbsa/nvidia-imex_560.28.03-1_arm64.deb && \
+    dpkg -i /tmp/nvidia-imex_$DRIVER_VERSION-1_$TARGETARCH.deb && \
+    rm -rf /tmp/nvidia-imex_$DRIVER_VERSION-1_$TARGETARCH.deb; fi
+
 WORKDIR  /drivers
 
 ARG PUBLIC_KEY=empty

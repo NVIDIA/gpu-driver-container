@@ -59,6 +59,16 @@ RUN apt-get update && apt-get install -y --no-install-recommends nvidia-driver-$
     xserver-xorg-video-nvidia-${DRIVER_BRANCH}-server && \
     rm -rf /var/lib/apt/lists/*;
 
+# For now install imex only with on arm64 and R560+
+# https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2204/sbsa/nvidia-imex_560.28.03-1_arm64.deb
+ARG TARGETARCH
+ENV TARGETARCH=$TARGETARCH
+RUN DRIVER_MAJOR_VERSION=$(echo "$DRIVER_VERSION" | cut -d '.' -f 1)
+RUN if [ "$DRIVER_MAJOR_VERSION" -ge 560 ] && [ "$TARGETARCH" = "arm64" ]; then \
+    curl -fsSL -o /tmp/nvidia-imex_$DRIVER_VERSION-1_$TARGETARCH.deb https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2204/sbsa/nvidia-imex_$DRIVER_VERSION-1_$TARGETARCH.deb && \
+    dpkg -i /tmp/nvidia-imex_$DRIVER_VERSION-1_$TARGETARCH.deb && \
+    rm -rf /tmp/nvidia-imex_$DRIVER_VERSION-1_$TARGETARCH.deb; fi
+
 # update pkg cache and download pkgs for driver module installation during runtime.
 # this is done to avoid shipping .ko files.
 # avoid cleaning the cache after this to retain these packages during runtime.

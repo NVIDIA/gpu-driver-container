@@ -187,6 +187,11 @@ _create_driver_package() (
     mv ${pkg_name} precompiled
 )
 
+# Check if imex node config is present
+_assert_imex_node_config() {
+    [ -f /etc/nvidia-imex/node_config.cfg ]] || return 1
+}
+
 _assert_nvswitch_system() {
     [ -d /proc/driver/nvidia-nvswitch/devices ] || return 1
     if [ -z "$(ls -A /proc/driver/nvidia-nvswitch/devices)" ]; then
@@ -326,6 +331,11 @@ _load_driver() {
         nv-fabricmanager -c /usr/share/nvidia/nvswitch/fabricmanager.cfg
     fi
 
+    if _assert_imex_node_config; then
+	echo "Starting NVIDIA imex daemon..."
+	systemctl start nvidia-imex.service
+    fi
+
     return 0
 }
 
@@ -381,6 +391,12 @@ _unload_driver() {
             echo "Could not stop NVIDIA fabric manager daemon" >&2
             return 1
         fi
+    fi
+
+    # stop nvidia-imex daemon
+    if [ systemctl is-active --quiet nvidia-imex.service ]; then
+	echo "Stopping NVIDIA imex daemon..."
+	systemctl stop nvidia-imex.service
     fi
 
     echo "Unloading NVIDIA driver kernel modules..."
