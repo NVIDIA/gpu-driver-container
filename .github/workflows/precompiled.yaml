@@ -17,11 +17,11 @@ name: Precompiled images
 
 on:
   schedule:
-    - cron: '00 09 * * *' # scheduled job
+    - cron: '00 09 * * *'
 
 jobs:
   set-driver-version-matrix:
-    runs-on: ubuntu-latest
+    runs-on: linux-amd64-cpu4
     outputs:
       driver_branch: ${{ steps.extract_driver_branch.outputs.driver_branch }}
       kernel_flavors: ${{ steps.extract_driver_branch.outputs.kernel_flavors }}
@@ -49,7 +49,7 @@ jobs:
 
   precompiled-build-image:
     needs: set-driver-version-matrix
-    runs-on: ubuntu-latest
+    runs-on: linux-amd64-cpu4
     strategy:
       matrix:
         driver_branch: ${{ fromJson(needs.set-driver-version-matrix.outputs.driver_branch) }}
@@ -125,7 +125,7 @@ jobs:
            retention-days: 1
 
   determine-e2e-test-matrix:
-    runs-on: ubuntu-latest
+    runs-on: linux-amd64-cpu4
     strategy:
       matrix:
         dist: ${{ fromJson(needs.set-driver-version-matrix.outputs.dist) }}
@@ -173,7 +173,7 @@ jobs:
           echo "matrix_values_not_empty=1" >> $GITHUB_OUTPUT
 
   e2e-tests-nvidiadriver:
-    runs-on: ubuntu-latest
+    runs-on: linux-amd64-cpu4
     needs:
       - determine-e2e-test-matrix
       - set-driver-version-matrix
@@ -287,7 +287,7 @@ jobs:
           retention-days: 15
 
   publish-precompiled-image:
-    runs-on: ubuntu-latest
+    runs-on: linux-amd64-cpu4
     needs:
       - set-driver-version-matrix
       - determine-e2e-test-matrix
