@@ -80,7 +80,7 @@ variables:
 .image-pull-ubuntu22.04:
   # Perform for each DRIVER_VERSION
   extends:
-    - .driver-versions-ubuntu22.04
+    - .driver-versions
     - .image-pull-generic
   rules:
     - if: $CI_PIPELINE_SOURCE == "schedule"
@@ -175,7 +175,7 @@ image-rhel8:
 .scan-ubuntu22.04:
   # Repeat for each DRIVER_VERSION
   extends:
-    - .driver-versions-ubuntu22.04
+    - .driver-versions
     - .scan-generic
   rules:
     - !reference [.scan-rules-common, rules]
@@ -276,7 +276,7 @@ release:ngc-ubuntu22.04:
   extends:
     - .release:ngc
     - .dist-ubuntu22.04
-    - .driver-versions-ubuntu22.04
+    - .driver-versions
 
 release:ngc-precompiled-ubuntu22.04:
   variables:
