@@ -189,7 +189,7 @@ _create_driver_package() (
 
 # Check if imex node config is present
 _assert_imex_node_config() {
-    [ -f /etc/nvidia-imex/node_config.cfg ]] || return 1
+    [ -f /etc/nvidia-imex/nodes_config.cfg ] || return 1
 }
 
 _assert_nvswitch_system() {
@@ -333,7 +333,7 @@ _load_driver() {
 
     if _assert_imex_node_config; then
 	echo "Starting NVIDIA imex daemon..."
-	systemctl start nvidia-imex.service
+	/usr/bin/nvidia-imex -c /etc/nvidia-imex/config.cfg
     fi
 
     return 0
@@ -394,9 +394,10 @@ _unload_driver() {
     fi
 
     # stop nvidia-imex daemon
-    if [ systemctl is-active --quiet nvidia-imex.service ]; then
-	echo "Stopping NVIDIA imex daemon..."
-	systemctl stop nvidia-imex.service
+    local imex_pid=$(pgrep -f /usr/bin/nvidia-imex)
+    if [ -n "${imex_pid}" ]; then
+        echo "Stopping NVIDIA imex daemon..."
+	kill -SIGTERM "${imex_pid}"
     fi
 
     echo "Unloading NVIDIA driver kernel modules..."
