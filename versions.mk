@@ -13,8 +13,6 @@
 # limitations under the License.
 
 # DRIVER_VERSIONS contains latest version in all active datacenter branches
-DRIVER_VERSIONS ?= 535.216.01 550.127.05
-
-CUDA_VERSION := 12.6.0
+DRIVER_VERSIONS ?= 535.216.01 550.127.05 565.57.01
 
 GOLANG_VERSION := 1.22.8
