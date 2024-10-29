@@ -76,7 +76,7 @@ RUN if [ "$DRIVER_TYPE" != "vgpu" ] && [ "$TARGETARCH" != "arm64" ]; then \
       fmPackage=nvidia-fabricmanager-${DRIVER_BRANCH}-${DRIVER_VERSION}-1; \
     fi; \
     nscqPackage=libnvidia-nscq-${DRIVER_BRANCH}-${DRIVER_VERSION}-1; \
-    dnf module enable -y nvidia-driver:${DRIVER_BRANCH} && \
+    dnf module enable -y nvidia-driver:${DRIVER_BRANCH}-dkms && \
     dnf install -y ${fmPackage} ${nscqPackage}; fi
 
 COPY nvidia-driver /usr/local/bin
