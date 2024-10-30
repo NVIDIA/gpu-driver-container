@@ -184,6 +184,18 @@ image-rhel8:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
     - !reference [.pipeline-trigger-rules, rules]
 
+.scan-amzn2023:
+  # Repeat for each DRIVER_VERSION
+  extends:
+    - .driver-versions
+    - .scan-generic
+  rules:
+    - !reference [.scan-rules-common, rules]
+    - if: $CI_PIPELINE_SOURCE == "schedule"
+      when: never
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - !reference [.pipeline-trigger-rules, rules]
+
 .scan-precompiled-ubuntu22.04:
   variables:
     DIST: signed_ubuntu22.04
@@ -276,6 +288,12 @@ release:ngc-ubuntu22.04:
   extends:
     - .release:ngc
     - .dist-ubuntu22.04
+    - .driver-versions
+
+release:ngc-amzn2023:
+  extends:
+    - .release:ngc
+    - .dist-amzn2023
     - .driver-versions
 
 release:ngc-precompiled-ubuntu22.04:
@@ -439,3 +457,6 @@ sign:ngc-ubuntu-rhel-rhcos:
     - SIGN_JOB_NAME: ["rhcos"]
       VERSION: ["4.12","4.13","4.14","4.15", "4.16", "4.17"]
       DRIVER_VERSION: ["535.216.01", "550.127.05", "565.57.01"]
+    - SIGN_JOB_NAME: ["amzn"]
+      VERSION: ["2023"]
+      DRIVER_VERSION: ["565.57.01"]

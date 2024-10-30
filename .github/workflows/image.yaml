@@ -40,6 +40,7 @@ jobs:
         dist:
           - ubuntu20.04
           - ubuntu22.04
+          - amzn2023
           - rhel8
         ispr:
           - ${{github.event_name == 'pull_request'}}
@@ -50,6 +51,21 @@ jobs:
           - ispr: true
             dist: ubuntu20.04
             driver: 550.127.05
+          - ispr: true
+            dist: ubuntu20.04
+            driver: 560.35.03
+          - ispr: true
+            dist: ubuntu22.04
+            driver: 560.35.03
+          - ispr: true
+            dist: amzn2023
+            driver: 535.216.01
+          - ispr: true
+            dist: amzn2023
+            driver: 550.127.05
+          - ispr: true
+            dist: amzn2023
+            driver: 560.35.03
       fail-fast: false
     steps:
       - uses: actions/checkout@v4
