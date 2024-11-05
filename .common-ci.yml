@@ -93,6 +93,10 @@ trigger-pipeline:
     DIST: ubuntu22.04
     CVE_UPDATES: "openssl"
 
+.dist-amzn2023:
+  variables:
+    DIST: amzn2023
+
 .dist-rhel8:
   variables:
     DIST: rhel8
@@ -162,6 +166,14 @@ trigger-pipeline:
   rules:
     - if: $CI_PIPELINE_SOURCE != "schedule"
 
+.release-amzn2023:
+  # Perform for each DRIVER_VERSION
+  extends:
+    - .release-generic
+    - .driver-versions
+  rules:
+    - if: $CI_PIPELINE_SOURCE != "schedule"
+
 .release-rhel9:
   # Perform for each DRIVER_VERSION
   extends:
@@ -193,6 +205,15 @@ trigger-pipeline:
 .release:staging-ubuntu22.04:
   extends:
     - .release-ubuntu22.04
+  variables:
+    OUT_REGISTRY_USER: "${CI_REGISTRY_USER}"
+    OUT_REGISTRY_TOKEN: "${CI_REGISTRY_PASSWORD}"
+    OUT_REGISTRY: "${CI_REGISTRY}"
+    OUT_IMAGE_NAME: "${CI_REGISTRY_IMAGE}/staging/driver"
+
+.release:staging-amzn2023:
+  extends:
+    - .release-amzn2023
   variables:
     OUT_REGISTRY_USER: "${CI_REGISTRY_USER}"
     OUT_REGISTRY_TOKEN: "${CI_REGISTRY_PASSWORD}"
