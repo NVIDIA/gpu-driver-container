@@ -19,7 +19,7 @@ default:
       command: ["--experimental"]
 
 variables:
-  DRIVER_VERSIONS: 535.216.01 550.127.05
+  DRIVER_VERSIONS: 535.216.01 550.127.05 565.57.01
   BUILD_MULTI_ARCH_IMAGES: "true"
 
 stages:
@@ -73,13 +73,7 @@ trigger-pipeline:
 .driver-versions:
   parallel:
     matrix:
-      - DRIVER_VERSION: [535.216.01, 550.127.05]
-
-# Define the driver versions for jobs that can be run in parallel for ubuntu22.04
-.driver-versions-ubuntu22.04:
-  parallel:
-    matrix:
-      - DRIVER_VERSION: [535.216.01, 550.127.05]
+      - DRIVER_VERSION: [535.216.01, 550.127.05, 565.57.01]
 
 # Define the matrix of precompiled jobs that can be run in parallel for ubuntu22.04
 .driver-versions-precompiled-ubuntu22.04:
@@ -87,12 +81,6 @@ trigger-pipeline:
     matrix:
       - DRIVER_BRANCH: [535, 550]
         KERNEL_FLAVOR: [aws, azure, generic, nvidia, oracle]
-
-# Define the driver versions for jobs that can be run in parallel for rhel9
-.driver-versions-rhel9:
-  parallel:
-    matrix:
-      - DRIVER_VERSION: [535.216.01, 550.127.05]
 
 # Define the distribution targets
 .dist-ubuntu20.04:
@@ -170,7 +158,7 @@ trigger-pipeline:
   # Perform for each DRIVER_VERSION
   extends:
     - .release-generic
-    - .driver-versions-ubuntu22.04
+    - .driver-versions
   rules:
     - if: $CI_PIPELINE_SOURCE != "schedule"
 
@@ -178,7 +166,7 @@ trigger-pipeline:
   # Perform for each DRIVER_VERSION
   extends:
     - .release-generic
-    - .driver-versions-rhel9
+    - .driver-versions
   rules:
     - if: $CI_PIPELINE_SOURCE != "schedule"
 
