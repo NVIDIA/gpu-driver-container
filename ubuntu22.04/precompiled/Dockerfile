@@ -66,6 +66,7 @@ RUN if [ "$(printf '%s\n' "$IMEX_DRIVER_VERSION" "$DRIVER_VERSION" | sort -V | h
     curl -fsSL -o /tmp/nvidia-imex-${IMEX_DRIVER_VERSION}_${DRIVER_VERSION}-1_${TARGETARCH}.deb https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2204/sbsa/nvidia-imex-${IMEX_DRIVER_VERSION}_${DRIVER_VERSION}-1_${TARGETARCH}.deb && \
     dpkg -i /tmp/nvidia-imex-${IMEX_DRIVER_VERSION}_${DRIVER_VERSION}-1_${TARGETARCH}.deb && \
     nvidia-imex --version && \
+    ls /etc/nvidia-imex && \
     rm -rf /tmp/nvidia-imex_${IMEX_DRIVER_VERSION}_${DRIVER_VERSION}-1_${TARGETARCH}.deb; fi
 
 # update pkg cache and download pkgs for driver module installation during runtime.
