@@ -103,9 +103,9 @@ The procedure is based on [building custom kmod packages](https://github.com/NVI
 5. Set NVIDIA environment variables.
 
    ```
-   export CUDA_VERSION=12.3.2
+   export CUDA_VERSION=12.6.2
    export DRIVER_EPOCH=1
-   export DRIVER_VERSION=550.127.05
+   export DRIVER_VERSION=550.127.08
    ```
 
 6. [Optional] Build the vGPU guest driver
