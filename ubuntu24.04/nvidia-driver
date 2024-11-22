@@ -100,91 +100,22 @@ _remove_prerequisites() {
     fi
 }
 
-# Check if the kernel version requires a new precompiled driver packages.
-_kernel_requires_package() {
-    local proc_mount_arg=""
-
-    echo "Checking NVIDIA driver packages..."
-    cd /usr/src/nvidia-${DRIVER_VERSION}/${KERNEL_TYPE}
-
-    # proc_mount_arg needs to be set, to do the module match check below
-    if [ -f /lib/modules/${KERNEL_VERSION}/proc/version ]; then
-        proc_mount_arg="--proc-mount-point /lib/modules/${KERNEL_VERSION}/proc"
-    fi
-    for pkg_name in $(ls -d -1 precompiled/** 2> /dev/null); do
-        if ! ../mkprecompiled --match ${pkg_name} ${proc_mount_arg} > /dev/null; then
-            echo "Found NVIDIA driver package ${pkg_name##*/}"
-            return 1
-        fi
-    done
-    return 0
-}
-
-# Compile the kernel modules, optionally sign them, and generate a precompiled package for use by the nvidia-installer.
-_create_driver_package() (
-    local pkg_name="nvidia-modules-${KERNEL_VERSION%-*}${PACKAGE_TAG:+-${PACKAGE_TAG}}"
-    local nvidia_sign_args=""
-    local nvidia_modeset_sign_args=""
-    local nvidia_uvm_sign_args=""
-
-    trap "make -s -j ${MAX_THREADS} SYSSRC=/lib/modules/${KERNEL_VERSION}/build clean > /dev/null" EXIT
-
-    echo "Compiling NVIDIA driver kernel modules..."
-    cd /usr/src/nvidia-${DRIVER_VERSION}/${KERNEL_TYPE}
-
+# This is required as currently GPU driver installer doesn't expect headers in x86_64 folder, but only in either default
+# or kernel-version folder.
+_link_ofa_kernel() (
     if _gpu_direct_rdma_enabled; then
         ln -s /run/mellanox/drivers/usr/src/ofa_kernel /usr/src/
         # if arch directory exists(MOFED >=5.5) then create a symlink as expected by GPU driver installer
-        # This is required as currently GPU driver installer doesn't expect headers in x86_64 folder, but only in either default or kernel-version folder.
         # ls -ltr /usr/src/ofa_kernel/
         # lrwxrwxrwx 1 root root   36 Dec  8 20:10 default -> /etc/alternatives/ofa_kernel_headers
         # drwxr-xr-x 4 root root 4096 Dec  8 20:14 x86_64
         # lrwxrwxrwx 1 root root   44 Dec  9 19:05 5.4.0-90-generic -> /usr/src/ofa_kernel/x86_64/5.4.0-90-generic/
-        if [[ -d /run/mellanox/drivers/usr/src/ofa_kernel/$DRIVER_ARCH/`uname -r` ]]; then
-            if [[ ! -e /usr/src/ofa_kernel/`uname -r` ]]; then
-                ln -s /run/mellanox/drivers/usr/src/ofa_kernel/$DRIVER_ARCH/`uname -r` /usr/src/ofa_kernel/
+        if [[ -d /run/mellanox/drivers/usr/src/ofa_kernel/$DRIVER_ARCH/$(uname -r) ]]; then
+            if [[ ! -e /usr/src/ofa_kernel/$(uname -r) ]]; then
+                ln -s /run/mellanox/drivers/usr/src/ofa_kernel/$DRIVER_ARCH/$(uname -r) /usr/src/ofa_kernel/
             fi
         fi
     fi
-
-    export IGNORE_CC_MISMATCH=1
-    make -s -j ${MAX_THREADS} SYSSRC=/lib/modules/${KERNEL_VERSION}/build nv-linux.o nv-modeset-linux.o > /dev/null
-
-    echo "Relinking NVIDIA driver kernel modules..."
-    rm -f nvidia.ko nvidia-modeset.ko
-    ld -d -r -o nvidia.ko ./nv-linux.o ./nvidia/nv-kernel.o_binary
-    ld -d -r -o nvidia-modeset.ko ./nv-modeset-linux.o ./nvidia-modeset/nv-modeset-kernel.o_binary
-
-    if [ -n "${PRIVATE_KEY}" ]; then
-        echo "Signing NVIDIA driver kernel modules..."
-        donkey get ${PRIVATE_KEY} sh -c "PATH=${PATH}:/usr/src/linux-headers-${KERNEL_VERSION}/scripts && \
-          sign-file sha512 \$DONKEY_FILE pubkey.x509 nvidia.ko nvidia.ko.sign &&                          \
-          sign-file sha512 \$DONKEY_FILE pubkey.x509 nvidia-modeset.ko nvidia-modeset.ko.sign &&          \
-          sign-file sha512 \$DONKEY_FILE pubkey.x509 nvidia-uvm.ko"
-        nvidia_sign_args="--linked-module nvidia.ko --signed-module nvidia.ko.sign"
-        nvidia_modeset_sign_args="--linked-module nvidia-modeset.ko --signed-module nvidia-modeset.ko.sign"
-        nvidia_uvm_sign_args="--signed"
-    fi
-
-    echo "Building NVIDIA driver package ${pkg_name}..."
-    ../mkprecompiled --pack ${pkg_name} --description ${KERNEL_VERSION}                              \
-                                        --proc-mount-point /lib/modules/${KERNEL_VERSION}/proc       \
-                                        --driver-version ${DRIVER_VERSION}                           \
-                                        --kernel-interface nv-linux.o                                \
-                                        --linked-module-name nvidia.ko                               \
-                                        --core-object-name nvidia/nv-kernel.o_binary                 \
-                                        ${nvidia_sign_args}                                          \
-                                        --target-directory .                                         \
-                                        --kernel-interface nv-modeset-linux.o                        \
-                                        --linked-module-name nvidia-modeset.ko                       \
-                                        --core-object-name nvidia-modeset/nv-modeset-kernel.o_binary \
-                                        ${nvidia_modeset_sign_args}                                  \
-                                        --target-directory .                                         \
-                                        --kernel-module nvidia-uvm.ko                                \
-                                        ${nvidia_uvm_sign_args}                                      \
-                                        --target-directory .
-    mkdir -p precompiled
-    mv ${pkg_name} precompiled
 )
 
 _assert_nvswitch_system() {
@@ -420,18 +351,31 @@ _unload_driver() {
 _install_driver() {
     local install_args=()
 
-    echo "Installing NVIDIA driver kernel modules..."
-    cd /usr/src/nvidia-${DRIVER_VERSION}
-    if [ -d /lib/modules/${KERNEL_VERSION}/kernel/drivers/video ]; then
-        rm -rf /lib/modules/${KERNEL_VERSION}/kernel/drivers/video
-    else
-        rm -rf /lib/modules/${KERNEL_VERSION}/video
-    fi
-
     if [ "${ACCEPT_LICENSE}" = "yes" ]; then
         install_args+=("--accept-license")
     fi
-    nvidia-installer --kernel-module-only --no-drm --ui=none --no-nouveau-check -m=${KERNEL_TYPE} ${install_args[@]+"${install_args[@]}"}
+
+    if [ -n "${MAX_THREADS}" ]; then
+        install_args+=("--concurrency-level=${MAX_THREADS}")
+    fi
+
+    # Install the NVIDIA driver in one step
+    sh NVIDIA-Linux-$DRIVER_ARCH-$DRIVER_VERSION.run --silent \
+                    --ui=none \
+                    --no-drm \
+                    --no-nouveau-check \
+                    --no-nvidia-modprobe \
+                    --no-rpms \
+                    --no-backup \
+                    --no-check-for-alternate-installs \
+                    --no-libglx-indirect \
+                    --no-install-libglvnd \
+                    --x-prefix=/tmp/null \
+                    --x-module-path=/tmp/null \
+                    --x-library-path=/tmp/null \
+                    --x-sysconfig-path=/tmp/null \
+                    -m="${KERNEL_TYPE}" \
+                    ${install_args[@]+"${install_args[@]}"}
 }
 
 # Mount the driver rootfs into the run directory with the exception of sysfs.
@@ -524,26 +468,6 @@ init() {
         _find_vgpu_driver_version || exit 1
     fi
 
-    # Install the userspace components and copy the kernel module sources.
-    sh NVIDIA-Linux-$DRIVER_ARCH-$DRIVER_VERSION.run -x && \
-        cd NVIDIA-Linux-$DRIVER_ARCH-$DRIVER_VERSION && \
-        ./nvidia-installer --silent \
-                    --no-kernel-module \
-                    --no-nouveau-check \
-                    --no-nvidia-modprobe \
-                    --no-rpms \
-                    --no-backup \
-                    --no-check-for-alternate-installs \
-                    --no-libglx-indirect \
-                    --no-install-libglvnd \
-                    --x-prefix=/tmp/null \
-                    --x-module-path=/tmp/null \
-                    --x-library-path=/tmp/null \
-                    --x-sysconfig-path=/tmp/null && \
-        mkdir -p /usr/src/nvidia-${DRIVER_VERSION} && \
-        mv LICENSE mkprecompiled ${KERNEL_TYPE} /usr/src/nvidia-${DRIVER_VERSION} && \
-        sed '9,${/^\(kernel\|LICENSE\)/!d}' .manifest > /usr/src/nvidia-${DRIVER_VERSION}/.manifest
-
     echo -e "\n========== NVIDIA Software Installer ==========\n"
     echo -e "Starting installation of NVIDIA driver version ${DRIVER_VERSION} for Linux kernel version ${KERNEL_VERSION}\n"
 
@@ -560,15 +484,13 @@ init() {
     _unload_driver || exit 1
     _unmount_rootfs
 
-    if _kernel_requires_package; then
-        _update_ca_certificates
-        _update_package_cache
-        _resolve_kernel_version || exit 1
-        _install_prerequisites
-        _create_driver_package
-        #_remove_prerequisites
-        #_cleanup_package_cache
-    fi
+    _update_ca_certificates
+    _update_package_cache
+    _resolve_kernel_version || exit 1
+    _install_prerequisites
+    _link_ofa_kernel
+    #_remove_prerequisites
+    #_cleanup_package_cache
 
     _install_driver
     _load_driver || exit 1
@@ -580,63 +502,6 @@ init() {
     trap "echo 'Caught signal'; _shutdown && { kill $!; exit 0; }" HUP INT QUIT PIPE TERM
     trap - EXIT
     while true; do wait $! || continue; done
-    exit 0
-}
-
-update() {
-    exec 3>&2
-    if exec 2> /dev/null 4< ${PID_FILE}; then
-        if ! flock -n 4 && read pid <&4 && kill -0 "${pid}"; then
-            exec > >(tee -a "/proc/${pid}/fd/1")
-            exec 2> >(tee -a "/proc/${pid}/fd/2" >&3)
-        else
-            exec 2>&3
-        fi
-        exec 4>&-
-    fi
-    exec 3>&-
-
-    # vgpu driver version is choosen dynamically during runtime, so pre-compile modules for
-    # only non-vgpu driver types
-    if [ "${DRIVER_TYPE}" != "vgpu" ]; then
-        # Install the userspace components and copy the kernel module sources.
-        if [ ! -e /usr/src/nvidia-${DRIVER_VERSION}/mkprecompiled ]; then
-            sh NVIDIA-Linux-$DRIVER_ARCH-$DRIVER_VERSION.run -x && \
-                cd NVIDIA-Linux-$DRIVER_ARCH-$DRIVER_VERSION && \
-                ./nvidia-installer --silent \
-                            --no-kernel-module \
-                            --no-nouveau-check \
-                            --no-nvidia-modprobe \
-                            --no-rpms \
-                            --no-backup \
-                            --no-check-for-alternate-installs \
-                            --no-libglx-indirect \
-                            --no-install-libglvnd \
-                            --x-prefix=/tmp/null \
-                            --x-module-path=/tmp/null \
-                            --x-library-path=/tmp/null \
-                            --x-sysconfig-path=/tmp/null && \
-                mkdir -p /usr/src/nvidia-${DRIVER_VERSION} && \
-                mv LICENSE mkprecompiled ${KERNEL_TYPE} /usr/src/nvidia-${DRIVER_VERSION} && \
-                sed '9,${/^\(kernel\|LICENSE\)/!d}' .manifest > /usr/src/nvidia-${DRIVER_VERSION}/.manifest
-        fi
-    fi
-
-    echo -e "\n========== NVIDIA Software Updater ==========\n"
-    echo -e "Starting update of NVIDIA driver version ${DRIVER_VERSION} for Linux kernel version ${KERNEL_VERSION}\n"
-
-    trap "echo 'Caught signal'; exit 1" HUP INT QUIT PIPE TERM
-
-    _update_package_cache
-    _resolve_kernel_version || exit 1
-    _install_prerequisites
-    if _kernel_requires_package; then
-        _create_driver_package
-    fi
-    _remove_prerequisites
-    _cleanup_package_cache
-
-    echo "Done"
     exit 0
 }
 
@@ -688,7 +553,6 @@ Usage: $0 COMMAND [ARG...]
 
 Commands:
   init   [-a | --accept-license] [-m | --max-threads MAX_THREADS]
-  update [-k | --kernel VERSION] [-s | --sign KEYID] [-t | --tag TAG] [-m | --max-threads MAX_THREADS]
 EOF
     exit 1
 }
@@ -699,7 +563,6 @@ fi
 command=$1; shift
 case "${command}" in
     init) options=$(getopt -l accept-license,max-threads: -o am: -- "$@") ;;
-    update) options=$(getopt -l kernel:,sign:,tag:,max-threads: -o k:s:t:m: -- "$@") ;;
     reload_nvidia_peermem) options="" ;;
     probe_nvidia_peermem) options="" ;;
     *) usage ;;
@@ -712,7 +575,6 @@ eval set -- "${options}"
 ACCEPT_LICENSE=""
 MAX_THREADS=""
 KERNEL_VERSION=$(uname -r)
-PRIVATE_KEY=""
 PACKAGE_TAG=""
 
 for opt in ${options}; do
@@ -720,7 +582,6 @@ for opt in ${options}; do
     -a | --accept-license) ACCEPT_LICENSE="yes"; shift 1 ;;
     -k | --kernel) KERNEL_VERSION=$2; shift 2 ;;
     -m | --max-threads) MAX_THREADS=$2; shift 2 ;;
-    -s | --sign) PRIVATE_KEY=$2; shift 2 ;;
     -t | --tag) PACKAGE_TAG=$2; shift 2 ;;
     --) shift; break ;;
     esac

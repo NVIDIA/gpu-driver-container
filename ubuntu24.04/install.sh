@@ -35,26 +35,7 @@ dep_install () {
     fi
 }
 
-repo_setup () {
-    if [ "$TARGETARCH" = "amd64" ]; then
-        echo "deb [arch=amd64] http://archive.ubuntu.com/ubuntu/ noble main universe" > /etc/apt/sources.list && \
-        echo "deb [arch=amd64] http://archive.ubuntu.com/ubuntu/ noble-updates main universe" >> /etc/apt/sources.list && \
-        echo "deb [arch=amd64] http://archive.ubuntu.com/ubuntu/ noble-security main universe" >> /etc/apt/sources.list && \
-        usermod -o -u 0 -g 0 _apt
-    elif [ "$TARGETARCH" = "arm64" ]; then
-        echo "deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports noble main universe" > /etc/apt/sources.list && \
-        echo "deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports noble-updates main universe" >> /etc/apt/sources.list && \
-        echo "deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports noble-security main universe" >> /etc/apt/sources.list && \
-        usermod -o -u 0 -g 0 _apt
-    else
-        echo "TARGETARCH doesn't match a known arch target"
-        exit 1
-    fi
-}
-
-if [ "$1" = "reposetup" ]; then
-  repo_setup
-elif [ "$1" = "depinstall" ]; then
+if [ "$1" = "depinstall" ]; then
   dep_install
 elif [ "$1" = "download_installer" ]; then
   download_installer
@@ -62,4 +43,3 @@ else
   echo "Unknown function: $1"
   exit 1
 fi
-
