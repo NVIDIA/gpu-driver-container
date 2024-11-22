@@ -50,8 +50,7 @@ jobs:
           - ispr: true
             dist: ubuntu20.04
             driver: 550.127.08
-          - ispr: true
-            dist: ubuntu24.04
+          - dist: ubuntu24.04
             driver: 535.216.03
       fail-fast: false
     steps:
