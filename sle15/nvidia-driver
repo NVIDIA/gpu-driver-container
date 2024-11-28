@@ -519,6 +519,9 @@ _build() {
 
 _load() {
     _mount_rootfs
+    # Something in the build process may have decided to load drivers that happened to be installed.
+    # Make sure they are uninstalled.
+    lsmod | grep -q nvidia && { _unload_driver || exit 1; } || true
     _load_driver || exit 1
     _write_kernel_update_hook
 
