@@ -40,7 +40,7 @@ jobs:
         aws_access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
         aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         aws_ssh_key: ${{ secrets.AWS_SSH_KEY }}
-        holodeck_config: "tests/holodeck.yaml"
+        holodeck_config: "tests/holodeck_ubuntu22.04.yaml"
         
     - name: Get public dns name
       id: get_public_dns_name

@@ -56,7 +56,7 @@ OUT_IMAGE = $(OUT_IMAGE_NAME):$(OUT_IMAGE_TAG)
 ##### Public rules #####
 DISTRIBUTIONS := ubuntu18.04 ubuntu20.04 ubuntu22.04 ubuntu24.04 signed_ubuntu20.04 signed_ubuntu22.04 signed_ubuntu24.04 rhel8 rhel9 flatcar fedora36 sles15.3 precompiled_rhcos
 PUSH_TARGETS := $(patsubst %, push-%, $(DISTRIBUTIONS))
-BASE_FROM := jammy focal
+BASE_FROM := noble jammy focal
 PUSH_TARGETS := $(patsubst %, push-%, $(DISTRIBUTIONS))
 DRIVER_PUSH_TARGETS := $(foreach push_target, $(PUSH_TARGETS), $(addprefix $(push_target)-, $(DRIVER_VERSIONS)))
 BUILD_TARGETS := $(patsubst %, build-%, $(DISTRIBUTIONS))
@@ -210,6 +210,7 @@ $(BASE_BUILD_TARGETS):
 				--build-arg GOLANG_VERSION="$(GOLANG_VERSION)" \
 				--build-arg DRIVER_BRANCH="$(DRIVER_BRANCH)" \
 				--build-arg KERNEL_FLAVOR="$(KERNEL_FLAVOR)" \
+				--build-arg LTS_KERNEL="$(LTS_KERNEL)" \
 				--file $(DOCKERFILE) \
 				$(CURDIR)/base
 

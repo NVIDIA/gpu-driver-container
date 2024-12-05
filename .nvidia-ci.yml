@@ -77,6 +77,30 @@ variables:
     - !reference [.image-pull-rules, rules]
 
 
+.image-pull-ubuntu24.04:
+  # Perform for each DRIVER_VERSION
+  extends:
+    - .driver-versions
+    - .image-pull-generic
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "schedule"
+      when: never
+    - !reference [.image-pull-rules, rules]
+
+image-precompiled-ubuntu24.04:
+  variables:
+    DIST: signed_ubuntu24.04
+    BASE_TARGET: noble
+    PRECOMPILED: "true"
+    CVE_UPDATES: "curl libc6"
+  rules:
+    - when: delayed
+      start_in: 30 minutes
+  extends:
+    - .driver-versions-precompiled-ubuntu24.04
+    - .image-pull-generic
+
+
 .image-pull-ubuntu22.04:
   # Perform for each DRIVER_VERSION
   extends:
@@ -196,6 +220,18 @@ image-rhel8:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
     - !reference [.pipeline-trigger-rules, rules]
 
+.scan-precompiled-ubuntu24.04:
+  variables:
+    DIST: signed_ubuntu24.04
+    BASE_TARGET: noble
+    PRECOMPILED: "true"
+  extends:
+    - .driver-versions-precompiled-ubuntu24.04
+    - .scan-generic
+  rules:
+    - !reference [.scan-rules-common, rules]
+    - when: always
+
 .scan-precompiled-ubuntu22.04:
   variables:
     DIST: signed_ubuntu22.04
@@ -305,6 +341,26 @@ release:ngc-ubuntu22.04:
     - .release:ngc
     - .dist-ubuntu22.04
     - .driver-versions
+
+# TODO will be enabled after QA
+# release:ngc-ubuntu24.04:
+#   extends:
+#     - .release:ngc
+#     - .dist-ubuntu24.04
+#     - .driver-versions
+
+# release:ngc-precompiled-ubuntu24.04:
+#   variables:
+#     DIST: signed_ubuntu24.04
+#     BASE_TARGET: noble
+#     PRECOMPILED: "true"
+#   extends:
+#     - .driver-versions-precompiled-ubuntu24.04
+#     - .release-generic
+#     - .release:ngc-variables
+#   rules:
+#     # Only run NGC release job on scheduled pipelines
+#     - if: $CI_PIPELINE_SOURCE == "schedule"
 
 release:ngc-precompiled-ubuntu22.04:
   variables:
@@ -433,6 +489,23 @@ release:ngc-rhel8.10:
     - 'echo "Signing the image ${IMAGE_NAME}:${IMAGE_TAG}"'
     - ngc-cli/ngc registry image publish --source ${IMAGE_NAME}:${IMAGE_TAG} ${IMAGE_NAME}:${IMAGE_TAG} --public --discoverable --allow-guest --sign --org nvidia
 
+sign:ngc-precompiled-ubuntu24.04:
+  extends:
+    - .driver-versions-precompiled-ubuntu24.04
+    - .dist-ubuntu22.04
+    - .release-generic
+    - .release:ngc-variables
+    - .sign:ngc
+  variables:
+    DIST: signed_ubuntu24.04
+    BASE_TARGET: noble
+    PRECOMPILED: "true"
+  needs:
+    - release:ngc-precompiled-ubuntu24.04
+  rules:
+    # Only run NGC release job on scheduled pipelines
+    - if: $CI_PIPELINE_SOURCE == "schedule"
+
 sign:ngc-precompiled-ubuntu22.04:
   extends:
     - .driver-versions-precompiled-ubuntu22.04
@@ -455,6 +528,9 @@ sign:ngc-ubuntu-rhel-rhcos:
     - .sign:ngc
   parallel:
     matrix:
+    - SIGN_JOB_NAME: ["ubuntu"]
+      VERSION: ["24.04"]
+      DRIVER_VERSION: ["550.127.08"]
     - SIGN_JOB_NAME: ["ubuntu"]
       VERSION: ["22.04"]
       DRIVER_VERSION: ["535.216.03", "550.127.08"]

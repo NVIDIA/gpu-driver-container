@@ -120,3 +120,12 @@ image-precompiled-ubuntu22.04:
   extends:
     - .driver-versions-precompiled-ubuntu22.04
     - .image-build-precompiled
+
+image-precompiled-ubuntu24.04:
+  variables:
+    DIST: signed_ubuntu24.04
+    BASE_TARGET: noble
+    CVE_UPDATES: "curl libc6"
+  extends:
+    - .driver-versions-precompiled-ubuntu24.04
+    - .image-build-precompiled
