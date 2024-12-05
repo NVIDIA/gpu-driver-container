@@ -489,22 +489,22 @@ release:ngc-rhel8.10:
     - 'echo "Signing the image ${IMAGE_NAME}:${IMAGE_TAG}"'
     - ngc-cli/ngc registry image publish --source ${IMAGE_NAME}:${IMAGE_TAG} ${IMAGE_NAME}:${IMAGE_TAG} --public --discoverable --allow-guest --sign --org nvidia
 
-sign:ngc-precompiled-ubuntu24.04:
-  extends:
-    - .driver-versions-precompiled-ubuntu24.04
-    - .dist-ubuntu22.04
-    - .release-generic
-    - .release:ngc-variables
-    - .sign:ngc
-  variables:
-    DIST: signed_ubuntu24.04
-    BASE_TARGET: noble
-    PRECOMPILED: "true"
-  needs:
-    - release:ngc-precompiled-ubuntu24.04
-  rules:
-    # Only run NGC release job on scheduled pipelines
-    - if: $CI_PIPELINE_SOURCE == "schedule"
+#sign:ngc-precompiled-ubuntu24.04:
+#  extends:
+#    - .driver-versions-precompiled-ubuntu24.04
+#    - .dist-ubuntu22.04
+#    - .release-generic
+#    - .release:ngc-variables
+#    - .sign:ngc
+#  variables:
+#    DIST: signed_ubuntu24.04
+#    BASE_TARGET: noble
+#    PRECOMPILED: "true"
+#  needs:
+#    - release:ngc-precompiled-ubuntu24.04
+#  rules:
+#    # Only run NGC release job on scheduled pipelines
+#    - if: $CI_PIPELINE_SOURCE == "schedule"
 
 sign:ngc-precompiled-ubuntu22.04:
   extends:
@@ -528,9 +528,9 @@ sign:ngc-ubuntu-rhel-rhcos:
     - .sign:ngc
   parallel:
     matrix:
-    - SIGN_JOB_NAME: ["ubuntu"]
-      VERSION: ["24.04"]
-      DRIVER_VERSION: ["550.127.08"]
+#    - SIGN_JOB_NAME: ["ubuntu"]
+#      VERSION: ["24.04"]
+#      DRIVER_VERSION: ["550.127.08"]
     - SIGN_JOB_NAME: ["ubuntu"]
       VERSION: ["22.04"]
       DRIVER_VERSION: ["535.216.03", "550.127.08"]
