@@ -26,6 +26,10 @@ jobs:
       driver_branch: ${{ steps.extract_driver_branch.outputs.driver_branch }}
       kernel_flavors: ${{ steps.extract_driver_branch.outputs.kernel_flavors }}
       dist: ${{ steps.extract_driver_branch.outputs.dist }}
+      base_target_ubuntu22_04: ${{ steps.extract_driver_branch.outputs.base_target_ubuntu22_04 }}
+      lts_kernel_ubuntu22_04: ${{ steps.extract_driver_branch.outputs.lts_kernel_ubuntu22_04 }}
+      base_target_ubuntu24_04: ${{ steps.extract_driver_branch.outputs.base_target_ubuntu24_04 }}
+      lts_kernel_ubuntu24_04: ${{ steps.extract_driver_branch.outputs.lts_kernel_ubuntu24_04 }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -43,9 +47,15 @@ jobs:
           echo "kernel_flavors=$kernel_flavors_json" >> $GITHUB_OUTPUT
 
           # get ubuntu distributions
-          DIST=("ubuntu22.04")
+          DIST=("ubuntu22.04" "ubuntu24.04")
           dist_json=$(printf '%s\n' "${DIST[@]}" | jq -R . | jq -cs .)
           echo "dist=$dist_json" >> $GITHUB_OUTPUT
+
+          # BASE_TARGET and LTS_KERNEL setup
+          echo "base_target_ubuntu22_04=jammy" >> $GITHUB_OUTPUT
+          echo "base_target_ubuntu24_04=noble" >> $GITHUB_OUTPUT
+          echo "lts_kernel_ubuntu22_04=5.15" >> $GITHUB_OUTPUT
+          echo "lts_kernel_ubuntu24_04=6.8" >> $GITHUB_OUTPUT
 
   precompiled-build-image:
     needs: set-driver-version-matrix
@@ -55,11 +65,16 @@ jobs:
         driver_branch: ${{ fromJson(needs.set-driver-version-matrix.outputs.driver_branch) }}
         flavor: ${{ fromJson(needs.set-driver-version-matrix.outputs.kernel_flavors) }}
         dist: ${{ fromJson(needs.set-driver-version-matrix.outputs.dist) }}
+        exclude:
+          - dist: ubuntu24.04
+            driver_branch: 535
     steps:
       - uses: actions/checkout@v4
         name: Check out code
       - name: Calculate build vars
         id: vars
+        env:
+          DIST: ${{ matrix.dist }}
         run: |
           echo "COMMIT_SHORT_SHA=${GITHUB_SHA:0:8}" >> $GITHUB_ENV
           echo "LOWERCASE_REPO_OWNER=$(echo "${GITHUB_REPOSITORY_OWNER}" | awk '{print tolower($0)}')" >> $GITHUB_ENV
@@ -69,6 +84,11 @@ jobs:
           GENERATE_ARTIFACTS="false"
           echo "PUSH_ON_BUILD=${GENERATE_ARTIFACTS}" >> $GITHUB_ENV
           echo "BUILD_MULTI_ARCH_IMAGES=${GENERATE_ARTIFACTS}" >> $GITHUB_ENV
+
+          VAR_NAME_BASE_TARGET=$(echo base_target_${DIST} | sed 's/\./_/g')
+          echo "VAR_NAME_BASE_TARGET=${VAR_NAME_BASE_TARGET}" >> $GITHUB_ENV
+          VAR_NAME_LTS_KERNEL=$(echo lts_kernel_${DIST} | sed 's/\./_/g')
+          echo "VAR_NAME_LTS_KERNEL=${VAR_NAME_LTS_KERNEL}" >> $GITHUB_ENV
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
@@ -84,9 +104,10 @@ jobs:
         env:
           IMAGE_NAME: ghcr.io/nvidia/driver
           VERSION: ${COMMIT_SHORT_SHA}
-          BASE_TARGET: jammy
+          BASE_TARGET: ${{ needs.set-driver-version-matrix.outputs[env.VAR_NAME_BASE_TARGET] }}
+          LTS_KERNEL: ${{ needs.set-driver-version-matrix.outputs[env.VAR_NAME_LTS_KERNEL] }}
         run: |
-          make DRIVER_BRANCH=${{ matrix.driver_branch }} KERNEL_FLAVOR=${{ matrix.flavor }} build-base-${BASE_TARGET}
+          make DRIVER_BRANCH=${{ matrix.driver_branch }} KERNEL_FLAVOR=${{ matrix.flavor }} LTS_KERNEL=${LTS_KERNEL} build-base-${BASE_TARGET}
 
           trap "docker rm -f base-${BASE_TARGET}-${{ matrix.flavor }}" EXIT
           docker run -d --name base-${BASE_TARGET}-${{ matrix.flavor }} ghcr.io/nvidia/driver:base-${BASE_TARGET}-${{ matrix.flavor }}-${{ matrix.driver_branch }}
@@ -105,12 +126,13 @@ jobs:
           source kernel_version.txt && \
           make DRIVER_VERSIONS=${DRIVER_VERSIONS} DRIVER_BRANCH=${{ matrix.driver_branch }} build-${DIST}-${DRIVER_VERSION}
 
-      - name: Save build image as a tar
+      - name: Save build image and kernel version file
         env:
           DIST: ${{ matrix.dist }}
           PRIVATE_REGISTRY: "ghcr.io"
         run: |
           source kernel_version.txt
+          tar -cvf kernel-version-${{ matrix.driver_branch }}-${KERNEL_VERSION}-${DIST}.tar kernel_version.txt
           docker save "${PRIVATE_REGISTRY}/nvidia/driver:${{ matrix.driver_branch }}-${KERNEL_VERSION}-${DIST}" \
             -o  ./driver-images-${{ matrix.driver_branch }}-${KERNEL_VERSION}-${DIST}.tar
           # set env for artifacts upload
@@ -123,7 +145,14 @@ jobs:
            name: driver-images-${{ matrix.driver_branch }}-${{ env.KERNEL_VERSION }}-${{ env.DIST }}
            path: ./driver-images-${{ matrix.driver_branch }}-${{ env.KERNEL_VERSION }}-${{ env.DIST }}.tar
            retention-days: 1
-
+      
+      - name: Upload kernel version as an artifact
+        uses: actions/upload-artifact@v4
+        with:
+           name: kernel-version-${{ matrix.driver_branch }}-${{ env.KERNEL_VERSION }}-${{ env.DIST }}
+           path: ./kernel-version-${{ matrix.driver_branch }}-${{ env.KERNEL_VERSION }}-${{ env.DIST }}.tar
+           retention-days: 1
+  
   determine-e2e-test-matrix:
     runs-on: linux-amd64-cpu4
     strategy:
@@ -132,10 +161,6 @@ jobs:
     needs:
       - precompiled-build-image
       - set-driver-version-matrix
-    outputs:
-      matrix_values_not_empty: ${{ steps.set_kernel_version.outputs.matrix_values_not_empty }}
-      matrix_values: ${{ steps.set_kernel_version.outputs.matrix_values }}
-      dist: ${{ steps.set-driver-version-matrix.outputs.dist }}
     steps:
       - name: Check out code
         uses: actions/checkout@v4
@@ -146,19 +171,34 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Set kernel version
-        id: set_kernel_version
+      - name: Calculate build vars
+        id: vars
         env:
-          BASE_TARGET: "jammy"
           DIST: ${{ matrix.dist }}
         run: |
-          echo "matrix_values_not_empty=0" >> $GITHUB_OUTPUT
+          VAR_NAME_BASE_TARGET=$(echo base_target_${DIST} | sed 's/\./_/g')
+          echo "VAR_NAME_BASE_TARGET=${VAR_NAME_BASE_TARGET}" >> $GITHUB_ENV
+          VAR_NAME_LTS_KERNEL=$(echo lts_kernel_${DIST} | sed 's/\./_/g')
+          echo "VAR_NAME_LTS_KERNEL=${VAR_NAME_LTS_KERNEL}" >> $GITHUB_ENV
 
+      - name: Set kernel version
+        env:
+          DIST: ${{ matrix.dist }}
+          GH_TOKEN:  ${{ secrets.GITHUB_TOKEN }}
+          BASE_TARGET: ${{ needs.set-driver-version-matrix.outputs[env.VAR_NAME_BASE_TARGET] }}
+          LTS_KERNEL: ${{ needs.set-driver-version-matrix.outputs[env.VAR_NAME_LTS_KERNEL] }}
+        run: |
           kernel_flavors_json='${{ needs.set-driver-version-matrix.outputs.kernel_flavors }}'
           KERNEL_FLAVORS=($(echo "$kernel_flavors_json" | jq -r '.[]'))
           driver_branch_json='${{ needs.set-driver-version-matrix.outputs.driver_branch }}'
           DRIVER_BRANCHES=($(echo "$driver_branch_json" | jq -r '.[]'))
 
+          # remove 535 driver branch for ubuntu24.04
+          if [ "$DIST" == "ubuntu24.04" ]; then
+            DRIVER_BRANCHES=($(for branch in "${DRIVER_BRANCHES[@]}"; do
+            [[ $branch != "535" ]] && echo "$branch"
+          done))
+          fi
           source ./tests/scripts/ci-precompiled-helpers.sh
           KERNEL_VERSIONS=($(get_kernel_versions_to_test $BASE_TARGET KERNEL_FLAVORS[@] DRIVER_BRANCHES[@] $DIST))
           if [ -z "$KERNEL_VERSIONS" ]; then
@@ -167,21 +207,71 @@ jobs:
             exit 0
           fi
           # Convert array to JSON format and assign
-          echo "[]" > $GITHUB_WORKSPACE/matrix_values.json
-          printf '%s\n' "${KERNEL_VERSIONS[@]}" | jq -R . | jq -s . > $GITHUB_WORKSPACE/matrix_values.json
-          echo "matrix_values=$(cat $GITHUB_WORKSPACE/matrix_values.json | jq -c .)" >> $GITHUB_OUTPUT
-          echo "matrix_values_not_empty=1" >> $GITHUB_OUTPUT
+          echo "[]" > ./matrix_values_$DIST.json
+          printf '%s\n' "${KERNEL_VERSIONS[@]}" | jq -R . | jq -s . > ./matrix_values_$DIST.json
 
-  e2e-tests-nvidiadriver:
+      - name: Upload kernel matrix values as artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: matrix-values-${{ matrix.dist }}
+          path: ./matrix_values_${{ matrix.dist }}.json
+          retention-days: 1
+
+  collect-e2e-test-matrix:
     runs-on: linux-amd64-cpu4
     needs:
       - determine-e2e-test-matrix
       - set-driver-version-matrix
-    if: ${{ needs.determine-e2e-test-matrix.outputs.matrix_values_not_empty == '1' }}
+    outputs:
+      matrix_values_not_empty: ${{ steps.set_kernel_version.outputs.matrix_values_not_empty }}
+      matrix_values: ${{ steps.set_kernel_version.outputs.matrix_values }}
+      exclude_matrix_values: ${{ steps.set_kernel_version.outputs.exclude_matrix_values }}
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+      - name: Set and append matrix values for ubuntu
+        id: set_kernel_version
+        env:
+          GH_TOKEN:  ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "matrix_values_not_empty=0" >> $GITHUB_OUTPUT
+          # combined_values="[]"
+          kernel_versions=()
+
+          # Read and merge kernel_version values from dist files
+          dist_json='${{ needs.set-driver-version-matrix.outputs.dist }}'
+          DIST=($(echo "$dist_json" | jq -r '.[]'))
+          for d in "${DIST[@]}"; do
+            artifact_name="matrix-values-${d}"
+            file_path="./matrix_values_${d}.json"
+            echo "Attempting to download artifact: $artifact_name"
+            if gh run download --name "$artifact_name" --dir ./; then
+              echo "Successfully downloaded artifact: $artifact_name"
+              value=$(jq -r '.[]' "$file_path")
+              kernel_versions+=($value)
+              echo "matrix_values_not_empty=1" >> $GITHUB_OUTPUT
+            fi
+          done
+          echo "Collected Kernel Versions: ${kernel_versions[@]}"
+          combined_values=$(printf '%s\n' "${kernel_versions[@]}" | jq -R . | jq -s -c .  | tr -d ' \n')
+          echo "Combined Kernel Versions JSON: $combined_values"
+          # FIXME -- remove once azure kernel upgrade starts working
+          exclude_combined_values=$(printf '%s\n' "${kernel_versions[@]}" | jq -R . | jq -s -c 'map(select(test("azure")))')
+          exclude_combined_values=$(echo "$exclude_combined_values" | jq -c '[.[] | {kernel_version: .}]')
+          echo "exclude_combined_values Kernel Versions : $exclude_combined_values"
+          echo "matrix_values=$combined_values" >> $GITHUB_OUTPUT
+          echo "exclude_matrix_values=$exclude_combined_values" >> $GITHUB_OUTPUT
+
+  e2e-tests-nvidiadriver:
+    runs-on: linux-amd64-cpu4
+    needs:
+      - collect-e2e-test-matrix
+      - set-driver-version-matrix
+    if: ${{ needs.collect-e2e-test-matrix.outputs.matrix_values_not_empty == '1' }}
     strategy:
       matrix:
-        kernel_version: ${{ fromJson(needs.determine-e2e-test-matrix.outputs.matrix_values) }}
-        dist: ${{ fromJson(needs.set-driver-version-matrix.outputs.dist) }}
+        kernel_version: ${{ fromJson(needs.collect-e2e-test-matrix.outputs.matrix_values) }}
+        exclude: ${{ fromJson(needs.collect-e2e-test-matrix.outputs.exclude_matrix_values) }}
     steps:
       - name: Check out code
         uses: actions/checkout@v4
@@ -191,36 +281,42 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
+      - name:  Set and Calculate test vars
+        run: |
+          echo "private_key=${{ github.workspace }}/key.pem" >> $GITHUB_ENV
+          echo "${{ secrets.AWS_SSH_KEY }}" > ${{ github.workspace }}/key.pem && chmod 400 ${{ github.workspace }}/key.pem
+          echo "COMMIT_SHORT_SHA=${GITHUB_SHA:0:8}" >> $GITHUB_ENV
+          echo "PRIVATE_REGISTRY=ghcr.io" >> $GITHUB_ENV
+          KERNEL_VERSION="${{ matrix.kernel_version }}"
+          # Extract the last segment after the last dash
+          DIST=${KERNEL_VERSION##*-}
+          echo "DIST=$DIST" >> $GITHUB_ENV
+          KERNEL_VERSION=${KERNEL_VERSION%-*}
+          echo "KERNEL_VERSION=$KERNEL_VERSION" >> $GITHUB_ENV
+          driver_branch_json="${{ needs.set-driver-version-matrix.outputs.driver_branch }}"
+          DRIVER_BRANCHES=($(echo "$driver_branch_json" | jq -r '.[]'))
+          echo "DRIVER_BRANCHES=${DRIVER_BRANCHES[*]}" >> $GITHUB_ENV
+
       - name: Set up Holodeck
         uses: NVIDIA/holodeck@v0.2.1
         env:
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SSH_KEY: ${{ secrets.AWS_SSH_KEY }}
+          DIST: ${{ env.DIST }}
         with:
           aws_access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws_ssh_key: ${{ secrets.AWS_SSH_KEY }}
-          holodeck_config: "tests/holodeck.yaml"
-
+          holodeck_config: "tests/holodeck_${{ env.DIST }}.yaml"
       - name: Get public dns name
         id: get_public_dns_name
         uses: mikefarah/yq@master
         with:
           cmd: yq '.status.properties[] | select(.name == "public-dns-name") | .value' /github/workspace/.cache/holodeck.yaml
-      - name:  Set and Calculate test vars
+      - name:  Calculate holodeck instance hostname
         run: |
           echo "instance_hostname=ubuntu@${{ steps.get_public_dns_name.outputs.result }}" >> $GITHUB_ENV
-          echo "private_key=${{ github.workspace }}/key.pem" >> $GITHUB_ENV
-          echo "${{ secrets.AWS_SSH_KEY }}" > ${{ github.workspace }}/key.pem && chmod 400 ${{ github.workspace }}/key.pem
-          echo "COMMIT_SHORT_SHA=${GITHUB_SHA:0:8}" >> $GITHUB_ENV
-          echo "PRIVATE_REGISTRY=ghcr.io" >> $GITHUB_ENV
-          KERNEL_VERSION="${{ matrix.kernel_version }}"
-          echo "KERNEL_VERSION=$KERNEL_VERSION" >> $GITHUB_ENV
-          echo "DIST=${{ matrix.dist }}" >> $GITHUB_ENV
-          driver_branch_json="${{ needs.set-driver-version-matrix.outputs.driver_branch }}"
-          DRIVER_BRANCHES=($(echo "$driver_branch_json" | jq -r '.[]'))
-          echo "DRIVER_BRANCHES=${DRIVER_BRANCHES[*]}" >> $GITHUB_ENV
 
       - name: Install GitHub CLI
         run: |
@@ -258,6 +354,12 @@ jobs:
           rc=0
           # for precompiled driver we are setting driver branch as driver version
           DRIVER_BRANCHES=(${{ env.DRIVER_BRANCHES }})
+          # remove 535 driver branch for ubuntu24.04
+          if [ "$DIST" == "ubuntu24.04" ]; then
+            DRIVER_BRANCHES=($(for branch in "${DRIVER_BRANCHES[@]}"; do
+            [[ $branch != "535" ]] && echo "$branch"
+          done))
+          fi
           for DRIVER_VERSION in "${DRIVER_BRANCHES[@]}"; do
             echo "Running e2e for DRIVER_VERSION=$DRIVER_VERSION"
             image="driver-images-${DRIVER_VERSION}-${KERNEL_VERSION}-${DIST}"
@@ -290,13 +392,12 @@ jobs:
     runs-on: linux-amd64-cpu4
     needs:
       - set-driver-version-matrix
-      - determine-e2e-test-matrix
+      - collect-e2e-test-matrix
       - e2e-tests-nvidiadriver
     strategy:
       matrix:
         driver_branch: ${{ fromJson(needs.set-driver-version-matrix.outputs.driver_branch) }}
-        kernel_version: ${{ fromJson(needs.determine-e2e-test-matrix.outputs.matrix_values) }}
-        dist: ${{ fromJson(needs.set-driver-version-matrix.outputs.dist) }}     
+        kernel_version: ${{ fromJson(needs.collect-e2e-test-matrix.outputs.matrix_values) }}
     steps:
       - name: Check out code
         uses: actions/checkout@v4
@@ -310,17 +411,18 @@ jobs:
       - name:  Set image vars
         run: |
           echo "PRIVATE_REGISTRY=ghcr.io" >> $GITHUB_ENV
-          echo "DIST=${{ matrix.dist }}" >> $GITHUB_ENV
 
       - name: Download built image artifact
+        if: ${{ ! (matrix.driver_branch == 535 && contains(matrix.kernel_version, 'ubuntu24.04')) }}
         uses: actions/download-artifact@v4
         with:
-           name: driver-images-${{ matrix.driver_branch }}-${{ matrix.kernel_version }}-${{ env.DIST }}
+           name: driver-images-${{ matrix.driver_branch }}-${{ matrix.kernel_version }}
            path: ./
 
       - name: Publish image
+        if: ${{ ! (matrix.driver_branch == 535 && contains(matrix.kernel_version, 'ubuntu24.04')) }}
         run: |
-          image_path="./driver-images-${{ matrix.driver_branch }}-${{ matrix.kernel_version }}-${{ env.DIST }}.tar"
+          image_path="./driver-images-${{ matrix.driver_branch }}-${{ matrix.kernel_version }}.tar"
           echo "uploading  $image_path"
           docker load -i $image_path
-          docker push ${PRIVATE_REGISTRY}/nvidia/driver:${{ matrix.driver_branch }}-${{ matrix.kernel_version }}-${{ env.DIST }}
+          docker push ${PRIVATE_REGISTRY}/nvidia/driver:${{ matrix.driver_branch }}-${{ matrix.kernel_version }}

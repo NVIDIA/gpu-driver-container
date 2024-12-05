@@ -22,7 +22,8 @@ SUPPORTED_KERNELS=$(apt-cache search linux-objects-nvidia-${DRIVER_BRANCH}-serve
 DRIVER_VERSION=$(apt-cache show nvidia-utils-${DRIVER_BRANCH}-server |grep Version |awk '{print $2}' | cut -d'-' -f1 | head -n 1)
 
 # Latest supported kernel
-SK=$(echo $SUPPORTED_KERNELS | awk '{print $NF}')
+# only consider suffix -KERNEL_FLAVOR not KERNEL_FLAVOR-* (e.g. KERNEL_FLAVOR-lowlatency)
+SK=$(echo "$SUPPORTED_KERNELS" | awk -v f="$KERNEL_FLAVOR" '$0 ~ "-" f "$" {last=$0} END{print last}')
 
 # Write to file
 echo "export KERNEL_VERSION=$SK DRIVER_VERSION=$DRIVER_VERSION DRIVER_VERSIONS=$DRIVER_VERSION" > /var/kernel_version.txt
