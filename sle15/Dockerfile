@@ -1,7 +1,7 @@
 ARG SLES_VERSION
-FROM nvcr.io/nvidia/cuda:12.6.2-base-ubi8 as license
+FROM nvcr.io/nvidia/cuda:12.6.0-base-ubi9 as license
 
-FROM registry.suse.com/bci/golang:1.17 as build
+FROM registry.suse.com/bci/golang:1.23 as build
 
 RUN zypper --non-interactive install -y git wget tar gzip
 
@@ -12,7 +12,7 @@ RUN git clone https://github.com/NVIDIA/gpu-driver-container driver && \
     go build -o vgpu-util && \
     mv vgpu-util /work
 
-FROM registry.suse.com/suse/sle15:$SLES_VERSION
+FROM registry.suse.com/bci/bci-base:$SLES_VERSION
 
 #ARG BASE_URL=http://us.download.nvidia.com/XFree86/Linux-x86_64
 ARG BASE_URL=https://us.download.nvidia.com/tesla
