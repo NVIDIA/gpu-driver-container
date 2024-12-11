@@ -318,7 +318,7 @@ jobs:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SSH_KEY: ${{ secrets.AWS_SSH_KEY }}
           DIST: ${{ env.DIST }}
-          INSTANCE_NAME: ${{ github.event.pull_request.user.login }}-${{ github.event.pull_request.number }}-${GITHUB_SHA:0:8}
+          INSTANCE_NAME: ${{ env.LABEL_IMAGE_SOURCE }}-${{ env.LOWERCASE_REPO_OWNER }}-${{ env.COMMIT_SHORT_SHA }}
         with:
           aws_access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
