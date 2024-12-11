@@ -1,7 +1,7 @@
 apiVersion: holodeck.nvidia.com/v1alpha1
 kind: Environment
 metadata:
-  name: INSTANCE_NAME
+  name: ${INSTANCE_NAME}
   description: "end-to-end test infrastructure"
 spec:
   provider: aws
