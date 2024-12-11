@@ -314,6 +314,8 @@ jobs:
           echo "REPO_NAME=${REPO_NAME}" >> $GITHUB_ENV
           echo "BRANCH_NAME=${GITHUB_REF_NAME}" >> $GITHUB_ENV
           echo "GITHUB_ACTOR=${GITHUB_ACTOR}" >> $GITHUB_ENV
+          echo "INSTANCE_NAME=${REPO_NAME}-${GITHUB_REF_NAME}-${GITHUB_ACTOR}-${GITHUB_SHA:0:8}" >> $GITHUB_ENV
+          echo "HOLODECK_NAME=${REPO_NAME}-${GITHUB_REF_NAME}-${GITHUB_ACTOR}-${GITHUB_SHA:0:8}" >> $GITHUB_ENV
 
       - name: Set up Holodeck
         uses: NVIDIA/holodeck@v0.2.1
