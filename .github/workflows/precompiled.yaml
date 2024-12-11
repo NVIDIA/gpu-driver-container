@@ -310,11 +310,12 @@ jobs:
           driver_branch_json="${{ needs.set-driver-version-matrix.outputs.driver_branch }}"
           DRIVER_BRANCHES=($(echo "$driver_branch_json" | jq -r '.[]'))
           echo "DRIVER_BRANCHES=${DRIVER_BRANCHES[*]}" >> $GITHUB_ENV
-          REPO_NAME="${{ github.repository##*/ }}"
-          BRANCH_NAME=${{ github.ref##*/ }}"
-          GITHUB_ACTOR="${{ github.actor##*/ }}"
+          # REPO_NAME="${{ github.repository##*/ }}"
+          # BRANCH_NAME=${{ github.ref##*/ }}"
+          # GITHUB_ACTOR="${{ github.actor##*/ }}"
+          REPO_NAME=${GITHUB_REPOSITORY##*/}
           echo "REPO_NAME=${REPO_NAME}" >> $GITHUB_ENV
-          echo "BRANCH_NAME=${BRANCH_NAME}" >> $GITHUB_ENV
+          echo "BRANCH_NAME=${GITHUB_REF_NAME}" >> $GITHUB_ENV
           echo "GITHUB_ACTOR=${GITHUB_ACTOR}" >> $GITHUB_ENV
 
       - name: Set up exit
