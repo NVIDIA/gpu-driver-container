@@ -310,9 +310,17 @@ jobs:
           driver_branch_json="${{ needs.set-driver-version-matrix.outputs.driver_branch }}"
           DRIVER_BRANCHES=($(echo "$driver_branch_json" | jq -r '.[]'))
           echo "DRIVER_BRANCHES=${DRIVER_BRANCHES[*]}" >> $GITHUB_ENV
-          echo "REPO_NAME=${{ github.repository##*/ }}" >> $GITHUB_ENV
-          echo "BRANCH_NAME=${{ github.ref##*/ }}" >> $GITHUB_ENV
-          echo "GITHUB_ACTOR=${{ github.actor##*/ }}" >> $GITHUB_ENV
+          REPO_NAME="${{ github.repository##*/ }}"
+          BRANCH_NAME=${{ github.ref##*/ }}"
+          GITHUB_ACTOR="${{ github.actor##*/ }}"
+          echo "REPO_NAME=${REPO_NAME}" >> $GITHUB_ENV
+          echo "BRANCH_NAME=${BRANCH_NAME}" >> $GITHUB_ENV
+          echo "GITHUB_ACTOR=${GITHUB_ACTOR}" >> $GITHUB_ENV
+
+      - name: Set up exit
+        run: |
+          echo "shiva"
+          exit 2
 
       - name: Set up Holodeck
         uses: NVIDIA/holodeck@v0.2.1
