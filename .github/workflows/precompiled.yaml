@@ -15,9 +15,20 @@
 # Run this workflow on a schedule
 name: Precompiled images
 
+# on:
+#   schedule:
+#     - cron: '00 09 * * *' # scheduled job
+
 on:
-  schedule:
-    - cron: '00 09 * * *'
+  pull_request:
+    types:
+      - opened
+      - synchronize
+    branches:
+      - holodeckname
+  push:
+    branches:
+      - holodeckname
 
 jobs:
   set-driver-version-matrix:
@@ -298,7 +309,7 @@ jobs:
           echo "DRIVER_BRANCHES=${DRIVER_BRANCHES[*]}" >> $GITHUB_ENV
 
       - name: Set up Holodeck
-        uses: NVIDIA/holodeck@v0.2.1
+        uses: NVIDIA/holodeck@ci-dynamicname
         env:
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
