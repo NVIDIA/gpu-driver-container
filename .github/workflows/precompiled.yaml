@@ -310,8 +310,8 @@ jobs:
           driver_branch_json="${{ needs.set-driver-version-matrix.outputs.driver_branch }}"
           DRIVER_BRANCHES=($(echo "$driver_branch_json" | jq -r '.[]'))
           echo "DRIVER_BRANCHES=${DRIVER_BRANCHES[*]}" >> $GITHUB_ENV
-          echo "LOWERCASE_REPO_OWNER=$(echo "${GITHUB_REPOSITORY_OWNER}" | awk '{print tolower($0)}')" >> $GITHUB_ENV
-          REPO_FULL_NAME="${{ github.event.pull_request.head.repo.full_name }}" >> $GITHUB_ENV
+          REPO_NAME="${{ github.repository }}" >> $GITHUB_ENV
+          BRANCH_NAME=${{ github.head_ref }} >> $GITHUB_ENV
           GITHUB_ACTOR="${{ github.actor }}" >> $GITHUB_ENV
 
       - name: Set up Holodeck
@@ -321,7 +321,7 @@ jobs:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SSH_KEY: ${{ secrets.AWS_SSH_KEY }}
           DIST: ${{ env.DIST }}
-          INSTANCE_NAME: ${{ env.REPO_FULL_NAME }}-${{ env.GITHUB_ACTOR }}-${{ env.LOWERCASE_REPO_OWNER }}-${{ env.COMMIT_SHORT_SHA }}
+          INSTANCE_NAME: ${{ env.REPO_NAME }}-${{ env.BRANCH_NAME }}-${{ env.GITHUB_ACTOR }}-${{ env.COMMIT_SHORT_SHA }}
         with:
           aws_access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
