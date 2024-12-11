@@ -315,11 +315,6 @@ jobs:
           echo "BRANCH_NAME=${GITHUB_REF_NAME}" >> $GITHUB_ENV
           echo "GITHUB_ACTOR=${GITHUB_ACTOR}" >> $GITHUB_ENV
 
-      - name: Set up exit
-        run: |
-          echo "shiva"
-          exit 2
-
       - name: Set up Holodeck
         uses: NVIDIA/holodeck@v0.2.1
         env:
