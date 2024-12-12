@@ -63,13 +63,8 @@ RUN echo "TARGETARCH=$TARGETARCH"
 
 ADD install.sh /tmp
 
-# Fetch GPG keys for CUDA repo
-RUN apt-key del 7fa2af80 && OS_ARCH=${TARGETARCH/amd64/x86_64} && OS_ARCH=${OS_ARCH/arm64/sbsa} && \
-    apt-key adv --fetch-keys "https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2404/${OS_ARCH}/3bf863cc.pub"
-
 RUN usermod -o -u 0 -g 0 _apt && \
-    /tmp/install.sh depinstall
-
+    /tmp/install.sh depinstall && /tmp/install.sh setup_cuda_repo
 
 COPY nvidia-driver /usr/local/bin
 
