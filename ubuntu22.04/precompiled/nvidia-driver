@@ -101,6 +101,25 @@ _load_driver() {
     echo "Parsing kernel module parameters..."
     _get_module_params
 
+    local nv_fw_search_path="$RUN_DIR/driver/lib/firmware"
+    local set_fw_path="true"
+    local fw_path_config_file="/sys/module/firmware_class/parameters/path"
+    for param in "${NVIDIA_MODULE_PARAMS[@]}"; do
+        if [[ "$param" == "NVreg_EnableGpuFirmware=0" ]]; then
+          set_fw_path="false"
+        fi
+    done
+
+    if [[ "$set_fw_path" == "true" ]]; then
+        echo "Configuring the following firmware search path in '$fw_path_config_file': $nv_fw_search_path"
+        if [[ ! -z $(grep '[^[:space:]]' $fw_path_config_file) ]]; then
+            echo "WARNING: A search path is already configured in $fw_path_config_file"
+            echo "         Retaining the current configuration"
+        else
+            echo -n "$nv_fw_search_path" > $fw_path_config_file || echo "WARNING: Failed to configure firmware search path"
+        fi
+    fi
+
     echo "Loading ipmi and i2c_core kernel modules..."
     modprobe -a i2c_core ipmi_msghandler ipmi_devintf
 
@@ -124,6 +143,10 @@ _load_driver() {
 
     DRIVER_VERSION=$(nvidia-smi -q | grep "Driver Version" | awk -F: '{print $2}' | xargs)
     if _assert_nvswitch_system; then
+        echo "Installing NVIDIA fabric manager and libnvidia NSCQ packages..."
+        apt-get install -y --no-install-recommends \
+            nvidia-fabricmanager-${DRIVER_BRANCH}=${DRIVER_VERSION}-1 \
+            libnvidia-nscq-${DRIVER_BRANCH}=${DRIVER_VERSION}-1
  
         echo "Starting NVIDIA fabric manager daemon..."
         nv-fabricmanager -c /usr/share/nvidia/nvswitch/fabricmanager.cfg
@@ -211,6 +234,17 @@ _unload_driver() {
 
 # Link and install the kernel modules from a precompiled packages
 _install_driver() {
+    # Install necessary userspace, fabric manager and libnvidia-nscq packages
+    apt-get install -y --no-install-recommends nvidia-driver-${DRIVER_BRANCH}-server
+
+    # Uninstall unnecessary packages installed as a part of the nvidia-driver-${DRIVER_BRANCH}-server package
+    apt-get purge -y \
+        libnvidia-egl-wayland1 \
+        nvidia-dkms-${DRIVER_BRANCH}-server \
+        nvidia-kernel-source-${DRIVER_BRANCH}-server \
+        xserver-xorg-video-nvidia-${DRIVER_BRANCH}-server
+
+    # Now install the precompiled kernel module packages signed by Canonical
     if [ "$OPEN_KERNEL_MODULES_ENABLED" = true ]; then
         echo "Installing Open NVIDIA driver kernel modules..."
         apt-get install --no-install-recommends -y \

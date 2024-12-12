@@ -49,14 +49,9 @@ RUN if [ -n "${CVE_UPDATES}" ]; then \
     fi
 
 # update pkg cache and install pkgs for userspace driver libs
-RUN apt-get update && apt-get install -y --no-install-recommends nvidia-driver-${DRIVER_BRANCH}-server \
+RUN apt-get update && apt-get install -y --download-only --no-install-recommends nvidia-driver-${DRIVER_BRANCH}-server \
     nvidia-fabricmanager-${DRIVER_BRANCH}=${DRIVER_VERSION}-1 \
     libnvidia-nscq-${DRIVER_BRANCH}=${DRIVER_VERSION}-1 && \
-    apt-get purge -y \
-    libnvidia-egl-wayland1 \
-    nvidia-dkms-${DRIVER_BRANCH}-server \
-    nvidia-kernel-source-${DRIVER_BRANCH}-server \
-    xserver-xorg-video-nvidia-${DRIVER_BRANCH}-server && \
     rm -rf /var/lib/apt/lists/*;
 
 # update pkg cache and download pkgs for driver module installation during runtime.
