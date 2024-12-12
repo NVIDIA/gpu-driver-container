@@ -330,7 +330,6 @@ jobs:
           aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws_ssh_key: ${{ secrets.AWS_SSH_KEY }}
           holodeck_config: "tests/holodeck_${{ env.DIST }}.yaml"
-          debug: true
       - name: Get public dns name
         id: get_public_dns_name
         uses: mikefarah/yq@master
