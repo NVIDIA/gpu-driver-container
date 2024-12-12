@@ -1,7 +1,7 @@
 apiVersion: holodeck.nvidia.com/v1alpha1
 kind: Environment
 metadata:
-  name: shivaku-1
+  name: HOLODECK_NAME
   description: "end-to-end test infrastructure"
 spec:
   provider: aws
@@ -11,7 +11,6 @@ spec:
   instance:
     type: g4dn.xlarge
     region: us-west-1
-    name: shivaku-3
     ingressIpRanges:
     - 18.190.12.32/32
     - 3.143.46.93/32
