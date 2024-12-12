@@ -31,15 +31,7 @@ RUN dpkg --add-architecture i386 && \
         pkg-config && \
     rm -rf /var/lib/apt/lists/*
 
-RUN echo "deb [arch=amd64] http://archive.ubuntu.com/ubuntu/ noble main universe" > /etc/apt/sources.list && \
-    echo "deb [arch=amd64] http://archive.ubuntu.com/ubuntu/ noble-updates main universe" >> /etc/apt/sources.list && \
-    echo "deb [arch=amd64] http://archive.ubuntu.com/ubuntu/ noble-security main universe" >> /etc/apt/sources.list && \
-    echo "deb [arch=amd64] http://us.archive.ubuntu.com/ubuntu noble-updates main restricted" >> /etc/apt/sources.list && \
-    echo "deb [arch=amd64] http://us.archive.ubuntu.com/ubuntu noble-security main restricted" >> /etc/apt/sources.list && \
-    usermod -o -u 0 -g 0 _apt
-
-RUN curl -fsSL -o /usr/local/bin/donkey https://github.com/3XX0/donkey/releases/download/v1.1.0/donkey && \
-    chmod +x /usr/local/bin/donkey
+RUN usermod -o -u 0 -g 0 _apt
 
 # Install / upgrade packages here that are required to resolve CVEs
 ARG CVE_UPDATES
