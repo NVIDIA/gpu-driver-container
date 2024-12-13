@@ -1,0 +1,73 @@
+name: Daily AWS Cleanup Bot
+
+on:
+  schedule:
+    - cron: '0 8 * * *'
+
+jobs:
+  cleanup:
+    runs-on: linux-amd64-cpu4
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Set up AWS CLI
+        uses: aws-actions/configure-aws-credentials@v3
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-west-1
+
+      - name: Identify resources running longer than 24 hours
+        id: identify-resources
+        run: |
+          # Find EC2 instances running longer than 24 hours
+          running_instances=$(aws ec2 describe-instances \
+            --filters Name=instance-state-name,Values=running \
+            --query "Reservations[*].Instances[?LaunchTime<=\`$(date -u -d '24 hours ago' +%Y-%m-%dT%H:%M:%SZ)\`].InstanceId" \
+            --output text)
+          echo "instances=$running_instances" >> $GITHUB_ENV
+
+          # Find unused VPCs
+          vpcs=$(aws ec2 describe-vpcs \
+            --query "Vpcs[?IsDefault==\`false\`].VpcId" \
+            --output text)
+          echo "vpcs=$vpcs" >> $GITHUB_ENV
+
+      - name: Terminate EC2 Instances
+        if: env.instances != ''
+        run: |
+          for instance in $instances; do
+            echo "Terminating instance: $instance"
+            aws ec2 terminate-instances --instance-ids $instance
+          done
+
+      - name: Clean up VPCs
+        if: env.vpcs != ''
+        run: |
+          for vpc in $vpcs; do
+            attempts=0
+            # try 3 times with 5 minutes interval
+            while [ $attempts -lt 3 ]; do
+              echo "Attempting to delete VPC: $vpc (Attempt $((attempts+1)))"
+              if aws ec2 delete-vpc --vpc-id $vpc; then
+                echo "Successfully deleted VPC: $vpc"
+                break
+              else
+                attempts=$((attempts + 1))
+                if [ $attempts -lt 3 ]; then
+                  echo "Failed to delete VPC: $vpc. Retrying in 10 minutes..."
+                  sleep 600
+                fi
+              fi
+            done
+
+            if [ $attempts -eq 3 ]; then
+              echo "Failed to delete VPC: $vpc after 3 attempts. Skipping."
+            fi
+          done
+
+      - name: Post cleanup
+        run: |
+          echo "Cleanup completed."
