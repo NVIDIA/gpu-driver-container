@@ -14,22 +14,25 @@ ENV NVIDIA_VISIBLE_DEVICES=void
 
 RUN echo 'debconf debconf/frontend select Noninteractive' | debconf-set-selections
 
-# Fetch GPG keys for CUDA repo
-RUN apt-key del 7fa2af80 && \
-    apt-key adv --fetch-keys "https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2404/x86_64/3bf863cc.pub"
-
 RUN dpkg --add-architecture i386 && \
     apt-get update && apt-get install -y --no-install-recommends \
         apt-utils \
         build-essential \
         ca-certificates \
         curl \
+        gpg \
         kmod \
         file \
         libelf-dev \
         libglvnd-dev \
         pkg-config && \
     rm -rf /var/lib/apt/lists/*
+
+# Fetch GPG keys for CUDA repo
+RUN apt-key del 3bf863cc && \
+    rm /etc/apt/sources.list.d/cuda.list && \
+    curl -fsSL https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2404/x86_64/3bf863cc.pub | gpg --dearmor -o /etc/apt/keyrings/cuda.pub && \
+    echo "deb [signed-by=/etc/apt/keyrings/cuda.pub] https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2404/x86_64 /" > /etc/apt/sources.list.d/cuda.list
 
 RUN usermod -o -u 0 -g 0 _apt
 
