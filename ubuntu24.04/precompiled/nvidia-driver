@@ -4,7 +4,7 @@
 set -eu
 
 KERNEL_VERSION=$(uname -r)
-OPEN_KERNEL_MODULES_ENABLED="${OPEN_KERNEL_MODULES_ENABLED:-false}"
+KERNEL_MODULE_TYPE=${KERNEL_MODULE_TYPE:-auto}
 RUN_DIR=/run/nvidia
 PID_FILE=${RUN_DIR}/${0##*/}.pid
 DRIVER_BRANCH=${DRIVER_BRANCH:?"Missing driver version"}
@@ -94,6 +94,24 @@ _get_module_params() {
        done <"${base_path}/nvidia-peermem.conf"
        echo "Module parameters provided for nvidia-peermem: ${NVIDIA_PEERMEM_MODULE_PARAMS[@]}"
     fi
+}
+
+_resolve_kernel_type() {
+  if [ "${KERNEL_MODULE_TYPE}" == "proprietary" ]; then
+    KERNEL_TYPE=kernel
+  elif [ "${KERNEL_MODULE_TYPE}" == "open" ]; then
+    KERNEL_TYPE=kernel-open
+  elif [ "${KERNEL_MODULE_TYPE}" == "auto" ]; then
+      KERNEL_TYPE=$(gpu-driver-util get-kernel-module-type -b "${DRIVER_BRANCH}")
+      if [ $? -ne 0 ]; then
+          echo "cannot autodetect the kernel module type, printing error logs from /var/log/gpu-driver-util.log..."
+          tail -n 3 /var/log/gpu-driver-util.log
+          return 1
+      fi
+  else
+    echo "invalid value for the KERNEL_MODULE_TYPE variable: ${KERNEL_MODULE_TYPE}"
+    return 1
+  fi
 }
 
 # Load the kernel modules and start persistenced.
@@ -245,7 +263,7 @@ _install_driver() {
         xserver-xorg-video-nvidia-${DRIVER_BRANCH}-server
 
     # Now install the precompiled kernel module packages signed by Canonical
-    if [ "$OPEN_KERNEL_MODULES_ENABLED" = true ]; then
+    if [ "${KERNEL_TYPE}" == "kernel-open" ]; then
         echo "Installing Open NVIDIA driver kernel modules..."
         apt-get install --no-install-recommends -y \
             linux-signatures-nvidia-${KERNEL_VERSION} \
@@ -293,6 +311,7 @@ init() {
     _unload_driver || exit 1
     _unmount_rootfs
 
+    _resolve_kernel_type || exit 1
     _install_driver
     _load_driver || exit 1
     _mount_rootfs
