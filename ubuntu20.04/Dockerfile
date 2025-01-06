@@ -28,9 +28,10 @@ ENV PATH /usr/local/go/bin:$PATH
 WORKDIR /work
 
 RUN git clone https://github.com/NVIDIA/gpu-driver-container driver && \
-    cd driver/vgpu/src && \
-    go build -o vgpu-util && \
-    mv vgpu-util /work
+    go build -C driver/vgpu/src -o vgpu-util && \
+    mv driver/vgpu/src/vgpu-util /work && \
+    go build -C driver/gpu-driver-util -o gpu-driver-util && \
+    mv driver/gpu-driver-util/gpu-driver-util /work
 
 FROM nvcr.io/nvidia/cuda:12.6.3-base-ubuntu20.04
 
@@ -72,6 +73,7 @@ RUN /tmp/install.sh reposetup && /tmp/install.sh depinstall && \
 COPY nvidia-driver /usr/local/bin
 
 COPY --from=build /work/vgpu-util /usr/local/bin
+COPY --from=build /work/gpu-driver-util /usr/local/bin
 
 ADD drivers drivers/
 

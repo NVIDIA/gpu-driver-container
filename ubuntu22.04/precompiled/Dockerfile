@@ -2,6 +2,8 @@ FROM nvcr.io/nvidia/cuda:12.6.2-base-ubuntu22.04
 
 ENV DEBIAN_FRONTEND=noninteractive
 
+ARG TARGETARCH
+ARG GOLANG_VERSION
 ARG DRIVER_BRANCH=535
 ENV DRIVER_BRANCH=$DRIVER_BRANCH
 ARG DRIVER_VERSION=535.216.03
@@ -11,6 +13,8 @@ ARG KERNEL_VERSION=5.15.0-116-generic
 ENV KERNEL_VERSION=$KERNEL_VERSION
 
 ENV NVIDIA_VISIBLE_DEVICES=void
+
+SHELL ["/bin/bash", "-c"]
 
 RUN echo 'debconf debconf/frontend select Noninteractive' | debconf-set-selections
 
@@ -26,6 +30,7 @@ RUN dpkg --add-architecture i386 && \
         curl \
         kmod \
         file \
+        git \
         libelf-dev \
         libglvnd-dev \
         pkg-config && \
@@ -40,6 +45,18 @@ RUN echo "deb [arch=amd64] http://archive.ubuntu.com/ubuntu/ jammy main universe
 
 RUN curl -fsSL -o /usr/local/bin/donkey https://github.com/3XX0/donkey/releases/download/v1.1.0/donkey && \
     chmod +x /usr/local/bin/donkey
+
+# download appropriate binary based on the target architecture for multi-arch builds
+RUN OS_ARCH=${TARGETARCH/x86_64/amd64} && OS_ARCH=${OS_ARCH/aarch64/arm64} && \
+    curl https://storage.googleapis.com/golang/go${GOLANG_VERSION}.linux-${OS_ARCH}.tar.gz \
+    | tar -C /usr/local -xz
+
+ENV PATH=/usr/local/go/bin:$PATH
+
+RUN git clone https://github.com/NVIDIA/gpu-driver-container driver && \
+    go build -C driver/gpu-driver-util -o gpu-driver-util && \
+    mv driver/gpu-driver-util/gpu-driver-util /usr/local/bin && \
+    rm -rf driver
 
 # Install / upgrade packages here that are required to resolve CVEs
 ARG CVE_UPDATES
