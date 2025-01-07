@@ -1,6 +1,7 @@
 package main
 
 import (
+	_ "embed"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -23,8 +24,6 @@ const (
 	PCIDeviceClassVGA = "0x030000"
 	// PCIDeviceClassGPU represents the pci device class code for GPU devices
 	PCIDeviceClassGPU = "0x030200"
-	// DefaultSupportedGpusJsonPath represents the default install location of the supported-gpus.json file
-	DefaultSupportedGpusJsonPath = "/usr/share/nvidia-driver-assistant/supported-gpus/supported-gpus.json"
 
 	// DriverHintUnknown is used when the gpu device is not found in supported-gpus.json
 	DriverHintUnknown = "unknown"
@@ -50,6 +49,9 @@ var (
 	supportedGpusJsonPath string
 	driverBranch          int
 )
+
+//go:embed supported-gpus.json
+var defaultSupportedGpusJson string
 
 type GPUDevice struct {
 	ID           string   `json:"devid"`
@@ -87,7 +89,6 @@ func main() {
 			Name:        "supported-gpus-file",
 			Aliases:     []string{"f"},
 			Usage:       "Specify location of the supported-gpus.json file",
-			Value:       DefaultSupportedGpusJsonPath,
 			Destination: &supportedGpusJsonPath,
 			Required:    false,
 		},
@@ -139,16 +140,20 @@ func GetKernelModule(c *cli.Context) error {
 		return err
 	}
 
-	var gpuData GPUData
-	gpuJSONString, err := os.ReadFile(supportedGpusJsonPath)
-	if err != nil {
-		log.Errorf("error opening the supported gpus file %s: %v", supportedGpusJsonPath, err)
-		return err
+	var jsonData []byte
+	if len(supportedGpusJsonPath) > 0 {
+		jsonData, err = os.ReadFile(supportedGpusJsonPath)
+		if err != nil {
+			return fmt.Errorf("error opening the supported gpus file %s: %w", supportedGpusJsonPath, err)
+		}
+	} else {
+		jsonData = []byte(defaultSupportedGpusJson)
 	}
 
-	err = json.Unmarshal(gpuJSONString, &gpuData)
+	var gpuData GPUData
+	err = json.Unmarshal(jsonData, &gpuData)
 	if err != nil {
-		return err
+		return fmt.Errorf("error unmarshaling the supported gpus json %s: %w", supportedGpusJsonPath, err)
 	}
 
 	searchMap := buildGPUSearchMap(gpuData)
@@ -156,8 +161,7 @@ func GetKernelModule(c *cli.Context) error {
 	if len(gpuDevices) > 0 {
 		kernelModuleType, err := resolveKernelModuleType(gpuDevices, searchMap)
 		if err != nil {
-			log.Errorf("error resolving kernel module type: %v", err)
-			return err
+			return fmt.Errorf("error resolving kernel module type: %w", err)
 		}
 		fmt.Println(kernelModuleType)
 	}
@@ -165,7 +169,7 @@ func GetKernelModule(c *cli.Context) error {
 }
 
 func resolveKernelModuleType(gpuDevices []string, searchMap map[string]GPUDevice) (string, error) {
-
+	var kernelModuleType string
 	driverHints := getDriverHints(gpuDevices, searchMap)
 	log.Debugf("driverHints: %v", driverHints)
 
@@ -177,12 +181,14 @@ func resolveKernelModuleType(gpuDevices []string, searchMap map[string]GPUDevice
 	if requiresOpenRM && requiresProprietary {
 		return "", fmt.Errorf("unsupported GPU topology")
 	} else if requiresOpenRM {
-		return KernelModuleTypeOpen, nil
+		kernelModuleType = KernelModuleTypeOpen
 	} else if requiresProprietary {
-		return KernelModuleTypeProprietary, nil
+		kernelModuleType = KernelModuleTypeProprietary
 	} else {
-		return getDriverBranchDefault(driverBranch), nil
+		kernelModuleType = getDriverBranchDefault(driverBranch)
 	}
+	log.Debugf("printing the recommended kernel module type: %s", kernelModuleType)
+	return kernelModuleType, nil
 }
 
 func getDriverHints(gpuDevices []string, searchMap map[string]GPUDevice) []string {
