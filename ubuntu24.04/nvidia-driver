@@ -15,9 +15,7 @@ NVIDIA_UVM_MODULE_PARAMS=()
 NVIDIA_MODESET_MODULE_PARAMS=()
 NVIDIA_PEERMEM_MODULE_PARAMS=()
 TARGETARCH=${TARGETARCH:?"Missing TARGETARCH env"}
-
-OPEN_KERNEL_MODULES_ENABLED=${OPEN_KERNEL_MODULES_ENABLED:-false}
-[[ "${OPEN_KERNEL_MODULES_ENABLED}" == "true" ]] && KERNEL_TYPE=kernel-open || KERNEL_TYPE=kernel
+KERNEL_MODULE_TYPE=${KERNEL_MODULE_TYPE:-auto}
 
 export DEBIAN_FRONTEND=noninteractive
 
@@ -359,6 +357,12 @@ _install_driver() {
         install_args+=("--concurrency-level=${MAX_THREADS}")
     fi
 
+    if [[ "${KERNEL_MODULE_TYPE}" == "open"  || "${KERNEL_MODULE_TYPE}" == "proprietary" ]]; then
+        [[ "${KERNEL_MODULE_TYPE}" == "open" ]] && kernel_type=kernel-open || kernel_type=kernel
+        echo "Proceeding with user-specified kernel module type ${KERNEL_MODULE_TYPE}"
+        install_args+=("-m=${kernel_type}")
+    fi
+
     # Install the NVIDIA driver in one step
     sh NVIDIA-Linux-$DRIVER_ARCH-$DRIVER_VERSION.run --silent \
                     --ui=none \
@@ -374,7 +378,6 @@ _install_driver() {
                     --x-module-path=/tmp/null \
                     --x-library-path=/tmp/null \
                     --x-sysconfig-path=/tmp/null \
-                    -m="${KERNEL_TYPE}" \
                     ${install_args[@]+"${install_args[@]}"}
 }
 
