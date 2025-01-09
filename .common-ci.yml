@@ -179,6 +179,14 @@ trigger-pipeline:
   rules:
     - if: $CI_PIPELINE_SOURCE != "schedule"
 
+.release-ubuntu24.04:
+  # Perform for each DRIVER_VERSION
+  extends:
+    - .release-generic
+    - .driver-versions-ubuntu24.04
+  rules:
+    - if: $CI_PIPELINE_SOURCE != "schedule"
+
 .release-rhel9:
   # Perform for each DRIVER_VERSION
   extends:
