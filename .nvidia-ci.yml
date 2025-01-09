@@ -80,7 +80,7 @@ variables:
 .image-pull-ubuntu24.04:
   # Perform for each DRIVER_VERSION
   extends:
-    - .driver-versions
+    - .driver-versions-ubuntu24.04
     - .image-pull-generic
   rules:
     - if: $CI_PIPELINE_SOURCE == "schedule"
@@ -133,6 +133,11 @@ image-ubuntu22.04:
   extends:
     - .image-pull-ubuntu22.04
     - .dist-ubuntu22.04
+
+image-ubuntu24.04:
+  extends:
+    - .image-pull-ubuntu24.04
+    - .dist-ubuntu24.04
 
 image-rhel8:
   extends:
