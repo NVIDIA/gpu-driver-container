@@ -105,6 +105,9 @@ jobs:
           - generic
           - nvidia
           - oracle
+        dist:
+          - ubuntu22.04
+          - ubuntu24.04
         ispr:
           - ${{github.event_name == 'pull_request'}}
         exclude:
@@ -116,6 +119,8 @@ jobs:
             flavor: nvidia
           - ispr: true
             flavor: oracle
+          - driver: 535
+            dist: ubuntu24.04
     steps:
       - uses: actions/checkout@v4
         name: Check out code
@@ -153,9 +158,15 @@ jobs:
         env:
           IMAGE_NAME: ghcr.io/${LOWERCASE_REPO_OWNER}/driver
           VERSION: ${COMMIT_SHORT_SHA}
-          BASE_TARGET: jammy
         run: |
-          make DRIVER_BRANCH=${{ matrix.driver }} KERNEL_FLAVOR=${{ matrix.flavor }} build-base-${BASE_TARGET}
+          if [[ "${{ matrix.dist }}" == "ubuntu22.04" ]]; then
+            BASE_TARGET="jammy"
+            LTS_KERNEL="5.15"
+          elif [[ "${{ matrix.dist }}" == "ubuntu24.04" ]]; then
+            BASE_TARGET="noble"
+            LTS_KERNEL="6.8"
+          fi
+          make DRIVER_BRANCH=${{ matrix.driver }} KERNEL_FLAVOR=${{ matrix.flavor }} LTS_KERNEL=${LTS_KERNEL} build-base-${BASE_TARGET}
 
           trap "docker rm -f base-${BASE_TARGET}-${{ matrix.flavor }}" EXIT
           docker run -d --name base-${BASE_TARGET}-${{ matrix.flavor }} ghcr.io/nvidia/driver:base-${BASE_TARGET}-${{ matrix.flavor }}-${{ matrix.driver }} 
@@ -169,7 +180,7 @@ jobs:
           IMAGE_NAME: ghcr.io/${LOWERCASE_REPO_OWNER}/driver
           VERSION: ${COMMIT_SHORT_SHA}
           PRECOMPILED: "true"
-          DIST: signed_ubuntu22.04
+          DIST: signed_${{ matrix.dist }}
         run: |
           source kernel_version.txt && \
           make DRIVER_VERSIONS=${DRIVER_VERSIONS} DRIVER_BRANCH=${{ matrix.driver }} build-${DIST}-${DRIVER_VERSION}
