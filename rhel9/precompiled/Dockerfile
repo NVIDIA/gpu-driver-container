@@ -1,5 +1,6 @@
 ARG DRIVER_TOOLKIT_IMAGE=''
 ARG CUDA_DIST=''
+ARG CUDA_VERSION='12.6.2'
 
 FROM ${DRIVER_TOOLKIT_IMAGE} as builder
 
@@ -65,7 +66,7 @@ RUN export KVER=$(echo ${KERNEL_VERSION} | cut -d '-' -f 1) \
         --define "driver_branch ${DRIVER_STREAM}" \
         -v -bb SPECS/kmod-nvidia.spec
 
-FROM nvcr.io/nvidia/cuda:12.6.2-base-${CUDA_DIST}
+FROM nvcr.io/nvidia/cuda:${CUDA_VERSION}-base-${CUDA_DIST}
 
 ARG BASE_URL='https://us.download.nvidia.com/tesla'
 
