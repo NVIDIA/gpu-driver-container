@@ -15,7 +15,6 @@ dep_install () {
             build-essential \
             ca-certificates \
             curl \
-            gpg \
             kmod \
             file \
             libelf-dev \
@@ -28,7 +27,6 @@ dep_install () {
             build-essential \
             ca-certificates \
             curl \
-            gpg \
             kmod \
             file \
             libelf-dev \
@@ -44,8 +42,8 @@ setup_cuda_repo() {
 
     # Fetch public CUDA GPG key and configure apt to only use this key when downloading CUDA packages
     OS_ARCH=${TARGETARCH/amd64/x86_64} && OS_ARCH=${OS_ARCH/arm64/sbsa};
-    curl -fsSL https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2404/${OS_ARCH}/3bf863cc.pub | gpg --dearmor -o /etc/apt/keyrings/cuda.pub;
-    echo "deb [signed-by=/etc/apt/keyrings/cuda.pub] https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2404/${OS_ARCH} /" > /etc/apt/sources.list.d/cuda.list
+    curl -fSsL "https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2404/${OS_ARCH}/cuda-keyring_1.1-1_all.deb" -o cuda-keyring_1.1-1_all.deb
+    dpkg -i cuda-keyring_1.1-1_all.deb
 }
 
 if [ "$1" = "depinstall" ]; then
