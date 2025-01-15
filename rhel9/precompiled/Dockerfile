@@ -117,6 +117,7 @@ RUN rm -rf /lib/modules/${KERNEL_VERSION_NOARCH}.${BUILD_ARCH} \
 
 # Copy the DRM module dependency from the builder
 COPY --from=builder /lib/modules/${KERNEL_VERSION_NOARCH}.${BUILD_ARCH}/kernel/drivers/gpu/drm/drm.ko.xz /lib/modules/${KERNEL_VERSION_NOARCH}.${BUILD_ARCH}/kernel/drivers/gpu/drm/drm.ko.xz
+COPY --from=builder /lib/modules/${KERNEL_VERSION_NOARCH}.${BUILD_ARCH}/kernel/drivers/acpi/video.ko.xz /lib/modules/${KERNEL_VERSION_NOARCH}.${BUILD_ARCH}/kernel/drivers/acpi/video.ko.xz
 
 # Install the Driver modules
 RUN dnf install -y /rpms/kmod-nvidia-*.rpm
