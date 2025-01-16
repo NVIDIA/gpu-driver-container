@@ -15,9 +15,7 @@ NVIDIA_UVM_MODULE_PARAMS=()
 NVIDIA_MODESET_MODULE_PARAMS=()
 NVIDIA_PEERMEM_MODULE_PARAMS=()
 TARGETARCH=${TARGETARCH:?"Missing TARGETARCH env"}
-
-OPEN_KERNEL_MODULES_ENABLED=${OPEN_KERNEL_MODULES_ENABLED:-false}
-[[ "${OPEN_KERNEL_MODULES_ENABLED}" == "true" ]] && KERNEL_TYPE=kernel-open || KERNEL_TYPE=kernel
+KERNEL_MODULE_TYPE=${KERNEL_MODULE_TYPE:-auto}
 
 export DEBIAN_FRONTEND=noninteractive
 
@@ -481,6 +479,24 @@ _shutdown() {
     return 1
 }
 
+_resolve_kernel_type() {
+  if [ "${KERNEL_MODULE_TYPE}" == "proprietary" ]; then
+    KERNEL_TYPE=kernel
+  elif [ "${KERNEL_MODULE_TYPE}" == "open" ]; then
+    KERNEL_TYPE=kernel-open
+  elif [ "${KERNEL_MODULE_TYPE}" == "auto" ]; then
+      kernel_module_type=$(/drivers/NVIDIA-Linux-$DRIVER_ARCH-$DRIVER_VERSION/nvidia-installer --print-recommended-kernel-module-type)
+      if [ $? -ne 0 ]; then
+          [[ "${DRIVER_BRANCH}" -lt 560 ]] && kernel_module_type=proprietary || kernel_module_type=open
+          echo "failed to retrieve the recommended kernel module type from nvidia-installer, falling back to the '$kernel_module_type' driver"
+      fi
+      [[ "${kernel_module_type}" == "open" ]] && KERNEL_TYPE=kernel-open || KERNEL_TYPE=kernel
+  else
+    echo "invalid value for the KERNEL_MODULE_TYPE variable: ${KERNEL_MODULE_TYPE}"
+    return 1
+  fi
+}
+
 _find_vgpu_driver_version() {
     local count=""
     local version=""
@@ -527,6 +543,7 @@ init() {
     # Install the userspace components and copy the kernel module sources.
     sh NVIDIA-Linux-$DRIVER_ARCH-$DRIVER_VERSION.run -x && \
         cd NVIDIA-Linux-$DRIVER_ARCH-$DRIVER_VERSION && \
+        (_resolve_kernel_type || exit 1) && \
         ./nvidia-installer --silent \
                     --no-kernel-module \
                     --no-nouveau-check \
@@ -595,6 +612,9 @@ update() {
         exec 4>&-
     fi
     exec 3>&-
+
+    sh NVIDIA-Linux-$DRIVER_ARCH-$DRIVER_VERSION.run -x
+    _resolve_kernel_type || exit 1
 
     # vgpu driver version is choosen dynamically during runtime, so pre-compile modules for
     # only non-vgpu driver types
