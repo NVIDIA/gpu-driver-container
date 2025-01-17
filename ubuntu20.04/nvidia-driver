@@ -16,7 +16,8 @@ NVIDIA_MODESET_MODULE_PARAMS=()
 NVIDIA_PEERMEM_MODULE_PARAMS=()
 TARGETARCH=${TARGETARCH:?"Missing TARGETARCH env"}
 
-KERNEL_MODULE_TYPE=${KERNEL_MODULE_TYPE:-auto}
+OPEN_KERNEL_MODULES_ENABLED=${OPEN_KERNEL_MODULES_ENABLED:-false}
+[[ "${OPEN_KERNEL_MODULES_ENABLED}" == "true" ]] && KERNEL_TYPE=kernel-open || KERNEL_TYPE=kernel
 
 export DEBIAN_FRONTEND=noninteractive
 
@@ -476,24 +477,6 @@ _shutdown() {
     return 1
 }
 
-_resolve_kernel_type() {
-  if [ "${KERNEL_MODULE_TYPE}" == "proprietary" ]; then
-    KERNEL_TYPE=kernel
-  elif [ "${KERNEL_MODULE_TYPE}" == "open" ]; then
-    KERNEL_TYPE=kernel-open
-  elif [ "${KERNEL_MODULE_TYPE}" == "auto" ]; then
-      KERNEL_TYPE=$(gpu-driver-util get-kernel-module-type -b "${DRIVER_BRANCH}")
-      if [ $? -ne 0 ]; then
-          echo "cannot autodetect the kernel module type, printing error logs from /var/log/gpu-driver-util.log..."
-          tail -n 3 /var/log/gpu-driver-util.log
-          return 1
-      fi
-  else
-    echo "invalid value for the KERNEL_MODULE_TYPE variable: ${KERNEL_MODULE_TYPE}"
-    return 1
-  fi
-}
-
 _find_vgpu_driver_version() {
     local count=""
     local version=""
@@ -536,8 +519,6 @@ init() {
     if [ "${DRIVER_TYPE}" = "vgpu" ]; then
         _find_vgpu_driver_version || exit 1
     fi
-
-     _resolve_kernel_type || exit 1
 
     # Install the userspace components and copy the kernel module sources.
     sh NVIDIA-Linux-$DRIVER_ARCH-$DRIVER_VERSION.run -x && \
@@ -610,8 +591,6 @@ update() {
         exec 4>&-
     fi
     exec 3>&-
-
-     _resolve_kernel_type || exit 1
 
     # vgpu driver version is choosen dynamically during runtime, so pre-compile modules for
     # only non-vgpu driver types

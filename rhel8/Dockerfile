@@ -17,10 +17,9 @@ ENV PATH /usr/local/go/bin:$PATH
 WORKDIR /work
 
 RUN git clone https://github.com/NVIDIA/gpu-driver-container driver && \
-    go build -C driver/vgpu/src -o vgpu-util && \
-    mv driver/vgpu/src/vgpu-util /work && \
-    go build -C driver/gpu-driver-util -o gpu-driver-util && \
-    mv driver/gpu-driver-util/gpu-driver-util /work
+    cd driver/vgpu/src && \
+    go build -o vgpu-util && \
+    mv vgpu-util /work
 
 FROM nvcr.io/nvidia/cuda:12.6.3-base-ubi8
 
@@ -37,8 +36,6 @@ ENV DRIVER_VERSION=$DRIVER_VERSION
 # Arg to indicate if driver type is either of passthrough/baremetal or vgpu
 ARG DRIVER_TYPE=passthrough
 ENV DRIVER_TYPE=$DRIVER_TYPE
-ARG DRIVER_BRANCH=550
-ENV DRIVER_BRANCH=$DRIVER_BRANCH
 ARG VGPU_LICENSE_SERVER_TYPE=NLS
 ENV VGPU_LICENSE_SERVER_TYPE=$VGPU_LICENSE_SERVER_TYPE
 # Enable vGPU version compability check by default
@@ -87,7 +84,6 @@ COPY ocp_dtk_entrypoint /usr/local/bin
 COPY common.sh /usr/local/bin
 
 COPY --from=build /work/vgpu-util /usr/local/bin
-COPY --from=build /work/gpu-driver-util /usr/local/bin
 
 WORKDIR /drivers
 
