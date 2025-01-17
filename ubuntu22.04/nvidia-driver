@@ -15,7 +15,9 @@ NVIDIA_UVM_MODULE_PARAMS=()
 NVIDIA_MODESET_MODULE_PARAMS=()
 NVIDIA_PEERMEM_MODULE_PARAMS=()
 TARGETARCH=${TARGETARCH:?"Missing TARGETARCH env"}
-KERNEL_MODULE_TYPE=${KERNEL_MODULE_TYPE:-auto}
+
+OPEN_KERNEL_MODULES_ENABLED=${OPEN_KERNEL_MODULES_ENABLED:-}
+KERNEL_MODULE_TYPE=${KERNEL_MODULE_TYPE:-}
 
 export DEBIAN_FRONTEND=noninteractive
 
@@ -487,6 +489,13 @@ _shutdown() {
 # to install. Valid values for KERNEL_MODULE_TYPE are 'auto' (default), 'open', and 'proprietary'.
 # When 'auto' is configured, we use the nvidia-installer to recommend the module type to install.
 _resolve_kernel_type() {
+  # For backwards compatibility with older GPU Operator versions where KERNEL_MODULE_TYPE is not set,
+  # honor the deprecated OPEN_KERNEL_MODULES_ENABLED field
+  if [ -z "${KERNEL_MODULE_TYPE}" ]; then
+    [[ "${OPEN_KERNEL_MODULES_ENABLED}" == "true" ]] && KERNEL_TYPE=kernel-open || KERNEL_TYPE=kernel
+    return 0
+  fi
+
   if [ "${KERNEL_MODULE_TYPE}" == "proprietary" ]; then
     KERNEL_TYPE=kernel
   elif [ "${KERNEL_MODULE_TYPE}" == "open" ]; then
