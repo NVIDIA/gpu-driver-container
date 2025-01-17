@@ -6,7 +6,6 @@ set -eu
 RUN_DIR=/run/nvidia
 PID_FILE=${RUN_DIR}/${0##*/}.pid
 DRIVER_VERSION=${DRIVER_VERSION:?"Missing DRIVER_VERSION env"}
-DRIVER_BRANCH=${DRIVER_BRANCH:?"Missing DRIVER_BRANCH env"}
 KERNEL_UPDATE_HOOK=/run/kernel/postinst.d/update-nvidia-driver
 NUM_VGPU_DEVICES=0
 NVIDIA_MODULE_PARAMS=()
@@ -18,7 +17,9 @@ USE_HOST_MOFED="${USE_HOST_MOFED:-false}"
 DNF_RELEASEVER=${DNF_RELEASEVER:-""}
 RHEL_VERSION=${RHEL_VERSION:-""}
 RHEL_MAJOR_VERSION=8
-KERNEL_MODULE_TYPE=${KERNEL_MODULE_TYPE:-auto}
+
+OPEN_KERNEL_MODULES_ENABLED=${OPEN_KERNEL_MODULES_ENABLED:-false}
+[[ "${OPEN_KERNEL_MODULES_ENABLED}" == "true" ]] && KERNEL_TYPE=kernel-open || KERNEL_TYPE=kernel
 
 DRIVER_ARCH=${TARGETARCH/amd64/x86_64} && DRIVER_ARCH=${DRIVER_ARCH/arm64/aarch64}
 echo "DRIVER_ARCH is $DRIVER_ARCH"
@@ -576,24 +577,6 @@ _start_vgpu_topology_daemon() {
     nvidia-topologyd
 }
 
-_resolve_kernel_type() {
-  if [ "${KERNEL_MODULE_TYPE}" == "proprietary" ]; then
-    KERNEL_TYPE=kernel
-  elif [ "${KERNEL_MODULE_TYPE}" == "open" ]; then
-    KERNEL_TYPE=kernel-open
-  elif [ "${KERNEL_MODULE_TYPE}" == "auto" ]; then
-      KERNEL_TYPE=$(gpu-driver-util get-kernel-module-type -b "${DRIVER_BRANCH}")
-      if [ $? -ne 0 ]; then
-          echo "cannot autodetect the kernel module type, printing error logs from /var/log/gpu-driver-util.log..."
-          tail -n 3 /var/log/gpu-driver-util.log
-          return 1
-      fi
-  else
-    echo "invalid value for the KERNEL_MODULE_TYPE variable: ${KERNEL_MODULE_TYPE}"
-    return 1
-  fi
-}
-
 _prepare() {
     if [ "${DRIVER_TYPE}" = "vgpu" ]; then
         _find_vgpu_driver_version || exit 1
@@ -814,6 +797,5 @@ if [ $# -ne 0 ]; then
 fi
 
 _resolve_rhel_version || exit 1
-_resolve_kernel_type || exit 1
 
 $command
