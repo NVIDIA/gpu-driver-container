@@ -148,7 +148,7 @@ RUN --mount=type=secret,id=RHSM_ORG,target=/run/secrets/RHSM_ORG \
             cuda-compat-${CUDA_DASHED_VERSION} \
             cuda-cudart-${CUDA_DASHED_VERSION} \
             nvidia-persistenced-${DRIVER_VERSION} \
-        && if [ "$DRIVER_TYPE" != "vgpu" ] && [ "$TARGETARCH" != "arm64" ]; then \
+        && if [ "$DRIVER_TYPE" != "vgpu" ] && [ "$TARGETARCH" != "aarch64" ]; then \
             versionArray=(${DRIVER_VERSION//./ }); \
             DRIVER_BRANCH=${versionArray[0]}; \
             dnf module enable -y nvidia-driver:${DRIVER_BRANCH} && \
