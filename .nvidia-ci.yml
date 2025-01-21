@@ -347,12 +347,11 @@ release:ngc-ubuntu22.04:
     - .dist-ubuntu22.04
     - .driver-versions
 
-# TODO will be enabled after QA
-# release:ngc-ubuntu24.04:
-#   extends:
-#     - .release:ngc
-#     - .dist-ubuntu24.04
-#     - .driver-versions
+release:ngc-ubuntu24.04:
+  extends:
+    - .release:ngc
+    - .dist-ubuntu24.04
+    - .driver-versions
 
 # release:ngc-precompiled-ubuntu24.04:
 #   variables:
