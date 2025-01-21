@@ -283,6 +283,13 @@ release:staging-ubuntu22.04:
   needs:
     - image-ubuntu22.04
 
+release:staging-ubuntu24.04:
+  extends:
+    - .release:staging-ubuntu24.04
+    - .dist-ubuntu24.04
+  needs:
+    - image-ubuntu24.04
+
 release:staging-rhel8:
   extends:
     - .release:staging
