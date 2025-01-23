@@ -32,6 +32,8 @@ SHELL ["/bin/bash", "-c"]
 ARG BASE_URL=https://us.download.nvidia.com/tesla
 ARG DRIVER_VERSION
 ENV DRIVER_VERSION=$DRIVER_VERSION
+ARG DRIVER_BRANCH
+ENV DRIVER_BRANCH=$DRIVER_BRANCH
 
 # Arg to indicate if driver type is either of passthrough/baremetal or vgpu
 ARG DRIVER_TYPE=passthrough
