@@ -49,6 +49,11 @@ RUN apt-get update && apt-get install -y --download-only --no-install-recommends
     libnvidia-nscq-${DRIVER_BRANCH}=${DRIVER_VERSION}-1 && \
     rm -rf /var/lib/apt/lists/*;
 
+RUN if [ "$DRIVER_BRANCH" -ge "550" ]; then \
+    apt-get update && \
+    apt-get install -y --no-install-recommends nvidia-imex-${DRIVER_BRANCH}=${DRIVER_VERSION}-1 && \
+    rm -rf /var/lib/apt/lists/*; fi
+
 # update pkg cache and download pkgs for driver module installation during runtime.
 # this is done to avoid shipping .ko files.
 # avoid cleaning the cache after this to retain these packages during runtime.
