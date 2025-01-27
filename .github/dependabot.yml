@@ -6,6 +6,7 @@ updates:
   - package-ecosystem: "gomod"
     target-branch: main
     directory: "/"
+    open-pull-requests-limit: 10
     schedule:
       interval: "weekly"
       day: "sunday"
@@ -20,5 +21,6 @@ updates:
   - package-ecosystem: "docker"
     directories:
       - "*"
+    open-pull-requests-limit: 15
     schedule:
       interval: "daily"
