@@ -1,4 +1,4 @@
-FROM nvcr.io/nvidia/cuda:12.6.3-base-ubuntu24.04 as build
+FROM nvcr.io/nvidia/cuda:12.8.0-base-ubuntu24.04 as build
 
 ARG TARGETARCH
 ARG GOLANG_VERSION
@@ -34,7 +34,7 @@ RUN git clone https://github.com/NVIDIA/gpu-driver-container driver && \
     go build -o vgpu-util && \
     mv vgpu-util /work
 
-FROM nvcr.io/nvidia/cuda:12.6.3-base-ubuntu24.04
+FROM nvcr.io/nvidia/cuda:12.8.0-base-ubuntu24.04
 
 SHELL ["/bin/bash", "-c"]
 
