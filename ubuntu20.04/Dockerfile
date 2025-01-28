@@ -87,10 +87,16 @@ RUN if [ "$DRIVER_TYPE" != "vgpu" ] && [ "$TARGETARCH" != "arm64" ]; then \
     libnvidia-nscq-${DRIVER_BRANCH}=${DRIVER_VERSION}-1 && \
     rm -rf /var/lib/apt/lists/*; fi
 
+# Force install the imex package to workaround a dependency issue.
+# The debian packages for Ubuntu 20.04 incorrectly mark openssl >= 3
+# as a dependency of the nvidia-imex-$DRIVER_BRANCH package, even
+# though openssl is statically linked.
 RUN if [ "$DRIVER_TYPE" != "vgpu" ] && [ "$DRIVER_BRANCH" -ge "550" ]; then \
-    apt-get update && \
-    apt-get install -y --no-install-recommends nvidia-imex-${DRIVER_BRANCH}=${DRIVER_VERSION}-1 && \
-    rm -rf /var/lib/apt/lists/*; fi
+    OS_ARCH=${TARGETARCH/amd64/x86_64} && OS_ARCH=${OS_ARCH/arm64/sbsa} && \
+    curl -fSsL https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2004/${OS_ARCH}/nvidia-imex-${DRIVER_BRANCH}_${DRIVER_VERSION}-1_${TARGETARCH}.deb \
+        -o nvidia-imex.deb && \
+    dpkg --force-all -i nvidia-imex.deb && \
+    rm nvidia-imex.deb; fi
 
 WORKDIR  /drivers
 
