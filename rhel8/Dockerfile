@@ -81,6 +81,9 @@ RUN if [ "$DRIVER_TYPE" != "vgpu" ] && [ "$TARGETARCH" != "arm64" ]; then \
     dnf module enable -y nvidia-driver:${DRIVER_BRANCH}-dkms && \
     dnf install -y ${fmPackage} ${nscqPackage}; fi
 
+RUN if [ "$DRIVER_TYPE" != "vgpu" ] && [ "$DRIVER_BRANCH" -ge "550" ]; then \
+    dnf install -y nvidia-imex-${DRIVER_BRANCH}-${DRIVER_VERSION}-1; fi
+
 COPY nvidia-driver /usr/local/bin
 COPY ocp_dtk_entrypoint /usr/local/bin
 COPY common.sh /usr/local/bin
