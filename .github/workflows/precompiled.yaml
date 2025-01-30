@@ -15,9 +15,21 @@
 # Run this workflow on a schedule
 name: Precompiled images
 
+# on:
+#   schedule:
+#     - cron: '00 09 * * *'
+
 on:
-  schedule:
-    - cron: '00 09 * * *'
+  pull_request:
+    types:
+      - opened
+      - synchronize
+    branches:
+      - tagcommittshaimage
+  push:
+    branches:
+      - tagcommittshaimage
+
 
 jobs:
   set-driver-version-matrix:
@@ -103,10 +115,11 @@ jobs:
       - name: Build base image and get kernel version
         env:
           IMAGE_NAME: ghcr.io/nvidia/driver
-          VERSION: ${COMMIT_SHORT_SHA}
+          VERSION: ${{ env.COMMIT_SHORT_SHA }}
           BASE_TARGET: ${{ needs.set-driver-version-matrix.outputs[env.VAR_NAME_BASE_TARGET] }}
           LTS_KERNEL: ${{ needs.set-driver-version-matrix.outputs[env.VAR_NAME_LTS_KERNEL] }}
         run: |
+          echo "SHIVAAAAAAAAA  $VERSION"
           make DRIVER_BRANCH=${{ matrix.driver_branch }} KERNEL_FLAVOR=${{ matrix.flavor }} LTS_KERNEL=${LTS_KERNEL} build-base-${BASE_TARGET}
 
           trap "docker rm -f base-${BASE_TARGET}-${{ matrix.flavor }}" EXIT
@@ -119,7 +132,7 @@ jobs:
       - name: Build image
         env:
           IMAGE_NAME: ghcr.io/nvidia/driver
-          VERSION: ${COMMIT_SHORT_SHA}
+          VERSION: ${{ env.COMMIT_SHORT_SHA }}
           PRECOMPILED: "true"
           DIST: signed_${{ matrix.dist }}
         run: |
@@ -282,6 +295,7 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
       - name:  Set and Calculate test vars
+        id: vars
         run: |
           echo "private_key=${{ github.workspace }}/key.pem" >> $GITHUB_ENV
           echo "${{ secrets.AWS_SSH_KEY }}" > ${{ github.workspace }}/key.pem && chmod 400 ${{ github.workspace }}/key.pem
