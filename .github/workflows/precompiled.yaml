@@ -76,7 +76,6 @@ jobs:
         env:
           DIST: ${{ matrix.dist }}
         run: |
-          echo "COMMIT_SHORT_SHA=${GITHUB_SHA:0:8}" >> $GITHUB_ENV
           echo "LOWERCASE_REPO_OWNER=$(echo "${GITHUB_REPOSITORY_OWNER}" | awk '{print tolower($0)}')" >> $GITHUB_ENV
           REPO_FULL_NAME="${{ github.repository }}"
           echo "LABEL_IMAGE_SOURCE=https://github.com/${REPO_FULL_NAME}" >> $GITHUB_ENV
@@ -103,7 +102,6 @@ jobs:
       - name: Build base image and get kernel version
         env:
           IMAGE_NAME: ghcr.io/nvidia/driver
-          VERSION: ${COMMIT_SHORT_SHA}
           BASE_TARGET: ${{ needs.set-driver-version-matrix.outputs[env.VAR_NAME_BASE_TARGET] }}
           LTS_KERNEL: ${{ needs.set-driver-version-matrix.outputs[env.VAR_NAME_LTS_KERNEL] }}
         run: |
@@ -119,7 +117,6 @@ jobs:
       - name: Build image
         env:
           IMAGE_NAME: ghcr.io/nvidia/driver
-          VERSION: ${COMMIT_SHORT_SHA}
           PRECOMPILED: "true"
           DIST: signed_${{ matrix.dist }}
         run: |
@@ -285,7 +282,6 @@ jobs:
         run: |
           echo "private_key=${{ github.workspace }}/key.pem" >> $GITHUB_ENV
           echo "${{ secrets.AWS_SSH_KEY }}" > ${{ github.workspace }}/key.pem && chmod 400 ${{ github.workspace }}/key.pem
-          echo "COMMIT_SHORT_SHA=${GITHUB_SHA:0:8}" >> $GITHUB_ENV
           echo "PRIVATE_REGISTRY=ghcr.io" >> $GITHUB_ENV
           KERNEL_VERSION="${{ matrix.kernel_version }}"
           # Extract the last segment after the last dash
