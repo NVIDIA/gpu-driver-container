@@ -156,6 +156,8 @@ build-%: DOCKERFILE = $(CURDIR)/$(SUBDIR)/Dockerfile
 $(DISTRIBUTIONS): %: build-%
 $(BUILD_TARGETS): %: $(foreach driver_version, $(DRIVER_VERSIONS), $(addprefix %-, $(driver_version)))
 $(DRIVER_BUILD_TARGETS):
+	env
+	@$(foreach v, $(.VARIABLES), echo $(v)=$($(v));)
 	DOCKER_BUILDKIT=1 \
 		$(DOCKER) $(BUILDX) build --pull \
 				$(DOCKER_BUILD_OPTIONS) \
@@ -201,6 +203,8 @@ build-base-%: DOCKERFILE = $(CURDIR)/base/Dockerfile
 build-base-%: TARGET = $(word 3,$(subst -, ,$@))
 build-base-%: IMAGE_TAG = base-$(word 3,$(subst -, ,$@))-$(KERNEL_FLAVOR)-$(DRIVER_BRANCH)
 $(BASE_BUILD_TARGETS):
+	env
+	@$(foreach v, $(.VARIABLES), echo $(v)=$($(v));)
 	DOCKER_BUILDKIT=1 \
 		$(DOCKER) $(BUILDX) build --pull --no-cache \
 				$(DOCKER_BUILD_OPTIONS) \
