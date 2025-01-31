@@ -136,6 +136,7 @@ jobs:
           PRECOMPILED: "true"
           DIST: signed_${{ matrix.dist }}
         run: |
+          cat kernel_version.txt
           source kernel_version.txt && \
           SHELL="/bin/sh -x" make DRIVER_VERSIONS=${DRIVER_VERSIONS} DRIVER_BRANCH=${{ matrix.driver_branch }} build-${DIST}-${DRIVER_VERSION}
           echo "SHIVA2  $DRIVER_VERSIONS $DRIVER_VERSION"
