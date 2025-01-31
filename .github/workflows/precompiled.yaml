@@ -115,7 +115,7 @@ jobs:
       - name: Build base image and get kernel version
         env:
           IMAGE_NAME: ghcr.io/nvidia/driver
-          VERSION: ${{ env.COMMIT_SHORT_SHA }}
+          VERSION: ${COMMIT_SHORT_SHA}
           BASE_TARGET: ${{ needs.set-driver-version-matrix.outputs[env.VAR_NAME_BASE_TARGET] }}
           LTS_KERNEL: ${{ needs.set-driver-version-matrix.outputs[env.VAR_NAME_LTS_KERNEL] }}
         run: |
@@ -132,7 +132,7 @@ jobs:
       - name: Build image
         env:
           IMAGE_NAME: ghcr.io/nvidia/driver
-          VERSION: ${{ env.COMMIT_SHORT_SHA }}
+          VERSION: ${COMMIT_SHORT_SHA}
           PRECOMPILED: "true"
           DIST: signed_${{ matrix.dist }}
         run: |
