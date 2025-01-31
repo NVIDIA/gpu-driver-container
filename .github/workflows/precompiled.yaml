@@ -120,7 +120,7 @@ jobs:
           LTS_KERNEL: ${{ needs.set-driver-version-matrix.outputs[env.VAR_NAME_LTS_KERNEL] }}
         run: |
           echo "SHIVA1  $VERSION"
-          make DRIVER_BRANCH=${{ matrix.driver_branch }} KERNEL_FLAVOR=${{ matrix.flavor }} LTS_KERNEL=${LTS_KERNEL} build-base-${BASE_TARGET}
+          SHELL="/bin/sh -x" make DRIVER_BRANCH=${{ matrix.driver_branch }} KERNEL_FLAVOR=${{ matrix.flavor }} LTS_KERNEL=${LTS_KERNEL} build-base-${BASE_TARGET}
 
           trap "docker rm -f base-${BASE_TARGET}-${{ matrix.flavor }}" EXIT
           docker run -d --name base-${BASE_TARGET}-${{ matrix.flavor }} ghcr.io/nvidia/driver:base-${BASE_TARGET}-${{ matrix.flavor }}-${{ matrix.driver_branch }}
@@ -137,7 +137,7 @@ jobs:
           DIST: signed_${{ matrix.dist }}
         run: |
           source kernel_version.txt && \
-          make DRIVER_VERSIONS=${DRIVER_VERSIONS} DRIVER_BRANCH=${{ matrix.driver_branch }} build-${DIST}-${DRIVER_VERSION}
+          SHELL="/bin/sh -x" make DRIVER_VERSIONS=${DRIVER_VERSIONS} DRIVER_BRANCH=${{ matrix.driver_branch }} build-${DIST}-${DRIVER_VERSION}
           echo "SHIVA2  $DRIVER_VERSIONS $DRIVER_VERSION"
 
       - name: Save build image and kernel version file
