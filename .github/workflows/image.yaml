@@ -21,13 +21,11 @@ on:
       - opened
       - synchronize
     branches:
-      - main
-      - release-*
+      - tagcommittshaimage
   push:
     branches:
-      - main
-      - release-*
-
+      tagcommittshaimage
+  
 jobs:
   image:
     runs-on: ubuntu-latest
