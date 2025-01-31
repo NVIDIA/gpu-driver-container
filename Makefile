@@ -34,13 +34,16 @@ DRIVER_TAG = $(DRIVER_VERSION)
 # Development tags should be in the form <commit-sha>-<driver-version>-<dist>
 ifeq ($(VERSION),)
 IMAGE_VERSION = $(DRIVER_TAG)
+SHIVA = 1
 else
 IMAGE_VERSION = $(VERSION)-$(DRIVER_TAG)
+SHIVA = 2
 endif
 
 IMAGE_TAG = $(IMAGE_VERSION)-$(DIST)
 IMAGE = $(IMAGE_NAME):$(IMAGE_TAG)
 
+env
 OUT_IMAGE_NAME ?= $(IMAGE_NAME)
 
 ifeq ($(OUT_VERSION),)
@@ -156,7 +159,6 @@ build-%: DOCKERFILE = $(CURDIR)/$(SUBDIR)/Dockerfile
 $(DISTRIBUTIONS): %: build-%
 $(BUILD_TARGETS): %: $(foreach driver_version, $(DRIVER_VERSIONS), $(addprefix %-, $(driver_version)))
 $(DRIVER_BUILD_TARGETS):
-	env
 	@$(foreach v, $(.VARIABLES), echo $(v)=$($(v));)
 	DOCKER_BUILDKIT=1 \
 		$(DOCKER) $(BUILDX) build --pull \
@@ -203,7 +205,6 @@ build-base-%: DOCKERFILE = $(CURDIR)/base/Dockerfile
 build-base-%: TARGET = $(word 3,$(subst -, ,$@))
 build-base-%: IMAGE_TAG = base-$(word 3,$(subst -, ,$@))-$(KERNEL_FLAVOR)-$(DRIVER_BRANCH)
 $(BASE_BUILD_TARGETS):
-	env
 	@$(foreach v, $(.VARIABLES), echo $(v)=$($(v));)
 	DOCKER_BUILDKIT=1 \
 		$(DOCKER) $(BUILDX) build --pull --no-cache \
