@@ -92,6 +92,7 @@ jobs:
           VERSION: ${COMMIT_SHORT_SHA}
         run: |
           DRIVER_VERSIONS=${{ matrix.driver }} make build-${{ matrix.dist }}-${{ matrix.driver }}
+          echo "SHIVA4 $DRIVER_VERSIONS   build-${{ matrix.dist }}-${{ matrix.driver }}"
 
   pre-compiled:
     runs-on: ubuntu-latest
@@ -168,6 +169,7 @@ jobs:
             LTS_KERNEL="6.8"
           fi
           make DRIVER_BRANCH=${{ matrix.driver }} KERNEL_FLAVOR=${{ matrix.flavor }} LTS_KERNEL=${LTS_KERNEL} build-base-${BASE_TARGET}
+          echo "SHIVA3 $DRIVER_BRANCH   "
 
           trap "docker rm -f base-${BASE_TARGET}-${{ matrix.flavor }}" EXIT
           docker run -d --name base-${BASE_TARGET}-${{ matrix.flavor }} ghcr.io/nvidia/driver:base-${BASE_TARGET}-${{ matrix.flavor }}-${{ matrix.driver }} 
@@ -185,3 +187,4 @@ jobs:
         run: |
           source kernel_version.txt && \
           make DRIVER_VERSIONS=${DRIVER_VERSIONS} DRIVER_BRANCH=${{ matrix.driver }} build-${DIST}-${DRIVER_VERSION}
+          echo "SHIVA4 $DRIVER_VERSIONS   $DRIVER_VERSION $DRIVER_BRANCH"
