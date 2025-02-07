@@ -36,6 +36,9 @@ RUN echo "deb [arch=amd64] http://archive.ubuntu.com/ubuntu/ jammy main universe
     echo "deb [arch=amd64] http://archive.ubuntu.com/ubuntu/ jammy-security main universe" >> /etc/apt/sources.list && \
     echo "deb [arch=amd64] http://us.archive.ubuntu.com/ubuntu jammy-updates main restricted" >> /etc/apt/sources.list && \
     echo "deb [arch=amd64] http://us.archive.ubuntu.com/ubuntu jammy-security main restricted" >> /etc/apt/sources.list && \
+    echo 'APT::Archives::MaxAge "0";' >> /etc/apt/apt.conf.d/20archive && \
+    echo 'APT::Archives::MinAge "0";' >> /etc/apt/apt.conf.d/20archive && \
+    echo 'APT::Archives::MaxSize "0";' >> /etc/apt/apt.conf.d/20archive && \
     usermod -o -u 0 -g 0 _apt
 
 RUN curl -fsSL -o /usr/local/bin/donkey https://github.com/3XX0/donkey/releases/download/v1.1.0/donkey && \
@@ -48,16 +51,9 @@ RUN if [ -n "${CVE_UPDATES}" ]; then \
         rm -rf /var/lib/apt/lists/*; \
     fi
 
-# update pkg cache and install pkgs for userspace driver libs
-RUN apt-get update && apt-get install -y --download-only --no-install-recommends nvidia-driver-${DRIVER_BRANCH}-server \
-    nvidia-fabricmanager-${DRIVER_BRANCH}=${DRIVER_VERSION}-1 \
-    libnvidia-nscq-${DRIVER_BRANCH}=${DRIVER_VERSION}-1 && \
-    rm -rf /var/lib/apt/lists/*;
-
 RUN if [ "$DRIVER_BRANCH" -ge "550" ]; then \
     apt-get update && \
-    apt-get install -y --no-install-recommends nvidia-imex-${DRIVER_BRANCH}=${DRIVER_VERSION}-1 && \
-    rm -rf /var/lib/apt/lists/*; fi
+    apt-get install -y --no-install-recommends nvidia-imex-${DRIVER_BRANCH}=${DRIVER_VERSION}-1; fi
 
 # update pkg cache and download pkgs for driver module installation during runtime.
 # this is done to avoid shipping .ko files.
@@ -66,7 +62,11 @@ RUN apt-get update && apt-get install --download-only --no-install-recommends -y
     linux-signatures-nvidia-${KERNEL_VERSION} \
     linux-modules-nvidia-${DRIVER_BRANCH}-server-${KERNEL_VERSION} \
     # add support for nvidia open source driver packages during runtime
-    linux-modules-nvidia-${DRIVER_BRANCH}-server-open-${KERNEL_VERSION}
+    linux-modules-nvidia-${DRIVER_BRANCH}-server-open-${KERNEL_VERSION} \
+    # install pkgs for userspace driver libs
+    nvidia-driver-${DRIVER_BRANCH}-server \
+    nvidia-fabricmanager-${DRIVER_BRANCH}=${DRIVER_VERSION}-1 \
+    libnvidia-nscq-${DRIVER_BRANCH}=${DRIVER_VERSION}-1
 
 COPY nvidia-driver /usr/local/bin
 
