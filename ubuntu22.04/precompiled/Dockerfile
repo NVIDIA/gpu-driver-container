@@ -48,27 +48,20 @@ RUN if [ -n "${CVE_UPDATES}" ]; then \
         rm -rf /var/lib/apt/lists/*; \
     fi
 
-# update pkg cache and install pkgs for userspace driver libs
-RUN apt-get update && apt-get install -y --download-only --no-install-recommends nvidia-driver-${DRIVER_BRANCH}-server \
-    nvidia-fabricmanager-${DRIVER_BRANCH}=${DRIVER_VERSION}-1 \
-    libnvidia-nscq-${DRIVER_BRANCH}=${DRIVER_VERSION}-1 && \
-    rm -rf /var/lib/apt/lists/*;
-
 RUN if [ "$DRIVER_BRANCH" -ge "550" ]; then \
     apt-get update && \
     apt-get install -y --no-install-recommends nvidia-imex-${DRIVER_BRANCH}=${DRIVER_VERSION}-1 && \
     rm -rf /var/lib/apt/lists/*; fi
 
-# update pkg cache and download pkgs for driver module installation during runtime.
-# this is done to avoid shipping .ko files.
-# avoid cleaning the cache after this to retain these packages during runtime.
-RUN apt-get update && apt-get install --download-only --no-install-recommends -y linux-objects-nvidia-${DRIVER_BRANCH}-server-${KERNEL_VERSION} \
-    linux-signatures-nvidia-${KERNEL_VERSION} \
-    linux-modules-nvidia-${DRIVER_BRANCH}-server-${KERNEL_VERSION} \
-    # add support for nvidia open source driver packages during runtime
-    linux-modules-nvidia-${DRIVER_BRANCH}-server-open-${KERNEL_VERSION}
-
 COPY nvidia-driver /usr/local/bin
+
+ADD local-repo.sh /tmp
+
+RUN mkdir -p /usr/local/repos && \
+    /tmp/local-repo.sh download_driver_package_deps && \
+    /tmp/local-repo.sh build_local_apt_repo && \
+    # Remove cuda repository to avoid GPG errors
+    rm -f /etc/apt/sources.list.d/cuda*
 
 WORKDIR  /drivers
 
