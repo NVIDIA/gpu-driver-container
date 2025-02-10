@@ -234,15 +234,14 @@ _unload_driver() {
 
 # Link and install the kernel modules from a precompiled packages
 _install_driver() {
-    # Install necessary userspace, fabric manager and libnvidia-nscq packages
-    apt-get install -y --no-install-recommends nvidia-driver-${DRIVER_BRANCH}-server
-
-    # Uninstall unnecessary packages installed as a part of the nvidia-driver-${DRIVER_BRANCH}-server package
-    apt-get purge -y \
-        libnvidia-egl-wayland1 \
-        nvidia-dkms-${DRIVER_BRANCH}-server \
-        nvidia-kernel-source-${DRIVER_BRANCH}-server \
-        xserver-xorg-video-nvidia-${DRIVER_BRANCH}-server
+    # Install necessary driver userspace packages
+    apt-get install -y --no-install-recommends \
+        nvidia-utils-${DRIVER_BRANCH}-server \
+        nvidia-headless-no-dkms-${DRIVER_BRANCH}-server \
+        libnvidia-decode-${DRIVER_BRANCH}-server \
+        libnvidia-extra-${DRIVER_BRANCH}-server \
+        libnvidia-encode-${DRIVER_BRANCH}-server \
+        libnvidia-fbc1-${DRIVER_BRANCH}-server
 
     # Now install the precompiled kernel module packages signed by Canonical
     if [ "$OPEN_KERNEL_MODULES_ENABLED" = true ]; then
