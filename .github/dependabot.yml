@@ -24,5 +24,5 @@ updates:
     open-pull-requests-limit: 15
     schedule:
       interval: "daily"
-      time: "11:26"
+      time: "11:36"
       timezone: "Asia/Kolkata"
