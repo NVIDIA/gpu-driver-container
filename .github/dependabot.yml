@@ -19,7 +19,6 @@ updates:
       interval: "daily"
 
   - package-ecosystem: "docker"
-    target-branch: test-dependbot-subdirsearch 
     directories:
       - "**/*"
     open-pull-requests-limit: 15
