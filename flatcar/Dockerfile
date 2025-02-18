@@ -1,4 +1,4 @@
-FROM nvcr.io/nvidia/cuda:12.6.2-base-ubuntu22.04
+FROM nvcr.io/nvidia/cuda:12.6.2-base-ubuntu24.04
 
 ENV NVIDIA_VISIBLE_DEVICES=void
 
@@ -34,7 +34,7 @@ RUN curl -fsSL -o /usr/local/bin/donkey https://github.com/3XX0/donkey/releases/
 
 #ARG BASE_URL=http://us.download.nvidia.com/XFree86/Linux-x86_64
 ARG BASE_URL=https://us.download.nvidia.com/tesla
-ARG DRIVER_VERSION=460.32.03
+ARG DRIVER_VERSION=550.90.07
 ENV DRIVER_VERSION=$DRIVER_VERSION
 ENV DEBIAN_FRONTEND=noninteractive
 
