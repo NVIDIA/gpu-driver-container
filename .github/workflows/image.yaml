@@ -42,6 +42,12 @@ jobs:
           - ubuntu22.04
           - ubuntu24.04
           - rhel8
+        base_target:
+          - jammy
+          - noble
+        lts_kernel:
+          - 5.15
+          - 6.8
         ispr:
           - ${{github.event_name == 'pull_request'}}
         exclude:
@@ -53,6 +59,14 @@ jobs:
             driver: 550.144.03
           - dist: ubuntu24.04
             driver: 535.230.02
+          - base_target: noble
+            dist: ubuntu20.04
+          - base_target: noble
+            dist: ubuntu22.04
+          - base_target: jammy
+            dist: ubuntu24.04
+          - base_target: noble
+            lts_kernel: 5.15
       fail-fast: false
     steps:
       - uses: actions/checkout@v4
@@ -93,7 +107,7 @@ jobs:
           IMAGE_NAME: ghcr.io/${LOWERCASE_REPO_OWNER}/driver
           VERSION: ${COMMIT_SHORT_SHA}
         run: |
-          DRIVER_VERSIONS=${{ matrix.driver }} make build-${{ matrix.dist }}-${{ matrix.driver }}
+          BASE_TARGET=${{ matrix.base_target }} LTS_KERNEL=${{ matrix.lts_kernel }} DRIVER_VERSIONS=${{ matrix.driver }} make build-${{ matrix.dist }}-${{ matrix.driver }}
 
   pre-compiled:
     runs-on: ubuntu-latest
@@ -111,6 +125,12 @@ jobs:
         dist:
           - ubuntu22.04
           - ubuntu24.04
+        base_target:
+          - jammy
+          - noble
+        lts_kernel:
+          - 5.15
+          - 6.8
         ispr:
           - ${{github.event_name == 'pull_request'}}
         exclude:
@@ -124,6 +144,12 @@ jobs:
             flavor: oracle
           - driver: 535
             dist: ubuntu24.04
+          - base_target: noble
+            dist: ubuntu22.04
+          - base_target: jammy
+            dist: ubuntu24.04
+          - base_target: noble
+            lts_kernel: 5.15
     steps:
       - uses: actions/checkout@v4
         name: Check out code
@@ -164,13 +190,8 @@ jobs:
           IMAGE_NAME: ghcr.io/${LOWERCASE_REPO_OWNER}/driver
           VERSION: ${COMMIT_SHORT_SHA}
         run: |
-          if [[ "${{ matrix.dist }}" == "ubuntu22.04" ]]; then
-            BASE_TARGET="jammy"
-            LTS_KERNEL="5.15"
-          elif [[ "${{ matrix.dist }}" == "ubuntu24.04" ]]; then
-            BASE_TARGET="noble"
-            LTS_KERNEL="6.8"
-          fi
+          BASE_TARGET=${{ matrix.base_target }}
+          LTS_KERNEL=${{ matrix.lts_kernel }}
           make DRIVER_BRANCH=${{ matrix.driver }} KERNEL_FLAVOR=${{ matrix.flavor }} LTS_KERNEL=${LTS_KERNEL} build-base-${BASE_TARGET}
 
           trap "docker rm -f base-${BASE_TARGET}-${{ matrix.flavor }}" EXIT
