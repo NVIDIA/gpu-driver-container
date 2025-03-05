@@ -16,8 +16,15 @@
 name: Precompiled images
 
 on:
-  schedule:
-    - cron: '00 09 * * *'
+  pull_request:
+    types:
+      - opened
+      - synchronize
+    branches:
+      - test-ubuntu22-kernel6_8
+  push:
+    branches:
+      - test-ubuntu22-kernel6_8
 
 jobs:
   set-driver-version-matrix:
@@ -199,7 +206,7 @@ jobs:
           done))
           fi
           source ./tests/scripts/ci-precompiled-helpers.sh
-          KERNEL_VERSIONS=($(get_kernel_versions_to_test $BASE_TARGET KERNEL_FLAVORS[@] DRIVER_BRANCHES[@] $DIST))
+          KERNEL_VERSIONS=($(get_kernel_versions_to_test $BASE_TARGET KERNEL_FLAVORS[@] DRIVER_BRANCHES[@] $DIST $LTS_KERNEL))
           if [ -z "$KERNEL_VERSIONS" ]; then
             # no new kernel release
             echo "Skipping e2e tests"
