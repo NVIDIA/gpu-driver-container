@@ -20,9 +20,12 @@ include:
   stage: image-build
   variables:
     IMAGE_NAME: "${CI_REGISTRY_IMAGE}"
-    VERSION: "${CI_COMMIT_SHORT_SHA}"
-    OUT_VERSION: "${CI_COMMIT_SHORT_SHA}"
     PUSH_ON_BUILD: "true"
+  rules:
+    - if: $CI_COMMIT_TAG
+      variables: 
+        VERSION: "${CI_COMMIT_SHORT_SHA}"
+        OUT_VERSION: "${CI_COMMIT_SHORT_SHA}"
   before_script:
     - !reference [.buildx-setup, before_script]
     - !reference [.regctl-setup, before_script]
