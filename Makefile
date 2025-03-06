@@ -90,11 +90,11 @@ pull-signed_ubuntu20.04%: DRIVER_TAG = $(DRIVER_BRANCH)
 
 pull-signed_ubuntu22.04%: DIST = ubuntu22.04
 pull-signed_ubuntu22.04%: DRIVER_TAG = $(DRIVER_BRANCH)
-pull-signed_ubuntu22.04%: IMAGE_TAG = $(if $(VERSION),$(VERSION)-)$(DRIVER_BRANCH)-$(KERNEL_VERSION)-$(DIST)
+pull-signed_ubuntu22.04%: IMAGE_TAG = $(DRIVER_BRANCH)-$(KERNEL_VERSION)-$(DIST)
 
 pull-signed_ubuntu24.04%: DIST = ubuntu24.04
 pull-signed_ubuntu24.04%: DRIVER_TAG = $(DRIVER_BRANCH)
-pull-signed_ubuntu24.04%: IMAGE_TAG = $(if $(VERSION),$(VERSION)-)$(DRIVER_BRANCH)-$(KERNEL_VERSION)-$(DIST)
+pull-signed_ubuntu24.04%: IMAGE_TAG = $(DRIVER_BRANCH)-$(KERNEL_VERSION)-$(DIST)
 
 PLATFORM ?= linux/amd64
 $(DRIVER_PULL_TARGETS): pull-%:
