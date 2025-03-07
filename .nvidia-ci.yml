@@ -94,6 +94,7 @@ image-precompiled-ubuntu24.04:
     PRECOMPILED: "true"
     CVE_UPDATES: "curl libc6"
   rules:
+    - !reference [.precompiled-rules, rules]
     - when: delayed
       start_in: 30 minutes
   extends:
@@ -118,6 +119,7 @@ image-precompiled-ubuntu22.04:
     PRECOMPILED: "true"
     CVE_UPDATES: "curl libc6"
   rules:
+    - !reference [.precompiled-rules, rules]
     - when: delayed
       start_in: 30 minutes
   extends:
@@ -235,6 +237,7 @@ image-rhel8:
     - .scan-generic
   rules:
     - !reference [.scan-rules-common, rules]
+    - !reference [.precompiled-rules, rules]
     - when: always
 
 .scan-precompiled-ubuntu22.04:
@@ -247,6 +250,7 @@ image-rhel8:
     - .scan-generic
   rules:
     - !reference [.scan-rules-common, rules]
+    - !reference [.precompiled-rules, rules]
     - when: always
 
 # Define the scan targets
@@ -363,8 +367,7 @@ release:ngc-ubuntu24.04:
 #     - .release-generic
 #     - .release:ngc-variables
 #   rules:
-#     # Only run NGC release job on scheduled pipelines
-#     - if: $CI_PIPELINE_SOURCE == "schedule"
+#   - !reference [.precompiled-rules, rules]
 
 release:ngc-precompiled-ubuntu22.04:
   variables:
@@ -376,8 +379,7 @@ release:ngc-precompiled-ubuntu22.04:
     - .release-generic
     - .release:ngc-variables
   rules:
-    # Only run NGC release job on scheduled pipelines
-    - if: $CI_PIPELINE_SOURCE == "schedule"
+    - !reference [.precompiled-rules, rules]
 
 release:ngc-rhcos4.12:
   extends:

@@ -55,6 +55,12 @@ workflow:
     - if: $CI_PIPELINE_SOURCE != "schedule"
       when: manual
 
+.precompiled-rules:
+  # only execute precompiled jobs on scheduled pipelines
+  rules:
+    - if: $CI_PIPELINE_SOURCE != "schedule"
+      when: never
+
 trigger-pipeline:
   stage: trigger
   script:
@@ -312,6 +318,8 @@ release:staging-rhel8:
     # OUT_VERSION is overridden for external releases
     OUT_VERSION: "${CI_COMMIT_SHORT_SHA}"
     PRECOMPILED: "true"
+  rules:
+    - !reference [.precompiled-rules, rules]
   extends:
     - .release-generic
 
