@@ -405,11 +405,11 @@ _unload_driver() {
         local pid=$(< /var/run/nvidia-gridd/nvidia-gridd.pid)
 
         kill -SIGTERM "${pid}"
-        for i in $(seq 1 10); do
+        for i in $(seq 1 50); do
             kill -0 "${pid}" 2> /dev/null || break
             sleep 0.1
         done
-        if [ $i -eq 10 ]; then
+        if [ $i -eq 50 ]; then
             echo "Could not stop NVIDIA Grid daemon" >&2
             return 1
         fi
