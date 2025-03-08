@@ -199,21 +199,21 @@ jobs:
           done))
           fi
           source ./tests/scripts/ci-precompiled-helpers.sh
-          KERNEL_VERSIONS=($(get_kernel_versions_to_test $BASE_TARGET KERNEL_FLAVORS[@] DRIVER_BRANCHES[@] $DIST))
+          KERNEL_VERSIONS=($(get_kernel_versions_to_test $BASE_TARGET KERNEL_FLAVORS[@] DRIVER_BRANCHES[@] $DIST $LTS_KERNEL))
           if [ -z "$KERNEL_VERSIONS" ]; then
             # no new kernel release
             echo "Skipping e2e tests"
             exit 0
           fi
           # Convert array to JSON format and assign
-          echo "[]" > ./matrix_values_$DIST.json
-          printf '%s\n' "${KERNEL_VERSIONS[@]}" | jq -R . | jq -s . > ./matrix_values_$DIST.json
+          echo "[]" > ./matrix_values_${{ matrix.dist }}_${{ needs.set-driver-version-matrix.outputs[env.VAR_NAME_BASE_TARGET] }}_$LTS_KERNEL.json
+          printf '%s\n' "${KERNEL_VERSIONS[@]}" | jq -R . | jq -s . > ./matrix_values_${{ matrix.dist }}_${{ needs.set-driver-version-matrix.outputs[env.VAR_NAME_BASE_TARGET] }}_$LTS_KERNEL.json
 
       - name: Upload kernel matrix values as artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: matrix-values-${{ matrix.dist }}
-          path: ./matrix_values_${{ matrix.dist }}.json
+          name: matrix-values-${{ matrix.dist }}-${{ needs.set-driver-version-matrix.outputs[env.VAR_NAME_BASE_TARGET] }}-${{ needs.set-driver-version-matrix.outputs[env.VAR_NAME_LTS_KERNEL] }}
+          path: ./matrix_values_${{ matrix.dist }}_${{ needs.set-driver-version-matrix.outputs[env.VAR_NAME_BASE_TARGET] }}_${{ needs.set-driver-version-matrix.outputs[env.VAR_NAME_LTS_KERNEL] }}.json
           retention-days: 1
 
   collect-e2e-test-matrix:
@@ -240,9 +240,13 @@ jobs:
           # Read and merge kernel_version values from dist files
           dist_json='${{ needs.set-driver-version-matrix.outputs.dist }}'
           DIST=($(echo "$dist_json" | jq -r '.[]'))
-          for d in "${DIST[@]}"; do
-            artifact_name="matrix-values-${d}"
-            file_path="./matrix_values_${d}.json"
+          for dist in "${DIST[@]}"; do
+            base=$(echo base_target_${dist} | sed 's/\./_/g')
+            lts=$(echo lts_kernel_${dist} | sed 's/\./_/g')
+            target=$(echo '${{ toJson(needs.set-driver-version-matrix.outputs) }}' | jq -r '.["'"$base"'"]')
+            kernel=$(echo '${{ toJson(needs.set-driver-version-matrix.outputs) }}' | jq -r '.["'"$lts"'"]')
+            artifact_name="matrix-values-${dist}-${target}-${kernel}"
+            file_path="./matrix_values_${dist}_${target}_${kernel}.json"
             echo "Attempting to download artifact: $artifact_name"
             if gh run download --name "$artifact_name" --dir ./; then
               echo "Successfully downloaded artifact: $artifact_name"
