@@ -34,6 +34,7 @@ ARG DRIVER_VERSION
 ENV DRIVER_VERSION=$DRIVER_VERSION
 ARG DRIVER_BRANCH
 ENV DRIVER_BRANCH=$DRIVER_BRANCH
+ARG GIT_COMMIT
 
 # Arg to indicate if driver type is either of passthrough/baremetal or vgpu
 ARG DRIVER_TYPE=passthrough
@@ -96,6 +97,7 @@ LABEL io.k8s.display-name="NVIDIA Driver Container"
 LABEL name="NVIDIA Driver Container"
 LABEL vendor="NVIDIA"
 LABEL version="${DRIVER_VERSION}"
+LABEL com.nvidia.git-commit="${GIT_COMMIT}"
 LABEL release="N/A"
 LABEL summary="Provision the NVIDIA driver through containers"
 LABEL description="See summary"

@@ -10,6 +10,8 @@ ENV DRIVER_VERSION=$DRIVER_VERSION
 ARG KERNEL_VERSION=6.8.0-44-generic
 ENV KERNEL_VERSION=$KERNEL_VERSION
 
+ARG GIT_COMMIT
+
 ENV NVIDIA_VISIBLE_DEVICES=void
 
 RUN echo 'debconf debconf/frontend select Noninteractive' | debconf-set-selections
@@ -62,5 +64,14 @@ WORKDIR  /drivers
 
 # Remove cuda repository to avoid GPG errors
 RUN rm -f /etc/apt/sources.list.d/cuda*
+
+LABEL io.k8s.display-name="NVIDIA Driver Container"
+LABEL name="NVIDIA Driver Container"
+LABEL vendor="NVIDIA"
+LABEL version="${DRIVER_BRANCH}-${KERNEL_VERSION}"
+LABEL com.nvidia.git-commit="${GIT_COMMIT}"
+LABEL release="N/A"
+LABEL summary="Provision the NVIDIA driver through containers"
+LABEL description="See summary"
 
 ENTRYPOINT ["nvidia-driver", "init"]

@@ -42,6 +42,7 @@ ARG BASE_URL=https://us.download.nvidia.com/tesla
 ARG TARGETARCH
 ENV TARGETARCH=$TARGETARCH
 ARG DRIVER_VERSION
+ARG GIT_COMMIT
 ENV DRIVER_VERSION=$DRIVER_VERSION
 ENV DEBIAN_FRONTEND=noninteractive
 
@@ -103,5 +104,14 @@ RUN rm -f /etc/apt/sources.list.d/cuda*
 
 # Add NGC DL license from the CUDA image
 RUN mkdir /licenses && mv /NGC-DL-CONTAINER-LICENSE /licenses/NGC-DL-CONTAINER-LICENSE
+
+LABEL io.k8s.display-name="NVIDIA Driver Container"
+LABEL name="NVIDIA Driver Container"
+LABEL vendor="NVIDIA"
+LABEL version="${DRIVER_VERSION}"
+LABEL com.nvidia.git-commit="${GIT_COMMIT}"
+LABEL release="N/A"
+LABEL summary="Provision the NVIDIA driver through containers"
+LABEL description="See summary"
 
 ENTRYPOINT ["nvidia-driver", "init"]

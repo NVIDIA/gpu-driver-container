@@ -166,6 +166,7 @@ $(DRIVER_BUILD_TARGETS):
 				--build-arg DRIVER_BRANCH="$(DRIVER_BRANCH)" \
 				--build-arg CUDA_VERSION="$(CUDA_VERSION)" \
 				--build-arg CVE_UPDATES="$(CVE_UPDATES)" \
+				--build-arg GIT_COMMIT="$(GIT_COMMIT)" \
 				$(DOCKER_BUILD_ARGS) \
 				--file $(DOCKERFILE) \
 				$(CURDIR)/$(SUBDIR)
