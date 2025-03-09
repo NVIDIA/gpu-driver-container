@@ -42,6 +42,7 @@ ENV TARGETARCH=$TARGETARCH
 ARG DRIVER_VERSION
 ENV DRIVER_VERSION=$DRIVER_VERSION
 ENV DEBIAN_FRONTEND=noninteractive
+ARG GIT_COMMIT
 
 # Arg to indicate if driver type is either of passthrough(baremetal) or vgpu
 ARG DRIVER_TYPE=passthrough
@@ -104,5 +105,14 @@ RUN rm /etc/apt/sources.list.d/cuda.list
 
 # Add NGC DL license from the CUDA image
 RUN mkdir /licenses && mv /NGC-DL-CONTAINER-LICENSE /licenses/NGC-DL-CONTAINER-LICENSE
+
+LABEL io.k8s.display-name="NVIDIA Driver Container"
+LABEL name="NVIDIA Driver Container"
+LABEL vendor="NVIDIA"
+LABEL version="${DRIVER_VERSION}"
+LABEL com.nvidia.git-commit="${GIT_COMMIT}"
+LABEL release="N/A"
+LABEL summary="Provision the NVIDIA driver through containers"
+LABEL description="See summary"
 
 ENTRYPOINT ["nvidia-driver", "init"]
