@@ -16,3 +16,5 @@
 DRIVER_VERSIONS ?= 535.288.01 580.126.20
 
 GOLANG_VERSION := 1.25.7
+
+GIT_COMMIT ?= $(shell git describe --match="" --dirty --long --always --abbrev=40 2> /dev/null || echo "")

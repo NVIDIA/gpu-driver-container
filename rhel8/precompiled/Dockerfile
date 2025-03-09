@@ -67,6 +67,8 @@ ENV DRIVER_VERSION=${DRIVER_VERSION}
 ARG TARGET_ARCH=''
 ENV TARGETARCH=${TARGET_ARCH}
 
+ARG GIT_COMMIT
+
 # Force using provided RHSM registration
 ENV SMDEV_CONTAINER_OFF=1
 
@@ -138,6 +140,7 @@ LABEL io.k8s.display-name="NVIDIA Driver Container"
 LABEL name="NVIDIA Driver Container"
 LABEL vendor="NVIDIA"
 LABEL version="${DRIVER_VERSION}"
+LABEL vcs-ref="${GIT_COMMIT}"
 LABEL release="N/A"
 LABEL summary="Provision the NVIDIA driver through containers"
 LABEL description="See summary"

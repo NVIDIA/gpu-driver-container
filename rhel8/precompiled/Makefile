@@ -1,4 +1,5 @@
 DOCKERFILE = Dockerfile
+GIT_COMMIT ?= $(shell git describe --match="" --dirty --long --always --abbrev=40 2> /dev/null || echo "")
 RHEL_VERSION ?= 8.6
 CUDA_VERSION ?= 12.6.0
 CUDA_DIST ?= ubi8
@@ -52,6 +53,7 @@ image: rhsm-register
 		--build-arg DRIVER_TOOLKIT_IMAGE=${DRIVER_TOOLKIT_IMAGE} \
 		--build-arg DRIVER_TYPE=${DRIVER_TYPE} \
 		--build-arg BASE_URL=${BASE_URL} \
+		--build-arg GIT_COMMIT=${GIT_COMMIT} \
 		--tag ${IMAGE_REGISTRY}/${IMAGE_NAME}:${DRIVER_VERSION}-${KERNEL_VERSION}-${OS_TAG} \
 		--progress=plain \
 		--file ${DOCKERFILE} .
