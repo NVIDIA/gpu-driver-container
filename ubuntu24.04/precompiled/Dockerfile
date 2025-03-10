@@ -55,12 +55,9 @@ ADD local-repo.sh /tmp
 RUN mkdir -p /usr/local/repos && \
     /tmp/local-repo.sh download_driver_package_deps && \
     /tmp/local-repo.sh build_local_apt_repo && \
-    # Remove cuda repository to avoid GPG errors
-    rm -f /etc/apt/sources.list.d/cuda* \
+    # Remove all other ubuntu apt sources to ensure we only pull from the local apt repo
+    rm /etc/apt/sources.list.d/*
 
 WORKDIR  /drivers
-
-# Remove cuda repository to avoid GPG errors
-RUN rm -f /etc/apt/sources.list.d/cuda*
 
 ENTRYPOINT ["nvidia-driver", "init"]
