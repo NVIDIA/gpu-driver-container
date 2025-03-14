@@ -72,13 +72,10 @@ COPY --from=build /work/vgpu-util /usr/local/bin
 
 ADD drivers drivers/
 
-# Fetch the installer automatically for passthrough/baremetal types
+# Fetch the installer, fabricmanager and libnvidia-nscq automatically for passthrough/baremetal types
 RUN if [ "$DRIVER_TYPE" != "vgpu" ]; then \
     cd drivers && \
-    /tmp/install.sh download_installer; fi
-
-# Fabric manager packages are not available for arm64
-RUN if [ "$DRIVER_TYPE" != "vgpu" ] && [ "$TARGETARCH" != "arm64" ]; then \
+    /tmp/install.sh download_installer && \
     apt-get update && \
     apt-get install -y --no-install-recommends nvidia-fabricmanager-${DRIVER_BRANCH}=${DRIVER_VERSION}-1 \
     libnvidia-nscq-${DRIVER_BRANCH}=${DRIVER_VERSION}-1 && \
