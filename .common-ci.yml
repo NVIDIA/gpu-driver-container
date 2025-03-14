@@ -58,8 +58,8 @@ workflow:
 .precompiled-rules:
   # only execute precompiled jobs on scheduled pipelines
   rules:
-    - if: $CI_PIPELINE_SOURCE != "schedule"
-      when: never
+    - if: $CI_PIPELINE_SOURCE == "schedule"
+      when: always
 
 trigger-pipeline:
   stage: trigger
