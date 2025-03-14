@@ -83,7 +83,14 @@ RUN if [ "$DRIVER_TYPE" != "vgpu" ]; then \
 
 RUN if [ "$DRIVER_TYPE" != "vgpu" ] && [ "$DRIVER_BRANCH" -ge "550" ]; then \
     apt-get update && \
-    apt-get install -y --no-install-recommends nvidia-imex-${DRIVER_BRANCH}=${DRIVER_VERSION}-1 && \
+    apt-get install -y --no-install-recommends nvlsm infiniband-diags \
+    nvidia-imex-${DRIVER_BRANCH}=${DRIVER_VERSION}-1 && \
+    rm -rf /var/lib/apt/lists/*; fi
+
+# libnvsdm packages are not available for arm64
+RUN if [ "$DRIVER_TYPE" != "vgpu" ] && [ "$DRIVER_BRANCH" -ge "560" ] && [ "$TARGETARCH" != "arm64" ]; then \
+    apt-get update && \
+    apt-get install -y --no-install-recommends libnvsdm-${DRIVER_BRANCH}=${DRIVER_VERSION}-1 && \
     rm -rf /var/lib/apt/lists/*; fi
 
 WORKDIR  /drivers
