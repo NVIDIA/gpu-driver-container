@@ -94,8 +94,8 @@ image-precompiled-ubuntu24.04:
     PRECOMPILED: "true"
     CVE_UPDATES: "curl libc6"
   rules:
-    - !reference [.precompiled-rules, rules]
-    - when: delayed
+    - if: $CI_PIPELINE_SOURCE == "schedule"
+      when: delayed
       start_in: 30 minutes
   extends:
     - .driver-versions-precompiled-ubuntu24.04
@@ -119,8 +119,8 @@ image-precompiled-ubuntu22.04:
     PRECOMPILED: "true"
     CVE_UPDATES: "curl libc6"
   rules:
-    - !reference [.precompiled-rules, rules]
-    - when: delayed
+    - if: $CI_PIPELINE_SOURCE == "schedule"
+      when: delayed
       start_in: 30 minutes
   extends:
     - .driver-versions-precompiled-ubuntu22.04
@@ -238,7 +238,6 @@ image-rhel8:
   rules:
     - !reference [.scan-rules-common, rules]
     - !reference [.precompiled-rules, rules]
-    - when: always
 
 .scan-precompiled-ubuntu22.04:
   variables:
@@ -251,7 +250,6 @@ image-rhel8:
   rules:
     - !reference [.scan-rules-common, rules]
     - !reference [.precompiled-rules, rules]
-    - when: always
 
 # Define the scan targets
 scan-ubuntu20.04-amd64:
@@ -533,8 +531,7 @@ sign:ngc-precompiled-ubuntu22.04:
   needs:
     - release:ngc-precompiled-ubuntu22.04
   rules:
-    # Only run NGC release job on scheduled pipelines
-    - if: $CI_PIPELINE_SOURCE == "schedule"
+    - !reference [.precompiled-rules, rules]
 
 sign:ngc-ubuntu-rhel-rhcos:
   extends:
