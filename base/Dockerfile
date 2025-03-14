@@ -1,5 +1,5 @@
 # Ubuntu 24.04
-FROM nvcr.io/nvidia/cuda:12.8.0-base-ubuntu24.04 AS noble
+FROM nvcr.io/nvidia/cuda:12.8.1-base-ubuntu24.04 AS noble
 
 SHELL ["/bin/bash", "-c"]
 
@@ -36,7 +36,7 @@ RUN chmod +x /usr/local/bin/generate-ci-config && \
 ENTRYPOINT ["/usr/bin/sleep","1000"]
 
 # Ubuntu 22.04
-FROM nvcr.io/nvidia/cuda:12.8.0-base-ubuntu22.04 AS jammy
+FROM nvcr.io/nvidia/cuda:12.8.1-base-ubuntu22.04 AS jammy
 
 SHELL ["/bin/bash", "-c"]
 
@@ -73,7 +73,7 @@ RUN chmod +x /usr/local/bin/generate-ci-config && \
 ENTRYPOINT ["/usr/bin/sleep","1000"]
 
 # Ubuntu 20.04
-FROM nvcr.io/nvidia/cuda:12.8.0-base-ubuntu20.04 AS focal
+FROM nvcr.io/nvidia/cuda:12.8.1-base-ubuntu20.04 AS focal
 
 SHELL ["/bin/bash", "-c"]
 
