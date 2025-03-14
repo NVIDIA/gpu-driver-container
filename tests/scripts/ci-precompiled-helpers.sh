@@ -1,18 +1,18 @@
 get_kernel_versions_to_test() {
     if [[ "$#" -ne 4 ]]; then
-	    echo " Error:$0 must be called with BASE_TARGET KERNEL_FLAVORS DRIVER_BRANCHES DIST" >&2
+	    echo " Error:$0 must be called with KERNEL_FLAVORS DRIVER_BRANCHES DIST LTS_KERNEL" >&2
 	    exit 1
     fi
 
-    local BASE_TARGET="$1"
-    local -a KERNEL_FLAVORS=("${!2}")
-    local -a DRIVER_BRANCHES=("${!3}")
-    local DIST="$4"
+    local -a KERNEL_FLAVORS=("${!1}")
+    local -a DRIVER_BRANCHES=("${!2}")
+    local DIST="$3"
+    local LTS_KERNEL="$4"
 
     kernel_versions=()
     for kernel_flavor in "${KERNEL_FLAVORS[@]}"; do
         for DRIVER_BRANCH in "${DRIVER_BRANCHES[@]}"; do
-            source ./tests/scripts/findkernelversion.sh "$BASE_TARGET" "${kernel_flavor}" "$DRIVER_BRANCH" "$DIST" >&2
+            source ./tests/scripts/findkernelversion.sh "${kernel_flavor}" "$DRIVER_BRANCH" "$DIST" "$LTS_KERNEL" >&2
             if [[ "$should_continue" == true ]]; then
                 break
             fi

@@ -199,7 +199,7 @@ jobs:
           done))
           fi
           source ./tests/scripts/ci-precompiled-helpers.sh
-          KERNEL_VERSIONS=($(get_kernel_versions_to_test $BASE_TARGET KERNEL_FLAVORS[@] DRIVER_BRANCHES[@] $DIST))
+          KERNEL_VERSIONS=($(get_kernel_versions_to_test KERNEL_FLAVORS[@] DRIVER_BRANCHES[@] $DIST $LTS_KERNEL))
           if [ -z "$KERNEL_VERSIONS" ]; then
             # no new kernel release
             echo "Skipping e2e tests"
