@@ -73,7 +73,8 @@ RUN if [ "$DRIVER_TYPE" != "vgpu" ]; then \
     dnf install -y nvidia-fabric-manager-${DRIVER_VERSION}-1 libnvidia-nscq-${DRIVER_BRANCH}-${DRIVER_VERSION}-1; fi
 
 RUN if [ "$DRIVER_TYPE" != "vgpu" ] && [ "$DRIVER_BRANCH" -ge "550" ]; then \
-    dnf install -y nvidia-imex-${DRIVER_BRANCH}-${DRIVER_VERSION}-1; fi
+    dnf install -y nvlsm libibverbs-utils infiniband-diags \
+    nvidia-imex-${DRIVER_BRANCH}-${DRIVER_VERSION}-1; fi
 
 COPY nvidia-driver /usr/local/bin
 COPY ocp_dtk_entrypoint /usr/local/bin
