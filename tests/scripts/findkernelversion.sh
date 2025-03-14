@@ -1,15 +1,14 @@
 #!/bin/bash
 
-if [[ $# -ne 5 ]]; then
-	echo " BASE_TARGET KERNEL_FLAVOR DRIVER_BRANCH DIST LTS_KERNEL are required"
+if [[ $# -ne 4 ]]; then
+	echo " KERNEL_FLAVOR DRIVER_BRANCH DIST LTS_KERNEL are required"
 	exit 1
 fi
 
-export BASE_TARGET="${1}"
-export KERNEL_FLAVOR="${2}"
-export DRIVER_BRANCH="${3}"
-export DIST="${4}"
-export LTS_KERNEL="${5}"
+export KERNEL_FLAVOR="${1}"
+export DRIVER_BRANCH="${2}"
+export DIST="${3}"
+export LTS_KERNEL="${4}"
 
 export REGCTL_VERSION=v0.7.1
 mkdir -p bin
