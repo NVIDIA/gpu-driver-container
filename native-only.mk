@@ -17,3 +17,7 @@ DOCKER_BUILD_PLATFORM_OPTIONS = --platform=linux/amd64
 $(DRIVER_PUSH_TARGETS): push-%:
 	$(DOCKER) tag "$(IMAGE)" "$(OUT_IMAGE)"
 	$(DOCKER) push "$(OUT_IMAGE)"
+
+$(VGPU_GUEST_DRIVER_PUSH_TARGETS): push-vgpuguest-%:
+	$(DOCKER) tag "$(IMAGE)" "$(OUT_IMAGE)"
+	$(DOCKER) push "$(OUT_IMAGE)"
