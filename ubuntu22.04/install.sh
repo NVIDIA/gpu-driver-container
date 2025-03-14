@@ -38,13 +38,19 @@ dep_install () {
 repo_setup () {
     if [ "$TARGETARCH" = "amd64" ]; then
         echo "deb [arch=amd64] http://archive.ubuntu.com/ubuntu/ jammy main universe" > /etc/apt/sources.list && \
+        echo "deb [arch=amd64] http://archive.ubuntu.com/ubuntu/ jammy multiverse" > /etc/apt/sources.list && \
         echo "deb [arch=amd64] http://archive.ubuntu.com/ubuntu/ jammy-updates main universe" >> /etc/apt/sources.list && \
+        echo "deb [arch=amd64] http://archive.ubuntu.com/ubuntu/ jammy-updates multiverse" >> /etc/apt/sources.list && \
         echo "deb [arch=amd64] http://archive.ubuntu.com/ubuntu/ jammy-security main universe" >> /etc/apt/sources.list && \
+        echo "deb [arch=amd64] http://archive.ubuntu.com/ubuntu/ jammy-security multiverse" >> /etc/apt/sources.list && \
         usermod -o -u 0 -g 0 _apt
     elif [ "$TARGETARCH" = "arm64" ]; then
+        echo "deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports jammy multiverse" > /etc/apt/sources.list && \
         echo "deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports jammy main universe" > /etc/apt/sources.list && \
         echo "deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports jammy-updates main universe" >> /etc/apt/sources.list && \
+        echo "deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports jammy-updates multiverse" >> /etc/apt/sources.list && \
         echo "deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports jammy-security main universe" >> /etc/apt/sources.list && \
+        echo "deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports jammy-security multiverse" >> /etc/apt/sources.list && \
         usermod -o -u 0 -g 0 _apt
     else
         echo "TARGETARCH doesn't match a known arch target"
