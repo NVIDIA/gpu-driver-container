@@ -16,14 +16,17 @@ export DEBIAN_FRONTEND=noninteractive
 apt-get update -y -qq > /dev/null
 
 # Generate a list of all kernel versions which have NVIDIA precompiled driver packages available.
-SUPPORTED_KERNELS=$(apt-cache search linux-objects-nvidia-${DRIVER_BRANCH}-server.*${LTS_KERNEL}.*${KERNEL_FLAVOR} | awk '{print $1}' | grep -v "open" | sed -e "s/^.*${LTS_KERNEL}/${LTS_KERNEL}/" | sort -n -t'-' -k2)
+SUPPORTED_KERNELS_LINUX_SIGNATURES_LIST=$(apt-cache search "linux-signatures-nvidia.*${LTS_KERNEL}.*${KERNEL_FLAVOR}" | awk '{print $1}'  | sed -e "s/^.*${LTS_KERNEL}/${LTS_KERNEL}/" | sort -n -t'-' -k2| grep "${KERNEL_FLAVOR}$")
+# Generate a list of all kernel versions which have linux-image packages available.
+SUPPORTED_KERNELS_LINUX_IMAGE_LIST=$(apt-cache search linux-image-${LTS_KERNEL}.*-${KERNEL_FLAVOR} | awk '{print $1}' | sed -e "s/^.*${LTS_KERNEL}/${LTS_KERNEL}/" | sort -n -t'-' -k2 | grep "${KERNEL_FLAVOR}$")
 
 # Grab latest driver version for nvidia-utils-${DRIVER_BRANCH}-server
 DRIVER_VERSION=$(apt-cache show nvidia-utils-${DRIVER_BRANCH}-server |grep Version |awk '{print $2}' | cut -d'-' -f1 | head -n 1)
 
-# Latest supported kernel
-# only consider suffix -KERNEL_FLAVOR not KERNEL_FLAVOR-* (e.g. KERNEL_FLAVOR-lowlatency)
-SK=$(echo "$SUPPORTED_KERNELS" | awk -v f="$KERNEL_FLAVOR" '$0 ~ "-" f "$" {last=$0} END{print last}')
+# Get the latest kernel from linux-signatures-list and linux-images-list
+# As list is already sorted , compare the kernel version and find exact match
+# get the latest kernel version with tail
+SK=$(grep -Fxf <(echo "$SUPPORTED_KERNELS_LINUX_SIGNATURES_LIST") <(echo "$SUPPORTED_KERNELS_LINUX_IMAGE_LIST") | tail -n1)
 
 # Write to file
 echo "export KERNEL_VERSION=$SK DRIVER_VERSION=$DRIVER_VERSION DRIVER_VERSIONS=$DRIVER_VERSION" > /var/kernel_version.txt

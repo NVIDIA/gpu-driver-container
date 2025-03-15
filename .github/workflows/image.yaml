@@ -112,6 +112,9 @@ jobs:
         dist:
           - ubuntu22.04
           - ubuntu24.04
+        lts_kernel:
+          - 5.15
+          - 6.8
         ispr:
           - ${{github.event_name == 'pull_request'}}
         exclude:
@@ -124,6 +127,8 @@ jobs:
           - ispr: true
             flavor: oracle
           - driver: 535
+            dist: ubuntu24.04
+          - lts_kernel: 5.15
             dist: ubuntu24.04
     steps:
       - uses: actions/checkout@v4
@@ -164,13 +169,12 @@ jobs:
         env:
           IMAGE_NAME: ghcr.io/${LOWERCASE_REPO_OWNER}/driver
           VERSION: ${COMMIT_SHORT_SHA}
+          LTS_KERNEL: ${{ matrix.lts_kernel }}
         run: |
           if [[ "${{ matrix.dist }}" == "ubuntu22.04" ]]; then
             BASE_TARGET="jammy"
-            LTS_KERNEL="5.15"
           elif [[ "${{ matrix.dist }}" == "ubuntu24.04" ]]; then
             BASE_TARGET="noble"
-            LTS_KERNEL="6.8"
           fi
           make DRIVER_BRANCH=${{ matrix.driver }} KERNEL_FLAVOR=${{ matrix.flavor }} LTS_KERNEL=${LTS_KERNEL} build-base-${BASE_TARGET}
 
