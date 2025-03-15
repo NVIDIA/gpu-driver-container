@@ -103,7 +103,7 @@ jobs:
         flavor:
           - aws
           - azure
-          - generic
+          # - generic
           - nvidia
           - oracle
         dist:
