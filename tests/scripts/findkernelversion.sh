@@ -19,12 +19,12 @@ export PATH=$(pwd)/bin:${PATH}
 # calculate kernel version of latest image
 prefix="kernel-version-${DRIVER_BRANCH}-${LTS_KERNEL}"
 suffix="${kernel_flavor}-${DIST}"
-artifacts=$(gh api -X GET /repos/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}/artifacts --paginate --jq '.artifacts[].name')
+artifacts=$(gh api -X GET /repos/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}/artifacts --paginate --jq '.artifacts[].name' --silent)
 # find the matching artifact dynamically
 for artifact in $artifacts; do
     if [[ $artifact == $prefix*-$suffix ]]; then
-        gh run download --name "$artifact" --dir ./
-        tar -xf $artifact.tar 
+        gh run download ${GITHUB_RUN_ID} --name "$artifact" --dir ./ --silent
+        tar -xf $artifact.tar
         rm -f $artifact.tar
         export $(grep -oP 'KERNEL_VERSION=[^ ]+' ./kernel_version.txt)
         rm -f kernel_version.txt
@@ -34,7 +34,7 @@ done
 
 # calculate driver tag
 status=0
-regctl tag ls  nvcr.io/nvidia/driver | grep "^${DRIVER_BRANCH}-${KERNEL_VERSION}-${DIST}$" || status=$?
+regctl tag ls  nvcr.io/nvidia/driver | grep "^${DRIVER_BRANCH}-${KERNEL_VERSION}-${DIST}$" > /dev/null 2>&1 || status=$?
 if [[ $status -eq 0 ]]; then
     export should_continue=false
 else
