@@ -19,11 +19,11 @@ export PATH=$(pwd)/bin:${PATH}
 # calculate kernel version of latest image
 prefix="kernel-version-${DRIVER_BRANCH}-${LTS_KERNEL}"
 suffix="${kernel_flavor}-${DIST}"
-artifacts=$(gh api -X GET /repos/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}/artifacts --paginate --jq '.artifacts[].name' --silent)
+artifacts=$(gh api -X GET /repos/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}/artifacts --paginate --jq '.artifacts[].name')
 # find the matching artifact dynamically
 for artifact in $artifacts; do
     if [[ $artifact == $prefix*-$suffix ]]; then
-        gh run download ${GITHUB_RUN_ID} --name "$artifact" --dir ./ --silent
+        gh run download ${GITHUB_RUN_ID} --name "$artifact" --dir ./
         tar -xf $artifact.tar
         rm -f $artifact.tar
         export $(grep -oP 'KERNEL_VERSION=[^ ]+' ./kernel_version.txt)
