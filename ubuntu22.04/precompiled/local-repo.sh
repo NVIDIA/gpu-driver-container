@@ -28,6 +28,11 @@ download_driver_package_deps () {
   apt-get download nvidia-fabricmanager-${DRIVER_BRANCH}=${DRIVER_VERSION}-1
   apt-get download libnvidia-nscq-${DRIVER_BRANCH}=${DRIVER_VERSION}-1
 
+  if [ "$DRIVER_BRANCH" -ge "560" ]; then
+      apt-get download libnvsdm-${DRIVER_BRANCH}=${DRIVER_VERSION}-1
+      apt-get download nvlsm
+  fi
+
   ls -al .
   popd
 }
