@@ -22,10 +22,10 @@ function sourceVersions(){
     fi
 
     if command -v regctl; then
-        regctl image get-file ghcr.io/nvidia/driver:base-${BASE_TARGET}-${KERNEL_FLAVOR}-${DRIVER_BRANCH} /var/kernel_version.txt kernel_version.txt
+        regctl image get-file ghcr.io/nvidia/driver:base-${BASE_TARGET}-${LTS_KERNEL}-${KERNEL_FLAVOR}-${DRIVER_BRANCH} /var/kernel_version.txt kernel_version.txt
     else
         trap "docker rm -f base-${BASE_TARGET}" EXIT
-        docker run --pull=always -d --name base-${BASE_TARGET}-${KERNEL_FLAVOR} ghcr.io/nvidia/driver:base-${BASE_TARGET}-${KERNEL_FLAVOR}-${DRIVER_BRANCH}
+        docker run --pull=always -d --name base-${BASE_TARGET}-${KERNEL_FLAVOR} ghcr.io/nvidia/driver:base-${BASE_TARGET}-${LTS_KERNEL}-${KERNEL_FLAVOR}-${DRIVER_BRANCH}
         # try 3 times every 3 seconds to get the file, if success exit the loop
         for i in {1..3}; do
             docker cp base-${BASE_TARGET}-${KERNEL_FLAVOR}:/var/kernel_version.txt kernel_version.txt && break
