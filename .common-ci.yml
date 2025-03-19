@@ -93,6 +93,7 @@ trigger-pipeline:
     matrix:
       - DRIVER_BRANCH: [535, 550]
         KERNEL_FLAVOR: [aws, azure, generic, nvidia, oracle]
+        LTS_KERNEL: ["5.15"]
 
 # Define the matrix of precompiled jobs that can be run in parallel for ubuntu24.04
 .driver-versions-precompiled-ubuntu24.04:
@@ -100,6 +101,7 @@ trigger-pipeline:
     matrix:
       - DRIVER_BRANCH: [550]
         KERNEL_FLAVOR: [aws, azure, generic, nvidia, oracle]
+        LTS_KERNEL: ["6.8"]
 
 # Define the distribution targets
 .dist-ubuntu20.04:
