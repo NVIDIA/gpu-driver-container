@@ -201,7 +201,7 @@ build-signed_ubuntu24.04%: DOCKER_BUILD_ARGS =  --build-arg KERNEL_VERSION="$(KE
 # base is an image used to poll Canonical for the latest kernel version
 build-base-%: DOCKERFILE = $(CURDIR)/base/Dockerfile
 build-base-%: TARGET = $(word 3,$(subst -, ,$@))
-build-base-%: IMAGE_TAG = base-$(word 3,$(subst -, ,$@))-$(KERNEL_FLAVOR)-$(DRIVER_BRANCH)
+build-base-%: IMAGE_TAG = base-$(word 3,$(subst -, ,$@))-$(KERNEL_FLAVOR)-$(DRIVER_BRANCH)-$(LTS_KERNEL)
 $(BASE_BUILD_TARGETS):
 	DOCKER_BUILDKIT=1 \
 		$(DOCKER) $(BUILDX) build --pull --no-cache \
@@ -217,7 +217,7 @@ $(BASE_BUILD_TARGETS):
 				$(CURDIR)/base
 
 push-base-%: TARGET = $(word 3,$(subst -, ,$@))
-push-base-%: IMAGE_TAG = base-$(word 3,$(subst -, ,$@))-$(KERNEL_FLAVOR)-$(DRIVER_BRANCH)
+push-base-%: IMAGE_TAG = base-$(word 3,$(subst -, ,$@))-$(KERNEL_FLAVOR)-$(DRIVER_BRANCH)-$(LTS_KERNEL)
 push-base-%: OUT_IMAGE_TAG = ${IMAGE_TAG}
 $(BASE_PUSH_TARGETS):
 	regctl \
