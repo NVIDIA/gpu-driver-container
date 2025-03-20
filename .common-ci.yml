@@ -60,6 +60,8 @@ workflow:
   rules:
     - if: $CI_PIPELINE_SOURCE == "schedule"
       when: always
+      variables:
+        VERSION: ""
 
 trigger-pipeline:
   stage: trigger
