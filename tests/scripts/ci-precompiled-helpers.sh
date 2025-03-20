@@ -20,6 +20,7 @@ get_kernel_versions_to_test() {
         if [[ "$should_continue" == true ]]; then
             KERNEL_VERSION=$(echo "$KERNEL_VERSION" | tr -d ' \n')
             kernel_versions+=("$KERNEL_VERSION")
+            unset KERNEL_VERSION
         fi
     done
     # Remove duplicates
