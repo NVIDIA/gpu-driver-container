@@ -430,4 +430,5 @@ jobs:
           image_path="./driver-images-${{ matrix.driver_branch }}-${{ matrix.kernel_version }}.tar"
           echo "uploading  $image_path"
           docker load -i $image_path
+          echo "SHIVAAAA exiting"
           docker push ${PRIVATE_REGISTRY}/nvidia/driver:${{ matrix.driver_branch }}-${{ matrix.kernel_version }}
