@@ -2,6 +2,9 @@ FROM nvcr.io/nvidia/cuda:12.8.1-base-ubuntu24.04
 
 ENV DEBIAN_FRONTEND=noninteractive
 
+ARG BASE_URL=https://us.download.nvidia.com/tesla
+ARG TARGETARCH
+ENV TARGETARCH=$TARGETARCH
 ARG DRIVER_BRANCH=550
 ENV DRIVER_BRANCH=$DRIVER_BRANCH
 ARG DRIVER_VERSION=550.90.12
@@ -55,6 +58,7 @@ ADD local-repo.sh /tmp
 RUN mkdir -p /usr/local/repos && \
     /tmp/local-repo.sh download_driver_package_deps && \
     /tmp/local-repo.sh build_local_apt_repo && \
+    /tmp/local-repo.sh fetch_nvidia_installer && \
     # Remove all other ubuntu apt sources to ensure we only pull from the local apt repo
     rm /etc/apt/sources.list.d/*
 
