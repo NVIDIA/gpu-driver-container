@@ -3,6 +3,8 @@
 set -eu
 
 LOCAL_REPO_DIR=/usr/local/repos
+DRIVER_ARCH=${TARGETARCH/amd64/x86_64} && DRIVER_ARCH=${DRIVER_ARCH/arm64/aarch64}
+DRIVER_RUN_FILE=NVIDIA-Linux-$DRIVER_ARCH-$DRIVER_VERSION
 
 download_apt_with_dep () {
   local package="$1"
@@ -40,10 +42,21 @@ build_local_apt_repo () {
   apt-get update
 }
 
+fetch_nvidia_installer () {
+  curl -fSsl -O $BASE_URL/$DRIVER_VERSION/$DRIVER_RUN_FILE.run
+  chmod +x $DRIVER_RUN_FILE.run
+  sh $DRIVER_RUN_FILE.run -x
+  mv $DRIVER_RUN_FILE/nvidia-installer /usr/bin/
+  rm -rf $DRIVER_RUN_FILE
+  rm $DRIVER_RUN_FILE.run
+}
+
 if [ "$1" = "download_driver_package_deps" ]; then
   download_driver_package_deps
 elif [ "$1" = "build_local_apt_repo" ]; then
   build_local_apt_repo
+elif [ "$1" = "fetch_nvidia_installer" ]; then
+  fetch_nvidia_installer
 else
   echo "Unknown function: $1"
   exit 1
