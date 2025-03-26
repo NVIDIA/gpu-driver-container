@@ -199,9 +199,12 @@ build-signed_ubuntu24.04%: IMAGE_TAG = $(if $(VERSION),$(VERSION)-)$(DRIVER_BRAN
 build-signed_ubuntu24.04%: DOCKER_BUILD_ARGS =  --build-arg KERNEL_VERSION="$(KERNEL_VERSION)"
 
 # base is an image used to poll Canonical for the latest kernel version
+# LTS_KERNEL must be defined in the environment when invoking this target.
+LTS_KERNEL ?= ""
+build-base-%: $(if $(LTS_KERNEL),,$(error "LTS_KERNEL is not set"))
 build-base-%: DOCKERFILE = $(CURDIR)/base/Dockerfile
 build-base-%: TARGET = $(word 3,$(subst -, ,$@))
-build-base-%: IMAGE_TAG = base-$(word 3,$(subst -, ,$@))-$(KERNEL_FLAVOR)-$(DRIVER_BRANCH)
+build-base-%: IMAGE_TAG = base-$(word 3,$(subst -, ,$@))-$(LTS_KERNEL)-$(KERNEL_FLAVOR)-$(DRIVER_BRANCH)
 $(BASE_BUILD_TARGETS):
 	DOCKER_BUILDKIT=1 \
 		$(DOCKER) $(BUILDX) build --pull --no-cache \
@@ -217,7 +220,7 @@ $(BASE_BUILD_TARGETS):
 				$(CURDIR)/base
 
 push-base-%: TARGET = $(word 3,$(subst -, ,$@))
-push-base-%: IMAGE_TAG = base-$(word 3,$(subst -, ,$@))-$(KERNEL_FLAVOR)-$(DRIVER_BRANCH)
+push-base-%: IMAGE_TAG = base-$(word 3,$(subst -, ,$@))-$(LTS_KERNEL)-$(KERNEL_FLAVOR)-$(DRIVER_BRANCH)
 push-base-%: OUT_IMAGE_TAG = ${IMAGE_TAG}
 $(BASE_PUSH_TARGETS):
 	regctl \
