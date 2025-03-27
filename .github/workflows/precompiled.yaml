@@ -16,8 +16,15 @@
 name: Precompiled images
 
 on:
-  schedule:
-    - cron: '00 09 * * *'
+  pull_request:
+    types:
+      - opened
+      - synchronize
+    branches:
+      - test-ubuntu22-kernel6_8
+  push:
+    branches:
+      - test-ubuntu22-kernel6_8
 
 jobs:
   set-driver-version-matrix:
@@ -416,4 +423,6 @@ jobs:
           image_path="./driver-images-${{ matrix.driver_branch }}-${{ matrix.kernel_version }}.tar"
           echo "uploading  $image_path"
           docker load -i $image_path
+          echo "SHIVAAAA exiting"
+          exit 0
           docker push ${PRIVATE_REGISTRY}/nvidia/driver:${{ matrix.driver_branch }}-${{ matrix.kernel_version }}
