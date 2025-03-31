@@ -7,9 +7,19 @@ DRIVER_ARCH=${TARGETARCH/amd64/x86_64} && DRIVER_ARCH=${DRIVER_ARCH/arm64/aarch6
 DRIVER_RUN_FILE=NVIDIA-Linux-$DRIVER_ARCH-$DRIVER_VERSION
 
 download_apt_with_dep () {
-  local package="$1"
-  apt-get download $package
-  apt-get download $(apt-cache depends --recurse --no-recommends --no-suggests --no-conflicts --no-breaks --no-replaces --no-enhances $package | grep "^\w" | sort -u)
+  local package_name="$1"
+  local package_version
+  if [ $# -gt 1 ] && [ -n "$2" ]; then
+      package_version="$2"
+      apt-get download "${package_name}=${package_version}"
+  else
+      apt-get download "${package_name}"
+  fi
+
+  dependent_pkgs=$(apt-cache depends --recurse --no-recommends --no-suggests --no-conflicts --no-breaks --no-replaces --no-enhances "$package_name" | grep "^\w" | grep -v "$package_name" | sort -u)
+  if [ -n "$dependent_pkgs" ]; then
+      apt-get download $dependent_pkgs
+  fi
 }
 
 download_driver_package_deps () {
@@ -27,8 +37,8 @@ download_driver_package_deps () {
   download_apt_with_dep libnvidia-encode-${DRIVER_BRANCH}-server
   download_apt_with_dep libnvidia-fbc1-${DRIVER_BRANCH}-server
 
-  apt-get download nvidia-fabricmanager-${DRIVER_BRANCH}=${DRIVER_VERSION}-1
-  apt-get download libnvidia-nscq-${DRIVER_BRANCH}=${DRIVER_VERSION}-1
+  download_apt_with_dep nvidia-fabricmanager-${DRIVER_BRANCH} ${DRIVER_VERSION}-1
+  download_apt_with_dep libnvidia-nscq-${DRIVER_BRANCH} ${DRIVER_VERSION}-1
 
   ls -al .
   popd
