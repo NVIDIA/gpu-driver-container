@@ -26,10 +26,7 @@ jobs:
       driver_branch: ${{ steps.extract_driver_branch.outputs.driver_branch }}
       kernel_flavors: ${{ steps.extract_driver_branch.outputs.kernel_flavors }}
       dist: ${{ steps.extract_driver_branch.outputs.dist }}
-      base_target_ubuntu22_04: ${{ steps.extract_driver_branch.outputs.base_target_ubuntu22_04 }}
-      lts_kernel_ubuntu22_04: ${{ steps.extract_driver_branch.outputs.lts_kernel_ubuntu22_04 }}
-      base_target_ubuntu24_04: ${{ steps.extract_driver_branch.outputs.base_target_ubuntu24_04 }}
-      lts_kernel_ubuntu24_04: ${{ steps.extract_driver_branch.outputs.lts_kernel_ubuntu24_04 }}
+      lts_kernel: ${{ steps.extract_driver_branch.outputs.lts_kernel }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -51,11 +48,10 @@ jobs:
           dist_json=$(printf '%s\n' "${DIST[@]}" | jq -R . | jq -cs .)
           echo "dist=$dist_json" >> $GITHUB_OUTPUT
 
-          # BASE_TARGET and LTS_KERNEL setup
-          echo "base_target_ubuntu22_04=jammy" >> $GITHUB_OUTPUT
-          echo "base_target_ubuntu24_04=noble" >> $GITHUB_OUTPUT
-          echo "lts_kernel_ubuntu22_04=5.15" >> $GITHUB_OUTPUT
-          echo "lts_kernel_ubuntu24_04=6.8" >> $GITHUB_OUTPUT
+          # LTS_KERNEL setup
+          LTS_KERNEL=("5.15" "6.8")
+          lts_kernel_json=$(printf '%s\n' "${LTS_KERNEL[@]}" | jq -R . | jq -cs .)
+          echo "lts_kernel=$lts_kernel_json" >> $GITHUB_OUTPUT
 
   precompiled-build-image:
     needs: set-driver-version-matrix
@@ -65,16 +61,17 @@ jobs:
         driver_branch: ${{ fromJson(needs.set-driver-version-matrix.outputs.driver_branch) }}
         flavor: ${{ fromJson(needs.set-driver-version-matrix.outputs.kernel_flavors) }}
         dist: ${{ fromJson(needs.set-driver-version-matrix.outputs.dist) }}
+        lts_kernel: ${{ fromJson(needs.set-driver-version-matrix.outputs.lts_kernel) }}
         exclude:
           - dist: ubuntu24.04
             driver_branch: 535
+          - lts_kernel: 5.15
+            dist: ubuntu24.04
     steps:
       - uses: actions/checkout@v4
         name: Check out code
       - name: Calculate build vars
         id: vars
-        env:
-          DIST: ${{ matrix.dist }}
         run: |
           echo "LOWERCASE_REPO_OWNER=$(echo "${GITHUB_REPOSITORY_OWNER}" | awk '{print tolower($0)}')" >> $GITHUB_ENV
           REPO_FULL_NAME="${{ github.repository }}"
@@ -83,11 +80,6 @@ jobs:
           GENERATE_ARTIFACTS="false"
           echo "PUSH_ON_BUILD=${GENERATE_ARTIFACTS}" >> $GITHUB_ENV
           echo "BUILD_MULTI_ARCH_IMAGES=${GENERATE_ARTIFACTS}" >> $GITHUB_ENV
-
-          VAR_NAME_BASE_TARGET=$(echo base_target_${DIST} | sed 's/\./_/g')
-          echo "VAR_NAME_BASE_TARGET=${VAR_NAME_BASE_TARGET}" >> $GITHUB_ENV
-          VAR_NAME_LTS_KERNEL=$(echo lts_kernel_${DIST} | sed 's/\./_/g')
-          echo "VAR_NAME_LTS_KERNEL=${VAR_NAME_LTS_KERNEL}" >> $GITHUB_ENV
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
@@ -104,9 +96,13 @@ jobs:
       - name: Build base image and get kernel version
         env:
           IMAGE_NAME: ghcr.io/nvidia/driver
-          BASE_TARGET: ${{ needs.set-driver-version-matrix.outputs[env.VAR_NAME_BASE_TARGET] }}
-          LTS_KERNEL: ${{ needs.set-driver-version-matrix.outputs[env.VAR_NAME_LTS_KERNEL] }}
+          LTS_KERNEL: ${{ matrix.lts_kernel }}
         run: |
+          if [[ "${{ matrix.dist }}" == "ubuntu22.04" ]]; then
+            BASE_TARGET="jammy"
+          elif [[ "${{ matrix.dist }}" == "ubuntu24.04" ]]; then
+            BASE_TARGET="noble"
+          fi
           make DRIVER_BRANCH=${{ matrix.driver_branch }} KERNEL_FLAVOR=${{ matrix.flavor }} LTS_KERNEL=${LTS_KERNEL} build-base-${BASE_TARGET}
 
           trap "docker rm -f base-${BASE_TARGET}-${{ matrix.flavor }}" EXIT
@@ -157,6 +153,10 @@ jobs:
     strategy:
       matrix:
         dist: ${{ fromJson(needs.set-driver-version-matrix.outputs.dist) }}
+        lts_kernel: ${{ fromJson(needs.set-driver-version-matrix.outputs.lts_kernel) }}
+        exclude:
+          - lts_kernel: 5.15
+            dist: ubuntu24.04
     needs:
       - precompiled-build-image
       - set-driver-version-matrix
@@ -170,22 +170,11 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Calculate build vars
-        id: vars
-        env:
-          DIST: ${{ matrix.dist }}
-        run: |
-          VAR_NAME_BASE_TARGET=$(echo base_target_${DIST} | sed 's/\./_/g')
-          echo "VAR_NAME_BASE_TARGET=${VAR_NAME_BASE_TARGET}" >> $GITHUB_ENV
-          VAR_NAME_LTS_KERNEL=$(echo lts_kernel_${DIST} | sed 's/\./_/g')
-          echo "VAR_NAME_LTS_KERNEL=${VAR_NAME_LTS_KERNEL}" >> $GITHUB_ENV
-
       - name: Set kernel version
         env:
           DIST: ${{ matrix.dist }}
           GH_TOKEN:  ${{ secrets.GITHUB_TOKEN }}
-          BASE_TARGET: ${{ needs.set-driver-version-matrix.outputs[env.VAR_NAME_BASE_TARGET] }}
-          LTS_KERNEL: ${{ needs.set-driver-version-matrix.outputs[env.VAR_NAME_LTS_KERNEL] }}
+          LTS_KERNEL: ${{ matrix.lts_kernel }}
         run: |
           kernel_flavors_json='${{ needs.set-driver-version-matrix.outputs.kernel_flavors }}'
           KERNEL_FLAVORS=($(echo "$kernel_flavors_json" | jq -r '.[]'))
@@ -206,14 +195,14 @@ jobs:
             exit 0
           fi
           # Convert array to JSON format and assign
-          echo "[]" > ./matrix_values_$DIST.json
-          printf '%s\n' "${KERNEL_VERSIONS[@]}" | jq -R . | jq -s . > ./matrix_values_$DIST.json
+          echo "[]" > ./matrix_values_${{ matrix.dist }}_${{ matrix.lts_kernel }}.json
+          printf '%s\n' "${KERNEL_VERSIONS[@]}" | jq -R . | jq -s . > ./matrix_values_${{ matrix.dist }}_${{ matrix.lts_kernel }}.json
 
       - name: Upload kernel matrix values as artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: matrix-values-${{ matrix.dist }}
-          path: ./matrix_values_${{ matrix.dist }}.json
+          name: matrix-values-${{ matrix.dist }}-${{ matrix.lts_kernel }}
+          path: ./matrix_values_${{ matrix.dist }}_${{ matrix.lts_kernel }}.json
           retention-days: 1
 
   collect-e2e-test-matrix:
@@ -240,16 +229,20 @@ jobs:
           # Read and merge kernel_version values from dist files
           dist_json='${{ needs.set-driver-version-matrix.outputs.dist }}'
           DIST=($(echo "$dist_json" | jq -r '.[]'))
-          for d in "${DIST[@]}"; do
-            artifact_name="matrix-values-${d}"
-            file_path="./matrix_values_${d}.json"
-            echo "Attempting to download artifact: $artifact_name"
-            if gh run download --name "$artifact_name" --dir ./; then
-              echo "Successfully downloaded artifact: $artifact_name"
-              value=$(jq -r '.[]' "$file_path")
-              kernel_versions+=($value)
-              echo "matrix_values_not_empty=1" >> $GITHUB_OUTPUT
-            fi
+          lts_kernel_json='${{ needs.set-driver-version-matrix.outputs.lts_kernel }}'
+          LTS_KERNEL=($(echo "$lts_kernel_json" | jq -r '.[]'))
+          for dist in "${DIST[@]}"; do
+            for kernel in "${LTS_KERNEL[@]}"; do
+              artifact_name="matrix-values-${dist}-${kernel}"
+              file_path="./matrix_values_${dist}_${kernel}.json"
+              echo "Attempting to download artifact: $artifact_name"
+              if gh run download ${GITHUB_RUN_ID} --name "$artifact_name" --dir ./; then
+                echo "Successfully downloaded artifact: $artifact_name"
+                value=$(jq -r '.[]' "$file_path")
+                kernel_versions+=($value)
+                echo "matrix_values_not_empty=1" >> $GITHUB_OUTPUT
+              fi
+            done
           done
           echo "Collected Kernel Versions: ${kernel_versions[@]}"
           combined_values=$(printf '%s\n' "${kernel_versions[@]}" | jq -R . | jq -s -c .  | tr -d ' \n')
@@ -362,7 +355,7 @@ jobs:
             echo "Running e2e for DRIVER_VERSION=$DRIVER_VERSION"
             image="driver-images-${DRIVER_VERSION}-${KERNEL_VERSION}-${DIST}"
             echo "Downloading  $image in tests directory"
-            gh run download --name $image --dir ./tests/
+            gh run download ${GITHUB_RUN_ID} --name $image --dir ./tests/
             status=0
             TEST_CASE_ARGS="${GPU_OPERATOR_OPTIONS} --set driver.version=${DRIVER_VERSION}"
             # add escape character for space
