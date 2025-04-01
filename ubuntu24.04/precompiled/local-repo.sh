@@ -40,6 +40,16 @@ download_driver_package_deps () {
   download_apt_with_dep nvidia-fabricmanager-${DRIVER_BRANCH} ${DRIVER_VERSION}-1
   download_apt_with_dep libnvidia-nscq-${DRIVER_BRANCH} ${DRIVER_VERSION}-1
 
+  if [ "$DRIVER_BRANCH" -ge "550" ]; then
+      download_apt_with_dep nvlsm
+      download_apt_with_dep infiniband-diags
+      download_apt_with_dep nvidia-imex-${DRIVER_BRANCH} ${DRIVER_VERSION}-1
+  fi
+
+  if [ "$DRIVER_BRANCH" -ge "560" ]; then
+      download_apt_with_dep libnvsdm-${DRIVER_BRANCH} ${DRIVER_VERSION}-1
+  fi
+
   ls -al .
   popd
 }

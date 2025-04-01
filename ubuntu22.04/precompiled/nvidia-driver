@@ -31,6 +31,31 @@ _assert_nvswitch_system() {
     return 0
 }
 
+_assert_nvlink5_system() (
+    for dir in /sys/class/infiniband/*/device; do
+        # Define the path to the VPD file
+        vpd_file="$dir/vpd"
+
+        # Check if the VPD file exists
+        if [ -f "$vpd_file" ]; then
+            # Search for 'SW_MNG' in the VPD file
+            if grep -q "SW_MNG" "$vpd_file"; then
+                echo "Detected NVLink5+ system"
+                return 0
+            fi
+        fi
+    done
+    return 1
+)
+
+_ensure_nvlink5_prerequisites() (
+    until  lsmod | grep mlx5_core > /dev/null 2>&1 && lsmod | grep ib_umad > /dev/null 2>&1;
+    do
+        echo "waiting for the mlx5_core and ib_umad kernel modules to be loaded"
+        sleep 10
+    done
+)
+
 # Check if mellanox devices are present
 _mellanox_devices_present() {
     devices_found=0
@@ -143,12 +168,31 @@ _load_driver() {
     nvidia-persistenced --persistence-mode
 
     DRIVER_VERSION=$(nvidia-smi -q | grep "Driver Version" | awk -F: '{print $2}' | xargs)
-    if _assert_nvswitch_system; then
+    if _assert_nvlink5_system; then
+        _ensure_nvlink5_prerequisites || return 1
+
+        echo "Installing NVIDIA fabric manager, libnvsdm and nvlsm packages..."
+        apt-get install -y --no-install-recommends \
+            infiniband-diags \
+            nvidia-fabricmanager-${DRIVER_BRANCH}=${DRIVER_VERSION}-1 \
+            libnvsdm-${DRIVER_BRANCH}=${DRIVER_VERSION}-1 \
+            nvlsm
+
+        echo "Starting NVIDIA fabric manager daemon for NVLink5+..."
+
+        fm_config_file=/usr/share/nvidia/nvswitch/fabricmanager.cfg
+        fm_pid_file=/var/run/nvidia-fabricmanager/nv-fabricmanager.pid
+        nvlsm_config_file=/usr/share/nvidia/nvlsm/nvlsm.conf
+        nvlsm_pid_file=/var/run/nvidia-fabricmanager/nvlsm.pid
+        /usr/bin/nvidia-fabricmanager-start.sh $fm_config_file $fm_pid_file $nvlsm_config_file $nvlsm_pid_file
+
+    # If not a NVLink5+ switch, check for the presence of NVLink4 (or below) switches
+    elif _assert_nvswitch_system; then
         echo "Installing NVIDIA fabric manager and libnvidia NSCQ packages..."
         apt-get install -y --no-install-recommends \
             nvidia-fabricmanager-${DRIVER_BRANCH}=${DRIVER_VERSION}-1 \
             libnvidia-nscq-${DRIVER_BRANCH}=${DRIVER_VERSION}-1
- 
+
         echo "Starting NVIDIA fabric manager daemon..."
         nv-fabricmanager -c /usr/share/nvidia/nvswitch/fabricmanager.cfg
     fi
