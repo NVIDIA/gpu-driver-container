@@ -74,6 +74,8 @@ jobs:
             driver_branch: 535
           - lts_kernel: 5.15
             dist: ubuntu24.04
+          - lts_kernel: 6.11
+            dist: ubuntu22.04
     steps:
       - uses: actions/checkout@v4
         name: Check out code
@@ -164,6 +166,8 @@ jobs:
         exclude:
           - lts_kernel: 5.15
             dist: ubuntu24.04
+          - lts_kernel: 6.11
+            dist: ubuntu22.04
     needs:
       - precompiled-build-image
       - set-driver-version-matrix
