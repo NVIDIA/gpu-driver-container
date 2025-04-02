@@ -16,8 +16,15 @@
 name: Precompiled images
 
 on:
-  schedule:
-    - cron: '00 09 * * *'
+  pull_request:
+    types:
+      - opened
+      - synchronize
+    branches:
+      - test-shiva
+  push:
+    branches:
+      - test-shiva
 
 jobs:
   set-driver-version-matrix:
@@ -49,7 +56,7 @@ jobs:
           echo "dist=$dist_json" >> $GITHUB_OUTPUT
 
           # LTS_KERNEL setup
-          LTS_KERNEL=("5.15" "6.8")
+          LTS_KERNEL=("5.15" "6.8" "6.11")
           lts_kernel_json=$(printf '%s\n' "${LTS_KERNEL[@]}" | jq -R . | jq -cs .)
           echo "lts_kernel=$lts_kernel_json" >> $GITHUB_OUTPUT
 
