@@ -12,12 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Run this workflow on a schedule
+# Run this workflow on a schedule OR on a push to the precompiled directories of the main branch
 name: Precompiled images
 
 on:
   schedule:
     - cron: '00 09 * * *'
+  push:
+    branches:
+      - main
+    paths:
+      - ubuntu22.04/precompiled/**
+      - ubuntu24.04/precompiled/**
 
 jobs:
   set-driver-version-matrix:
