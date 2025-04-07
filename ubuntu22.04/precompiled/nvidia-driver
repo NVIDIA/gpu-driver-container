@@ -239,6 +239,21 @@ _unload_driver() {
         fi
     fi
 
+    if [ -f /var/run/nvidia-fabricmanager/nvlsm.pid ]; then
+        echo "Stopping NVLink Subnet Manager daemon..."
+        local pid=$(< /var/run/nvidia-fabricmanager/nvlsm.pid)
+
+        kill -SIGTERM "${pid}"
+        for i in $(seq 1 50); do
+            kill -0 "${pid}" 2> /dev/null || break
+            sleep 0.1
+        done
+        if [ $i -eq 50 ]; then
+            echo "Could not stop NVLink Subnet Manager daemon" >&2
+            return 1
+        fi
+    fi
+
     echo "Unloading NVIDIA driver kernel modules..."
     if [ -f /sys/module/nvidia_drm/refcnt ]; then
         nvidia_drm_refs=$(< /sys/module/nvidia_drm/refcnt)
