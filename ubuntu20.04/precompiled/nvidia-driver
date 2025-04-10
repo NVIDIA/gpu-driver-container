@@ -145,8 +145,8 @@ _unload_driver() {
     local nvidia_modeset_refs=0
     local nvidia_peermem_refs=0
 
-    echo "Stopping NVIDIA persistence daemon..."
     if [ -f /var/run/nvidia-persistenced/nvidia-persistenced.pid ]; then
+        echo "Stopping NVIDIA persistence daemon..."
         local pid=$(< /var/run/nvidia-persistenced/nvidia-persistenced.pid)
 
         kill -SIGTERM "${pid}"

@@ -112,8 +112,8 @@ _unload_driver() {
     local nvidia_refs=0
     local nvidia_vgpu_vfio_refs=0
 
-    echo "Stopping NVIDIA vGPU Manager..."
     if [ -f /var/run/nvidia-vgpu-mgr/nvidia-vgpu-mgr.pid ]; then
+        echo "Stopping NVIDIA vGPU Manager..."
         local pid=$(< /var/run/nvidia-vgpu-mgr/nvidia-vgpu-mgr.pid)
 
         kill -TERM "${pid}"
