@@ -130,7 +130,7 @@ _install_prerequisites() (
     ln -s /usr/src/kernels/${KERNEL_VERSION} /lib/modules/${KERNEL_VERSION}/build
 
     echo "Installing Linux kernel module files..."
-    dnf -q -y --releasever=${DNF_RELEASEVER} install kernel-core-${KERNEL_VERSION} > /dev/null
+    dnf -q -y --releasever=${DNF_RELEASEVER} install kernel-${KERNEL_VERSION} > /dev/null
 
     # Prevent depmod from giving a WARNING about missing files
     touch /lib/modules/${KERNEL_VERSION}/modules.order
@@ -365,6 +365,9 @@ _load_driver() {
 
     echo "Loading ipmi and i2c_core kernel modules..."
     modprobe -a i2c_core ipmi_msghandler ipmi_devintf
+
+    echo "Loading the video kernel module..."
+    modprobe video
 
     echo "Loading NVIDIA driver kernel modules..."
     set -o xtrace +o nounset
