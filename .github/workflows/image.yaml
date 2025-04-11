@@ -21,12 +21,10 @@ on:
       - opened
       - synchronize
     branches:
-      - main
-      - release-*
+      - test-shiva
   push:
     branches:
-      - main
-      - release-*
+      - test-shiva
 
 jobs:
   image:
@@ -115,6 +113,7 @@ jobs:
         lts_kernel:
           - 5.15
           - 6.8
+          - 6.11
         ispr:
           - ${{github.event_name == 'pull_request'}}
         exclude:
