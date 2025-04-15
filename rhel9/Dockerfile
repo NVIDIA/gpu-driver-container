@@ -75,6 +75,9 @@ RUN if [ "$DRIVER_TYPE" != "vgpu" ]; then \
 RUN if [ "$DRIVER_TYPE" != "vgpu" ] && [ "$DRIVER_BRANCH" -ge "550" ]; then \
     dnf install -y nvidia-imex-${DRIVER_BRANCH}-${DRIVER_VERSION}-1; fi
 
+RUN if [ "$DRIVER_TYPE" != "vgpu" ] && [ "$DRIVER_BRANCH" -ge "570" ]; then \
+    dnf install -y infiniband-diags nvlsm; fi
+
 COPY nvidia-driver /usr/local/bin
 COPY ocp_dtk_entrypoint /usr/local/bin
 COPY common.sh /usr/local/bin
