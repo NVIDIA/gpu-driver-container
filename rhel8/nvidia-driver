@@ -294,6 +294,8 @@ _ensure_nvlink5_prerequisites() (
     dnf -q -y --releasever=${DNF_RELEASEVER} install libibverbs-utils infiniband-diags > /dev/null
 
     echo "Installing the NVLink subnet manager..."
+    curl -fsSL "https://developer.download.nvidia.com/compute/cuda/repos/rhel8/$DRIVER_ARCH/D42D0685.pub" | sed '/^Version/d' > /etc/pki/rpm-gpg/RPM-GPG-KEY-NVIDIA
+    dnf module enable -y nvidia-driver:${DRIVER_BRANCH}-dkms
     dnf -q -y --releasever=${DNF_RELEASEVER} install nvlsm > /dev/null
 )
 

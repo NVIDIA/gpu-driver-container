@@ -109,6 +109,11 @@ _install_prerequisites() (
         fi
     fi
 
+    dnf config-manager --set-enabled rhel-9-for-$DRIVER_ARCH-appstream-eus-rpms  || true
+    if ! dnf makecache --releasever=${DNF_RELEASEVER}; then
+    	dnf config-manager --set-disabled rhel-9-for-$DRIVER_ARCH-appstream-eus-rpms || true
+    fi
+
     dnf config-manager --set-enabled rhel-9-for-$DRIVER_ARCH-baseos-eus-rpms  || true
     if ! dnf makecache --releasever=${DNF_RELEASEVER}; then
     	dnf config-manager --set-disabled rhel-9-for-$DRIVER_ARCH-baseos-eus-rpms || true
@@ -294,6 +299,8 @@ _ensure_nvlink5_prerequisites() (
     dnf -q -y --releasever=${DNF_RELEASEVER} install libibverbs-utils infiniband-diags > /dev/null
 
     echo "Installing the NVLink subnet manager..."
+    curl -fsSL "https://developer.download.nvidia.com/compute/cuda/repos/rhel9/$DRIVER_ARCH/D42D0685.pub" | sed '/^Version/d' > /etc/pki/rpm-gpg/RPM-GPG-KEY-NVIDIA
+    dnf module enable -y nvidia-driver:${DRIVER_BRANCH}-dkms
     dnf -q -y --releasever=${DNF_RELEASEVER} install nvlsm > /dev/null
 )
 
