@@ -17,6 +17,7 @@ USE_HOST_MOFED="${USE_HOST_MOFED:-false}"
 DNF_RELEASEVER=${DNF_RELEASEVER:-""}
 RHEL_VERSION=${RHEL_VERSION:-""}
 RHEL_MAJOR_VERSION=9
+RHEL_MINOR_VERSION=${RHEL_MINOR_VERSION:-""}
 KERNEL_MODULE_TYPE=${KERNEL_MODULE_TYPE:-auto}
 
 DRIVER_ARCH=${TARGETARCH/amd64/x86_64} && DRIVER_ARCH=${DRIVER_ARCH/arm64/aarch64}
@@ -57,6 +58,7 @@ _get_rhel_version_from_kernel() {
         return 1
     fi
     RHEL_VERSION="${rhel_version_arr[0]}.${rhel_version_arr[1]}"
+    RHEL_MINOR_VERSION=${rhel_version_arr[1]}
     echo "RHEL VERSION successfully resolved from kernel: ${RHEL_VERSION}"
     return 0
 }
@@ -366,8 +368,10 @@ _load_driver() {
     echo "Loading ipmi and i2c_core kernel modules..."
     modprobe -a i2c_core ipmi_msghandler ipmi_devintf
 
-    echo "Loading the video kernel module..."
-    modprobe video
+    if [[ "$RHEL_MINOR_VERSION" -ge "3" ]]; then
+        echo "Loading the video kernel module..."
+        modprobe video
+    fi
 
     echo "Loading NVIDIA driver kernel modules..."
     set -o xtrace +o nounset
