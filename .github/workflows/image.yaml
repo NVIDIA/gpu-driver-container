@@ -42,6 +42,7 @@ jobs:
           - ubuntu22.04
           - ubuntu24.04
           - rhel8
+          - rhel9
         ispr:
           - ${{github.event_name == 'pull_request'}}
         exclude:
