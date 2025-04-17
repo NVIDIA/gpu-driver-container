@@ -50,7 +50,7 @@ The procedure is based on [building custom kmod packages](https://github.com/NVI
     export CUDA_VERSION=12.1.0
     export CUDA_DIST=ubi8
     export DRIVER_EPOCH=1
-    export DRIVER_VERSION=535.230.02
+    export DRIVER_VERSION=535.247.01
     export OS_TAG=rhcos4.13
 
     make image image-push
@@ -76,7 +76,7 @@ Define the `ClusterPolicy` resource to make use of the pre-compiled driver image
     usePrecompiled: true
     image: driver
     repository: nvcr.io/nvidia
-    version: 535.230.02
+    version: 535.247.01
 ```
 
 Find more information in the [Precompiled Driver Containers](https://docs.nvidia.com/datacenter/cloud-native/gpu-operator/latest/precompiled-drivers.html) documentation.
