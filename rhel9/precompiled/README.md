@@ -105,7 +105,7 @@ The procedure is based on [building custom kmod packages](https://github.com/NVI
    ```
    export CUDA_VERSION=12.6.2
    export DRIVER_EPOCH=1
-   export DRIVER_VERSION=550.144.03
+   export DRIVER_VERSION=550.163.01
    ```
 
 6. [Optional] Build the vGPU guest driver
