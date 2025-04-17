@@ -291,12 +291,6 @@ _ensure_nvlink5_prerequisites() (
         echo "waiting for the mlx5_core and ib_umad kernel modules to be loaded"
         sleep 10
     done
-
-    echo "Installing Infiniband packages..."
-    dnf -q -y --releasever=${DNF_RELEASEVER} install libibverbs-utils infiniband-diags > /dev/null
-
-    echo "Installing the NVLink subnet manager..."
-    dnf -q -y --releasever=${DNF_RELEASEVER} install nvlsm > /dev/null
 )
 
 # For each kernel module configuration file mounted into the container,
