@@ -146,6 +146,11 @@ image-rhel8:
     - .image-pull
     - .dist-rhel8
 
+image-rhel9:
+  extends:
+    - .image-pull
+    - .dist-rhel9
+
 # The .scan step forms the base of the image scan operation performed before releasing
 # images.
 .scan-generic:
@@ -334,6 +339,22 @@ scan-rhel8-arm64:
   needs:
     - image-rhel8
 
+scan-rhel9-amd64:
+  extends:
+    - .scan
+    - .dist-rhel9
+    - .platform-amd64
+  needs:
+    - image-rhel9
+
+scan-rhel9-arm64:
+  extends:
+    - .scan
+    - .dist-rhel9
+    - .platform-arm64
+  needs:
+    - image-rhel9
+
 .release:ngc-variables:
   variables:
     OUT_REGISTRY_USER: "${NGC_REGISTRY_USER}"
@@ -405,35 +426,35 @@ release:ngc-rhcos4.13:
 release:ngc-rhcos4.14:
   extends:
     - .release:ngc
-    - .dist-rhel8
+    - .dist-rhel9
   variables:
     OUT_DIST: "rhcos4.14"
 
 release:ngc-rhcos4.15:
   extends:
     - .release:ngc
-    - .dist-rhel8
+    - .dist-rhel9
   variables:
     OUT_DIST: "rhcos4.15"
 
 release:ngc-rhcos4.16:
   extends:
     - .release:ngc
-    - .dist-rhel8
+    - .dist-rhel9
   variables:
     OUT_DIST: "rhcos4.16"
 
 release:ngc-rhcos4.17:
   extends:
     - .release:ngc
-    - .dist-rhel8
+    - .dist-rhel9
   variables:
     OUT_DIST: "rhcos4.17"
 
 release:ngc-rhcos4.18:
   extends:
     - .release:ngc
-    - .dist-rhel8
+    - .dist-rhel9
   variables:
     OUT_DIST: "rhcos4.18"
 
@@ -450,6 +471,20 @@ release:ngc-rhel8.10:
     - .dist-rhel8
   variables:
     OUT_DIST: "rhel8.10"
+
+release:ngc-rhel9.4:
+  extends:
+    - .release:ngc
+    - .dist-rhel9
+  variables:
+    OUT_DIST: "rhel9.4"
+
+release:ngc-rhel9.5:
+  extends:
+    - .release:ngc
+    - .dist-rhel9
+  variables:
+    OUT_DIST: "rhel9.5"
 
 # Define the external image signing steps for NGC
 # Download the ngc cli binary for use in the sign steps
@@ -557,7 +592,7 @@ sign:ngc-ubuntu-rhel-rhcos:
       VERSION: ["20.04"]
       DRIVER_VERSION: ["535.247.01", "550.163.01", "570.133.20"]
     - SIGN_JOB_NAME: ["rhel"]
-      VERSION: ["8.8", "8.10"]
+      VERSION: ["8.8", "8.10", "9.4", "9.5"]
       DRIVER_VERSION: ["535.247.01", "550.163.01", "570.133.20"]
     - SIGN_JOB_NAME: ["rhcos"]
       VERSION: ["4.12", "4.13", "4.14", "4.15", "4.16", "4.17", "4.18"]
