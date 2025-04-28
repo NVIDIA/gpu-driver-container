@@ -1,18 +1,18 @@
-ARG FEDORA_VERSION=36
+ARG FEDORA_VERSION=42
 
 FROM nvcr.io/nvidia/cuda:12.9.1-base-ubi8 as build
 
 ARG TARGETARCH
+ARG GOLANG_VERSION
+ENV GOLANG_VERSION=${GOLANG_VERSION}
 
 SHELL ["/bin/bash", "-c"]
 
 RUN dnf install -y git wget
 
-ENV GOLANG_VERSION=1.22.7
-
 # download appropriate binary based on the target architecture for multi-arch builds
 RUN OS_ARCH=${TARGETARCH/x86_64/amd64} && OS_ARCH=${OS_ARCH/aarch64/arm64} && \
-    curl https://dl.google.com/go/go${GOLANG_VERSION}.linux-${OS_ARCH}.tar.gz \
+    curl https://storage.googleapis.com/golang/go${GOLANG_VERSION}.linux-${OS_ARCH}.tar.gz \
     | tar -C /usr/local -xz
 
 ENV PATH /usr/local/go/bin:$PATH
@@ -24,7 +24,7 @@ RUN git clone https://github.com/NVIDIA/gpu-driver-container driver && \
     go build -o vgpu-util && \
     mv vgpu-util /work
 
-ARG FEDORA_VERSION=40
+ARG FEDORA_VERSION=42
 
 FROM fedora:${FEDORA_VERSION}
 
@@ -36,11 +36,12 @@ ENV KERNEL_TYPE=$KERNEL_TYPE
 
 SHELL ["/bin/bash", "-c"]
 
-#ARG BASE_URL=http://us.download.nvidia.com/XFree86/Linux-x86_64
 ARG BASE_URL=https://us.download.nvidia.com/tesla
 ENV BASE_URL=${BASE_URL}
 ARG DRIVER_VERSION
 ENV DRIVER_VERSION=$DRIVER_VERSION
+ARG DRIVER_BRANCH
+ENV DRIVER_BRANCH=$DRIVER_BRANCH
 
 # Arg to indicate if driver type is either of passthrough/baremetal or vgpu
 ARG DRIVER_TYPE=passthrough
@@ -56,13 +57,13 @@ ENV NVIDIA_VISIBLE_DEVICES=void
 # getopt etc.
 RUN dnf install -y util-linux 'dnf-command(download)'
 
-RUN dnf install -y patch
+RUN dnf install -y patch gawk
 
 ADD install.sh /tmp/
 
 RUN NVIDIA_GPGKEY_SUM=d0664fbbdb8c32356d45de36c5984617217b2d0bef41b93ccecd326ba3b80c87 && \
     OS_ARCH=${TARGETARCH/amd64/x86_64} && OS_ARCH=${OS_ARCH/arm64/sbsa} && \
-    curl -fsSL "https://developer.download.nvidia.com/compute/cuda/repos/rhel8/$OS_ARCH/D42D0685.pub" | sed '/^Version/d' > /etc/pki/rpm-gpg/RPM-GPG-KEY-NVIDIA && \
+    curl -fsSL "https://developer.download.nvidia.com/compute/cuda/repos/rhel9/$OS_ARCH/D42D0685.pub" | sed '/^Version/d' > /etc/pki/rpm-gpg/RPM-GPG-KEY-NVIDIA && \
     echo "$NVIDIA_GPGKEY_SUM  /etc/pki/rpm-gpg/RPM-GPG-KEY-NVIDIA" | sha256sum -c --strict -
 
 RUN sh /tmp/install.sh depinstall && \
@@ -73,7 +74,7 @@ RUN sh /tmp/install.sh depinstall && \
 
 ADD drivers drivers/
 
-# Fetch the installer automatically for passthrough/baremetal types
+# Fetch the installer, fabricmanager and libnvidia-nscq automatically for passthrough/baremetal types
 RUN if [ "$DRIVER_TYPE" != "vgpu" ]; then \
     cd drivers && \
     DRIVER_ARCH=${TARGETARCH/amd64/x86_64} && DRIVER_ARCH=${DRIVER_ARCH/arm64/aarch64} && \
@@ -96,10 +97,20 @@ RUN if [ "$DRIVER_TYPE" != "vgpu" ]; then \
 #     dnf module enable -y nvidia-driver:${DRIVER_BRANCH} && \
 #     dnf install -y ${fmPackage} ${nscqPackage}; fi
 
-COPY nvidia-driver /usr/local/bin
+# RUN if [ "$DRIVER_TYPE" != "vgpu" ] && [ "$DRIVER_BRANCH" -ge "550" ]; then \
+#     dnf install -y https://download1.rpmfusion.org/free/fedora/rpmfusion-free-release-$(rpm -E %fedora).noarch.rpm; \
+#     dnf install -y nvidia-imex-${DRIVER_BRANCH}-${DRIVER_VERSION}-1; fi
+
+# RUN if [ "$DRIVER_TYPE" != "vgpu" ] && [ "$DRIVER_BRANCH" -ge "570" ]; then \
+#     dnf install -y infiniband-diags nvlsm; fi
+
+# # libnvsdm packages are not available for arm64
+# RUN if [ "$DRIVER_TYPE" != "vgpu" ] && [ "$DRIVER_BRANCH" -ge "570" ] && [ "$TARGETARCH" != "arm64" ]; then \
+#     dnf install -y libnvsdm-${DRIVER_BRANCH}-${DRIVER_VERSION}-1; fi
 
 WORKDIR /usr/src/nvidia-$DRIVER_VERSION
 
+COPY nvidia-driver /usr/local/bin
 # COPY ocp_dtk_entrypoint /usr/local/bin
 COPY common.sh /usr/local/bin
 
@@ -122,7 +133,8 @@ LABEL summary="Provision the NVIDIA driver through containers"
 LABEL description="See summary"
 
 # Add NGC DL license from the CUDA image
-COPY --from=build /NGC-DL-CONTAINER-LICENSE /licenses/NGC-DL-CONTAINER-LICENSE
+COPY --from=build /NGC-DL-CONTAINER-LICENSE /NGC-DL-CONTAINER-LICENSE
+RUN mkdir /licenses && mv /NGC-DL-CONTAINER-LICENSE /licenses/NGC-DL-CONTAINER-LICENSE
 
 # Install / upgrade packages here that are required to resolve CVEs
 ARG CVE_UPDATES

@@ -38,7 +38,7 @@
 # Tags == .*fedora$
 #
 # Matching pipelines will cause container image builds on all three
-# fcos runner types and build ALL_DRIVER_VERSIONS.  The images will then be scan-
+# fcos runner types and build all DRIVER_VERSIONS.  The images will then be scan-
 # ned and providing there are no detected vulnerabilities will be pushed to the
 # remote repository defined by RELEASE_REGISTRY_PROJECT.
 #
@@ -96,10 +96,12 @@ variables:
   # To survey latest Data Center driver versions available:
   # https://www.nvidia.com/Download/Find.aspx
   # https://www.nvidia.com/en-us/drivers/unix/
-  DRIVER_VERSION: "560.35.03"
-  DRIVER_VERSIONS: 560.35.03 550.90.12 535.183.06
+  DRIVER_VERSION: "570.133.20"
+  DRIVER_VERSIONS: 570.133.20 550.163.01 535.247.01
 
   CUDA_VERSION: 12.6.0
+
+  GOLANG_VERSION: 1.24.2
 
   CVE_UPDATES: "curl libc6"
 
@@ -156,6 +158,8 @@ stages:
           --build-arg FEDORA_VERSION=${FEDORA_VERSION} \
           --build-arg DRIVER_VERSION=${_driver_version} \
           --build-arg TARGETARCH=$(uname -m) \
+          --build-arg GOLANG_VERSION=${GOLANG_VERSION} \
+          --build-arg DRIVER_BRANCH=$(echo $DRIVER_VERSION | cut -d\. -f1) \
           --build-arg CUDA_VERSION=${CUDA_VERSION} \
           --build-arg KERNEL_TYPE=${KERNEL_TYPE} \
           --build-arg HTTP_PROXY=${HTTP_PROXY} \
