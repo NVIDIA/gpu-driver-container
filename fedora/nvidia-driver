@@ -82,6 +82,7 @@ _install_prerequisites() (
     KERNEL_RPM_ARCH=${KERNEL_VERSION##*.}
 
     echo "Installing Linux kernel headers..."
+
     if ! dnf -q -y install kernel-headers-${KERNEL_VERSION} > /dev/null; then
         echo "Failed to find kernel-headers-${KERNEL_VERSION} in repositories."
         echo "Trying to download kernel-headers from koji..."
@@ -93,7 +94,8 @@ _install_prerequisites() (
             dnf -q -y install kernel-headers
         fi
     fi
-    echo "List kernel-devel rpm version installed:"
+
+    echo "List kernel-headers rpm version installed:"
     rpm -qa | grep ^kernel-headers || true
 
     echo "Installing Linux development files..."
@@ -112,38 +114,43 @@ _install_prerequisites() (
     rpm -qa | grep ^kernel-devel || true
     ln -s /usr/src/kernels/${KERNEL_VERSION} /lib/modules/${KERNEL_VERSION}/build
 
-    echo "Installing Linux kernel-core files..."
-    if ! dnf -q -y download kernel-core-${KERNEL_VERSION} > /dev/null; then
+    echo "Downloading Linux kernel-core files..."
+    # dnf download now returns a zero return code even on failure to locate/download rpm.
+    dnf -q -y download kernel-core-${KERNEL_VERSION} > /dev/null
+    if ! ls ./kernel-core-*.rpm 2> /dev/null; then
         echo "Failed to find kernel-core-${KERNEL_VERSION} in repositories."
         echo "Trying to download kernel-core from koji..."
         KOJI_KERNEL_CORE_RPM=$KOJI_BASE_URL/packages/kernel/$KERNEL_RPM_VERSION/$KERNEL_RPM_RELEASE/$KERNEL_RPM_ARCH/kernel-core-$KERNEL_VERSION.rpm
-        if ! dnf -q -y download $KOJI_KERNEL_CORE_RPM; then
-            echo "Can't find kernel-core-${KERNEL_VERSION}"
+        curl --silent --output kernel-core-$KERNEL_VERSION.rpm ${KOJI_KERNEL_CORE_RPM}
+        if ! ls ./kernel-core-*.rpm 2> /dev/null; then
+            echo "Can't find kernel-core-${KERNEL_VERSION} at ${KOJI_KERNEL_CORE_RPM}"
             echo "Please try to update your kernel on the host system."
             exit 1
         fi
     fi
-    echo "List kernel-core rpm version installed:"
-    rpm -qa | grep ^kernel-core || true
+    echo "List kernel-core rpm version downloaded:"
+    ls ./kernel-core-*.rpm 2> /dev/null
     cat ./kernel-core-*.rpm | rpm2cpio | cpio -idm --quiet
     rm ./*.rpm
 
-    echo "Installing Linux kernel-modules-core files..."
-    if ! dnf -q -y download kernel-modules-core-${KERNEL_VERSION} > /dev/null; then
+    echo "Downloading Linux kernel-modules-core files..."
+    # dnf download now returns a zero return code even on failure to locate/download rpm.
+    dnf -q -y download kernel-modules-core-${KERNEL_VERSION} > /dev/null
+    if ! ls ./kernel-modules-core-*.rpm 2> /dev/null; then
         echo "Failed to find kernel-modules-core-${KERNEL_VERSION} in repositories."
         echo "Trying to download kernel-modules-core from koji..."
         KOJI_KERNEL_CORE_RPM=$KOJI_BASE_URL/packages/kernel/$KERNEL_RPM_VERSION/$KERNEL_RPM_RELEASE/$KERNEL_RPM_ARCH/kernel-modules-core-$KERNEL_VERSION.rpm
-        if ! dnf -q -y download $KOJI_KERNEL_CORE_RPM \
-          --setopt=install_weak_deps=False; then
-            echo "Can't find kernel-modules-core-${KERNEL_VERSION}"
+        curl --silent --output kernel-modules-core-$KERNEL_VERSION.rpm ${KOJI_KERNEL_CORE_RPM}
+        if ! ls ./kernel-modules-*.rpm 2> /dev/null; then
+            echo "Can't find kernel-modules-core-${KERNEL_VERSION} at ${KOJI_KERNEL_CORE_RPM}"
             echo "Please try to update your kernel on the host system."
             exit 1
         else
             echo 'Kernel-modules-core installed from koji'
         fi
     fi
-    echo "List kernel-modules rpm version installed:"
-    rpm -qa | grep ^kernel-modules || true
+    echo "List kernel-modules rpm version downloaded:"
+    ls ./kernel-modules-*.rpm 2> /dev/null
     cat ./kernel-modules-*.rpm | rpm2cpio | cpio -idm --quiet
     rm ./*.rpm
 
@@ -350,6 +357,9 @@ _load_driver() {
     echo "Loading ipmi and i2c_core kernel modules..."
     modprobe -a i2c_core ipmi_msghandler ipmi_devintf
 
+    echo "Loading the video kernel module..."
+    modprobe video
+
     echo "Loading NVIDIA driver kernel modules..."
     set -o xtrace +o nounset
     modprobe nvidia "${NVIDIA_MODULE_PARAMS[@]}"
@@ -398,8 +408,8 @@ _unload_driver() {
     local nvidia_modeset_refs=0
     local nvidia_peermem_refs=0
 
-    echo "Stopping NVIDIA persistence daemon..."
     if [ -f /var/run/nvidia-persistenced/nvidia-persistenced.pid ]; then
+        echo "Stopping NVIDIA persistence daemon..."
         local pid=$(< /var/run/nvidia-persistenced/nvidia-persistenced.pid)
 
         kill -SIGTERM "${pid}"
