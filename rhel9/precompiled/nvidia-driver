@@ -193,6 +193,7 @@ _load_driver() {
 
     echo "Loading NVIDIA driver kernel modules..."
     set -o xtrace +o nounset
+    modprobe video
     modprobe nvidia "${NVIDIA_MODULE_PARAMS[@]}"
     modprobe nvidia-uvm "${NVIDIA_UVM_MODULE_PARAMS[@]}"
     modprobe nvidia-modeset "${NVIDIA_MODESET_MODULE_PARAMS[@]}"
