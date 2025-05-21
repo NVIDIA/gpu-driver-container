@@ -121,18 +121,33 @@ jobs:
           source kernel_version.txt && \
           make DRIVER_VERSIONS=${DRIVER_VERSIONS} DRIVER_BRANCH=${{ matrix.driver_branch }} build-${DIST}-${DRIVER_VERSION}
 
-      - name: Save build image and kernel version file
+      - name: Save base image, build image and kernel version file
         env:
           DIST: ${{ matrix.dist }}
           PRIVATE_REGISTRY: "ghcr.io"
+          LTS_KERNEL: ${{ matrix.lts_kernel }}
         run: |
           source kernel_version.txt
+          if [[ "${{ matrix.dist }}" == "ubuntu22.04" ]]; then
+            BASE_TARGET="jammy"
+          elif [[ "${{ matrix.dist }}" == "ubuntu24.04" ]]; then
+            BASE_TARGET="noble"
+          fi
           tar -cvf kernel-version-${{ matrix.driver_branch }}-${KERNEL_VERSION}-${DIST}.tar kernel_version.txt
+          docker save "${PRIVATE_REGISTRY}/nvidia/driver:base-${BASE_TARGET}-${LTS_KERNEL}-${{ matrix.flavor }}-${{ matrix.driver_branch }}" \
+            -o  ./base-images-${{ matrix.driver_branch }}-${KERNEL_VERSION}-${DIST}.tar
           docker save "${PRIVATE_REGISTRY}/nvidia/driver:${{ matrix.driver_branch }}-${KERNEL_VERSION}-${DIST}" \
             -o  ./driver-images-${{ matrix.driver_branch }}-${KERNEL_VERSION}-${DIST}.tar
           # set env for artifacts upload
           echo "KERNEL_VERSION=$KERNEL_VERSION" >> $GITHUB_ENV
           echo "DIST=$DIST" >> $GITHUB_ENV
+
+      - name: Upload base image as an artifact
+        uses: actions/upload-artifact@v4
+        with:
+           name: base-images-${{ matrix.driver_branch }}-${{ env.KERNEL_VERSION }}-${{ env.DIST }}
+           path: ./base-images-${{ matrix.driver_branch }}-${{ env.KERNEL_VERSION }}-${{ env.DIST }}.tar
+           retention-days: 1
 
       - name: Upload build image as an artifact
         uses: actions/upload-artifact@v4
@@ -402,6 +417,29 @@ jobs:
       - name:  Set image vars
         run: |
           echo "PRIVATE_REGISTRY=ghcr.io" >> $GITHUB_ENV
+
+      - name: Download base image artifact
+        if: ${{ ! (matrix.driver_branch == 535 && contains(matrix.kernel_version, 'ubuntu24.04')) }}
+        uses: actions/download-artifact@v4
+        with:
+          name: base-images-${{ matrix.driver_branch }}-${{ matrix.kernel_version }}
+          path: ./
+
+      - name: Publish base image
+        if: ${{ ! (matrix.driver_branch == 535 && contains(matrix.kernel_version, 'ubuntu24.04')) }}
+        run: |
+          LTS_KERNEL=$(echo "${{ matrix.kernel_version }}" | sed -E 's/^([0-9]+\.[0-9]+)\..*/\1/')
+          KERNEL_FLAVOR=$(echo "${{ matrix.kernel_version }}" | sed -E 's/^.*-[0-9]+-([a-zA-Z]+)-.*/\1/')
+          DIST=$(echo "${{ matrix.kernel_version }}" | sed -E 's/^.*-(ubuntu[0-9]+\.[0-9]+)$/\1/')
+          if [[ "${DIST}" == "ubuntu22.04" ]]; then
+            BASE_TARGET="jammy"
+          elif [[ "${DIST}" == "ubuntu24.04" ]]; then
+            BASE_TARGET="noble"
+          fi
+          image_path="./base-images-${{ matrix.driver_branch }}-${{ matrix.kernel_version }}.tar"
+          echo "uploading  $image_path"
+          docker load -i $image_path
+          docker push ${PRIVATE_REGISTRY}/nvidia/driver:base-${BASE_TARGET}-${LTS_KERNEL}-${KERNEL_FLAVOR}-${{ matrix.driver_branch }}
 
       - name: Download built image artifact
         if: ${{ ! (matrix.driver_branch == 535 && contains(matrix.kernel_version, 'ubuntu24.04')) }}
