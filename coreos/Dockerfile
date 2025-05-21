@@ -1,4 +1,4 @@
-FROM nvcr.io/nvidia/cuda:12.8.1-base-ubi8 as license
+FROM nvcr.io/nvidia/cuda:12.9.0-base-ubi8 as license
 
 # Build nvidia-container-runtime binary
 FROM golang:1.24.0 as build-runtime
