@@ -780,7 +780,7 @@ reload_nvidia_peermem() {
     exit 1
 }
 
-# probe by gpu-opertor for liveness/startup checks for nvidia-peermem module to be loaded when MOFED drivers are ready
+# probe by gpu-operator for liveness/startup checks for nvidia-peermem module to be loaded when MOFED drivers are ready
 probe_nvidia_peermem() {
     if lsmod | grep mlx5_core > /dev/null 2>&1; then
         if [ ! -f /sys/module/nvidia_peermem/refcnt ]; then
@@ -798,10 +798,10 @@ usage() {
 Usage: $0 COMMAND [ARG...]
 
 Commands:
-  init   [-a | --accept-license] [-x] [-m | --max-threads MAX_THREADS]
+  init   [-x | --set-x ] [-a | --accept-license] [-m | --max-threads MAX_THREADS]
   build  [-a | --accept-license] [-m | --max-threads MAX_THREADS]
   load
-  update [-k | --kernel VERSION] [-s | --sign KEYID] [-t | --tag TAG] [-m | --max-threads MAX_THREADS]
+  update [-x | --set-x ] [-k | --kernel VERSION] [-s | --sign KEYID] [-t | --tag TAG] [-m | --max-threads MAX_THREADS]
 EOF
     exit 1
 }
@@ -811,10 +811,10 @@ if [ $# -eq 0 ]; then
 fi
 command=$1; shift
 case "${command}" in
-    init) options=$(getopt -l accept-license,max-threads: -o a:x:m: -- "$@") ;;
+    init) options=$(getopt -l set-x,accept-license,max-threads: -o xam: -- "$@") ;;
     build) options=$(getopt -l accept-license,tag:,max-threads: -o a:t:m: -- "$@") ;;
     load) options="" ;;
-    update) options=$(getopt -l kernel:,sign:,tag:,max-threads: -o k:s:t:m: -- "$@") ;;
+    update) options=$(getopt -l set-x,kernel:,sign:,tag:,max-threads: -o xk:s:t:m: -- "$@") ;;
     reload_nvidia_peermem) options="" ;;
     probe_nvidia_peermem) options="" ;;
     *) usage ;;
