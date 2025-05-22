@@ -63,18 +63,6 @@
 # fedora major version labeled images may run OK on different kernel versions
 # than those used by gitab-runners.
 #
-# Experimental
-#
-# It is possible to set the KERNEL_TYPE variable to 'kernel-open' which will
-# result in eligible driver versions (515.x.x) being built with the NVIDIA open
-# kernel (this is only advertised for newer data center A|T-series processors).
-# If this option is elected gitlab container tags will be at driver/open:<tag>.
-# Kernel-specific tags will be generated for pre-compiled open kernel interface
-# modules if possible per COMPILE_KERNEL_MODULES.  Note, although this all runs
-# and appears to launch stably on an appropriate node the GPU is not detected.
-# An issue for this exists:
-# https://gitlab.com/nvidia/container-images/driver/-/issues/46
-#
 # Some notes on driver versions:
 #
 # Driver versions for datacenter class GPUs can be established here:
@@ -108,8 +96,6 @@ variables:
   OVERWRITE_TAGS: 1
   OVERWRITE_REMOTE_TAGS: 0
 
-  # https://developer.nvidia.com/blog/nvidia-releases-open-source-gpu-kernel-modules/
-  KERNEL_TYPE: "kernel"       # NVIDIA: kernel, OPEN: kernel-open, 515/525-only.
   COMPILE_KERNEL_MODULES: 1   # Requires 16GB RAM on FCOS gitlab-runner
 
   RELEASE_REGISTRY_PROJECT: ""
@@ -131,12 +117,7 @@ stages:
   before_script:
     - export FEDORA_VERSION=$(uname -r | sed -r "s/^.*fc([0-9][0-9]).*/\1/")
     - export FEDORA_UNAME=$(uname -r)
-    - |
-      if [[ "${KERNEL_TYPE}" == "kernel-open" ]]; then
-          export IMAGE_BASE_NAME=${CI_REGISTRY_IMAGE}/open
-        else
-          export IMAGE_BASE_NAME=${CI_REGISTRY_IMAGE}
-      fi
+    - export IMAGE_BASE_NAME=${CI_REGISTRY_IMAGE}
 
 .build_push_fn-script: &build_push_fn-script
     - |
@@ -145,15 +126,9 @@ stages:
         local _overwrite_tag=$2
         local _tag_prefix=$3
 
-        if [[ "${KERNEL_TYPE}" == "kernel-open" ]]; then
-          local _driver_major_version=$(echo ${_driver_version} | cut -c1-3)
-          if [[ "${_driver_major_version}" != "515" && "${_driver_major_version}" != "525" ]]; then
-            echo "Driver version ${_driver_version} does not support ${KERNEL_TYPE}, skipping build-push."
-            return
-          fi
-        fi
-        export DOCKER_IMAGE=${IMAGE_BASE_NAME}:${_tag_prefix}${_driver_version}-${FEDORA_UNAME}-fedora${FEDORA_VERSION}
-        echo -e "\033[33mBuilding driver ${_driver_version} (${KERNEL_TYPE}) for Fedora ${FEDORA_VERSION} (${FEDORA_UNAME}).\033[0m"
+        export DOCKER_IMAGE_WITH_PRECOMPILED_KERNEL_MODULES=${IMAGE_BASE_NAME}:${_tag_prefix}${_driver_version}-${FEDORA_UNAME}-fedora${FEDORA_VERSION}
+        export DOCKER_IMAGE_NO_PRECOMPILED_KERNEL_MODULES=${IMAGE_BASE_NAME}:${_tag_prefix}${_driver_version}-fedora${FEDORA_VERSION}
+        echo -e "\033[33mBuilding driver ${_driver_version} for Fedora ${FEDORA_VERSION} (${FEDORA_UNAME}).\033[0m"
         docker build \
           --build-arg FEDORA_VERSION=${FEDORA_VERSION} \
           --build-arg DRIVER_VERSION=${_driver_version} \
@@ -161,37 +136,59 @@ stages:
           --build-arg GOLANG_VERSION=${GOLANG_VERSION} \
           --build-arg DRIVER_BRANCH=$(echo $DRIVER_VERSION | cut -d\. -f1) \
           --build-arg CUDA_VERSION=${CUDA_VERSION} \
-          --build-arg KERNEL_TYPE=${KERNEL_TYPE} \
           --build-arg HTTP_PROXY=${HTTP_PROXY} \
           --build-arg HTTPS_PROXY=${HTTPS_PROXY} \
-          -t ${DOCKER_IMAGE} fedora
-        if ! $(docker manifest inspect ${DOCKER_IMAGE} > /dev/null 2>&1) || [[ "${_overwrite_tag}" == "1" ]]; then
-          if [[ "${COMPILE_KERNEL_MODULES}" == "1" ]]; then
+          -t ${DOCKER_IMAGE_NO_PRECOMPILED_KERNEL_MODULES} fedora
+        if [[ "${COMPILE_KERNEL_MODULES}" == "1" ]]; then
+          if ! $(docker manifest inspect ${DOCKER_IMAGE_WITH_PRECOMPILED_KERNEL_MODULES} > /dev/null 2>&1) || [[ "${_overwrite_tag}" == "1" ]]; then
             if ((docker run --privileged --pid=host --name build-kernel-modules-${_driver_version} \
               --env HTTP_PROXY=${HTTP_PROXY} --env HTTPS_PROXY=${HTTPS_PROXY} \
-              --entrypoint nvidia-driver ${DOCKER_IMAGE} update -t builtin 2>&1 ) > /tmp/kernel-module-build.log); then
+              --entrypoint nvidia-driver ${DOCKER_IMAGE_NO_PRECOMPILED_KERNEL_MODULES} update -t builtin 2>&1 ) > /tmp/kernel-module-build.log); then
+              echo "***********************************************************************"
+              echo "Kernel module compilation succeeded.  Below up to 500 build log lines."
+              echo "***********************************************************************"
               cat /tmp/kernel-module-build.log | grep -Ev "'naked' return found in RETHUNK build|missing int3 after ret" | \
-                grep -v "'naked' return found in MITIGATION_RETHUNK build"
-              echo "Suppressing many compiliation warnings re MITIGATION_RETHUNK and RETHUNK because they overload pipeline logs."
+                grep -v "'naked' return found in MITIGATION_RETHUNK build" | head -n 100 && true
+              echo "...suppressed log lines..."
+              cat /tmp/kernel-module-build.log | grep -Ev "'naked' return found in RETHUNK build|missing int3 after ret" | \
+                grep -v "'naked' return found in MITIGATION_RETHUNK build" | tail -n 500 && true
+              echo "***********************************************************************"
+              echo "Kernel module compilation succeeded.  Above up to 500 build log lines."
+              echo "***********************************************************************"
               docker commit -m '"Compile Linux kernel modules version ${FEDORA_UNAME} for NVIDIA driver version ${_driver_version}"' \
                 --change='ENTRYPOINT ["nvidia-driver", "init"]' -c 'ENV HTTP_PROXY=' -c 'ENV HTTPS_PROXY=' \
-                  build-kernel-modules-${_driver_version} ${DOCKER_IMAGE}
+                  build-kernel-modules-${_driver_version} ${DOCKER_IMAGE_WITH_PRECOMPILED_KERNEL_MODULES}
+              export DOCKER_IMAGE=${DOCKER_IMAGE_WITH_PRECOMPILED_KERNEL_MODULES}
               echo "Pushing ${DOCKER_IMAGE} with compiled kernel interface modules."
             else
+              echo "***********************************************************************"
+              echo "Kernel module compilation failed.  Below is last 500 lines of log only."
+              echo "***********************************************************************"
               cat /tmp/kernel-module-build.log | grep -Ev "'naked' return found in RETHUNK build|missing int3 after ret" | \
-                grep -v "'naked' return found in MITIGATION_RETHUNK build"
-              export DOCKER_IMAGE_NO_PRECOMPILED_KERNEL_MODULES=${IMAGE_BASE_NAME}:${_tag_prefix}${_driver_version}-fedora${FEDORA_VERSION}
-              docker tag ${DOCKER_IMAGE} ${DOCKER_IMAGE_NO_PRECOMPILED_KERNEL_MODULES}
+                grep -v "'naked' return found in MITIGATION_RETHUNK build" | head -n 100 && true
+              echo "...suppressed log lines..."
+              cat /tmp/kernel-module-build.log | grep -Ev "'naked' return found in RETHUNK build|missing int3 after ret" | \
+                grep -v "'naked' return found in MITIGATION_RETHUNK build" | tail -n 500 && true
+              echo "***********************************************************************"
+              echo "Kernel module compilation failed.  Above is last 500 lines of log only."
+              echo "***********************************************************************"
               export DOCKER_IMAGE=${DOCKER_IMAGE_NO_PRECOMPILED_KERNEL_MODULES}
               echo "Pushing ${DOCKER_IMAGE} without compiled kernel interface modules."
             fi
           else
+            export DOCKER_IMAGE=${DOCKER_IMAGE_NO_PRECOMPILED_KERNEL_MODULES}
             echo "Pushing ${DOCKER_IMAGE} to internal gitlab repository."
           fi
           docker login -u "${CI_REGISTRY_USER}" -p "${CI_REGISTRY_PASSWORD}" "${CI_REGISTRY}"
           docker push -q ${DOCKER_IMAGE}
         else
-            echo "Skipping push of ${DOCKER_IMAGE} to internal gitlab repository."
+          if ! $(docker manifest inspect ${DOCKER_IMAGE_NO_PRECOMPILED_KERNEL_MODULES} > /dev/null 2>&1) || [[ "${_overwrite_tag}" == "1" ]]; then
+              docker login -u "${CI_REGISTRY_USER}" -p "${CI_REGISTRY_PASSWORD}" "${CI_REGISTRY}"
+              echo "Pushing ${DOCKER_IMAGE_NO_PRECOMPILED_KERNEL_MODULES} to internal gitlab repository."
+              docker push -q ${DOCKER_IMAGE_NO_PRECOMPILED_KERNEL_MODULES}
+          else
+            echo "Skipping push of ${DOCKER_IMAGE_NO_PRECOMPILED_KERNEL_MODULES} to internal gitlab repository."
+          fi
         fi
       }
 
@@ -205,12 +202,19 @@ build-push-next-one-only:
   script:
     - *build_push_fn-script
     # Here we pass in the short git sha which gets suffixed to the built image.
-    - for driver_version in ${DRIVER_VERSION}; do build_push_fn ${driver_version} $OVERWRITE_TAGS ${CI_COMMIT_SHORT_SHA}-; done
+    - mkdir -p error-logs
+    - |
+      for driver_version in ${DRIVER_VERSION}; do
+        build_push_fn ${driver_version} $OVERWRITE_TAGS ${CI_COMMIT_SHORT_SHA}-;
+        mv /tmp/kernel-module-build.log ./error-logs/kernel-module-build-${driver_version}.log
+      done
   tags:
     - fcos-next
   rules:
     # Only run on branches (not tags) which do not start with fedora
     - if: $CI_COMMIT_REF_NAME !~ /^fedora/ && $CI_COMMIT_TAG == null
+  artifacts:
+    paths: [error-logs]
 
 build-push:
   stage: build
@@ -314,13 +318,6 @@ scan-stable:
       local _driver_version=$1
       local _overwrite_remote_tag=${2:-${OVERWRITE_REMOTE_TAGS}}
       local _tag_prefix=$3
-      if [[ "${KERNEL_TYPE}" == "kernel-open" ]]; then
-        local _driver_major_version=$(echo ${_driver_version} | cut -c1-3)
-        if [[ "${_driver_major_version}" != "515" && "${_driver_major_version}" != "525" ]]; then
-          echo "Driver version ${_driver_version} does not support ${KERNEL_TYPE}, skipping release."
-          return
-        fi
-      fi
       export DOCKER_TAG=${_tag_prefix}${_driver_version}-${FEDORA_UNAME}-fedora${FEDORA_VERSION}
       if ! (docker manifest inspect ${IMAGE_BASE_NAME}:${DOCKER_TAG} > /dev/null 2>&1); then
           export DOCKER_TAG=${_tag_prefix}${_driver_version}-fedora${FEDORA_VERSION}
