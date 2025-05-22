@@ -81,32 +81,26 @@ RUN if [ "$DRIVER_TYPE" != "vgpu" ]; then \
     curl -fSsl -O $BASE_URL/$DRIVER_VERSION/NVIDIA-Linux-$DRIVER_ARCH-$DRIVER_VERSION.run && \
     chmod +x  NVIDIA-Linux-$DRIVER_ARCH-$DRIVER_VERSION.run; fi
 
-# ******************************************************************************
-# REMOVED FABRIC MANAGER RHEL WORK FOR NOW - HAVEN'T ATTEMPTED INCLUSION
-# ******************************************************************************
-# Install fabric-manager packages
-# RUN if [ "$DRIVER_TYPE" != "vgpu" ] && [ "$TARGETARCH" != "arm64" ]; then \
-#     versionArray=(${DRIVER_VERSION//./ }); \
-#     DRIVER_BRANCH=${versionArray[0]}; \
-#     if [ ${versionArray[0]} -ge 470 ] || ([ ${versionArray[0]} == 460 ] && [ ${versionArray[1]} -ge 91 ]); then \
-#       fmPackage=nvidia-fabric-manager-${DRIVER_VERSION}-1; \
-#     else \
-#       fmPackage=nvidia-fabricmanager-${DRIVER_BRANCH}-${DRIVER_VERSION}-1; \
-#     fi; \
-#     nscqPackage=libnvidia-nscq-${DRIVER_BRANCH}-${DRIVER_VERSION}-1; \
-#     dnf module enable -y nvidia-driver:${DRIVER_BRANCH} && \
-#     dnf install -y ${fmPackage} ${nscqPackage}; fi
+# Fetch the installer, fabricmanager and libnvidia-nscq automatically for passthrough/baremetal types
+RUN if [ "$DRIVER_TYPE" != "vgpu" ]; then \
+    cd drivers && \
+    DRIVER_ARCH=${TARGETARCH/amd64/x86_64} && DRIVER_ARCH=${DRIVER_ARCH/arm64/aarch64} && \
+    curl -fSsl -O $BASE_URL/$DRIVER_VERSION/NVIDIA-Linux-$DRIVER_ARCH-$DRIVER_VERSION.run && \
+    chmod +x  NVIDIA-Linux-$DRIVER_ARCH-$DRIVER_VERSION.run && \
+    versionArray=(${DRIVER_VERSION//./ }); \
+    DRIVER_BRANCH=${versionArray[0]}; \
+    dnf module enable -y --skip-unavailable nvidia-driver:${DRIVER_BRANCH}-dkms && \
+    dnf install -y --skip-unavailable nvidia-fabric-manager-${DRIVER_VERSION}-1 libnvidia-nscq-${DRIVER_BRANCH}-${DRIVER_VERSION}-1; fi
 
-# RUN if [ "$DRIVER_TYPE" != "vgpu" ] && [ "$DRIVER_BRANCH" -ge "550" ]; then \
-#     dnf install -y https://download1.rpmfusion.org/free/fedora/rpmfusion-free-release-$(rpm -E %fedora).noarch.rpm; \
-#     dnf install -y nvidia-imex-${DRIVER_BRANCH}-${DRIVER_VERSION}-1; fi
+RUN if [ "$DRIVER_TYPE" != "vgpu" ] && [ "$DRIVER_BRANCH" -ge "550" ]; then \
+    dnf install -y --skip-unavailable nvidia-imex-${DRIVER_BRANCH}-${DRIVER_VERSION}-1; fi
 
-# RUN if [ "$DRIVER_TYPE" != "vgpu" ] && [ "$DRIVER_BRANCH" -ge "570" ]; then \
-#     dnf install -y infiniband-diags nvlsm; fi
+RUN if [ "$DRIVER_TYPE" != "vgpu" ] && [ "$DRIVER_BRANCH" -ge "570" ]; then \
+    dnf install -y --skip-unavailable infiniband-diags nvlsm; fi
 
-# # libnvsdm packages are not available for arm64
-# RUN if [ "$DRIVER_TYPE" != "vgpu" ] && [ "$DRIVER_BRANCH" -ge "570" ] && [ "$TARGETARCH" != "arm64" ]; then \
-#     dnf install -y libnvsdm-${DRIVER_BRANCH}-${DRIVER_VERSION}-1; fi
+# libnvsdm packages are not available for arm64
+RUN if [ "$DRIVER_TYPE" != "vgpu" ] && [ "$DRIVER_BRANCH" -ge "570" ] && [ "$TARGETARCH" != "arm64" ]; then \
+    dnf install -y --skip-unavailable libnvsdm-${DRIVER_BRANCH}-${DRIVER_VERSION}-1; fi
 
 WORKDIR /usr/src/nvidia-$DRIVER_VERSION
 
