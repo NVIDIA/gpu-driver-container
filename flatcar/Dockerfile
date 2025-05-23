@@ -1,4 +1,4 @@
-FROM nvcr.io/nvidia/cuda:12.8.1-base-ubuntu22.04
+FROM nvcr.io/nvidia/cuda:12.6.2-base-ubuntu24.04
 
 ENV NVIDIA_VISIBLE_DEVICES=void
 
@@ -63,6 +63,7 @@ RUN cd /tmp && \
     rm -rf /tmp/*
 
 COPY nvidia-driver /usr/local/bin
+COPY kernel.config /usr/src/
 
 WORKDIR /usr/src/nvidia-$DRIVER_VERSION
 
