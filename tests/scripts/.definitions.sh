@@ -21,6 +21,4 @@ CASES_DIR="$( cd "${TEST_DIR}/cases" && pwd )"
 
 : ${LOG_DIR:="/tmp/logs"}
 
-: ${SYSTEM_ONLINE_CHECK_TIMEOUT:="900"}
-
 : ${BASE_TARGET:="jammy"}
