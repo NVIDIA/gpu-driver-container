@@ -16,9 +16,16 @@ NVIDIA_PEERMEM_MODULE_PARAMS=()
 TARGETARCH=${TARGETARCH:?"Missing TARGETARCH env"}
 USE_HOST_MOFED="${USE_HOST_MOFED:-false}"
 DNF_RELEASEVER=${DNF_RELEASEVER:-""}
+KERNEL_MODULE_TYPE=${KERNEL_MODULE_TYPE:-auto}
 
-OPEN_KERNEL_MODULES_ENABLED=${OPEN_KERNEL_MODULES_ENABLED:-false}
-[[ "${OPEN_KERNEL_MODULES_ENABLED}" == "true" ]] && KERNEL_TYPE=kernel-open || KERNEL_TYPE=kernel
+# TEMPORARY WORKAROUND
+# For kernels > 6.14 force use of gcc-14 because as yet NVIDIA driver does not support gcc-15.
+_k_version=$(uname -r | cut -d - -f1 | sed -r 's/([0-9]+)/0000\1/g; s/0*([0-9]{4})/\1/g') # gives 0001.0002.0003
+if [[ "${_k_version}" > "0006.0014.0001" ]]; then
+    # Why doesn't NVCC_CCBIN work?
+    export CC='gcc-14'
+    export CC+=" -std=gnu17"
+fi
 
 DRIVER_ARCH=${TARGETARCH/amd64/x86_64} && DRIVER_ARCH=${DRIVER_ARCH/arm64/aarch64}
 echo "DRIVER_ARCH is $DRIVER_ARCH"
@@ -82,6 +89,7 @@ _install_prerequisites() (
     KERNEL_RPM_ARCH=${KERNEL_VERSION##*.}
 
     echo "Installing Linux kernel headers..."
+
     if ! dnf -q -y install kernel-headers-${KERNEL_VERSION} > /dev/null; then
         echo "Failed to find kernel-headers-${KERNEL_VERSION} in repositories."
         echo "Trying to download kernel-headers from koji..."
@@ -93,7 +101,8 @@ _install_prerequisites() (
             dnf -q -y install kernel-headers
         fi
     fi
-    echo "List kernel-devel rpm version installed:"
+
+    echo "List kernel-headers rpm version installed:"
     rpm -qa | grep ^kernel-headers || true
 
     echo "Installing Linux development files..."
@@ -112,38 +121,43 @@ _install_prerequisites() (
     rpm -qa | grep ^kernel-devel || true
     ln -s /usr/src/kernels/${KERNEL_VERSION} /lib/modules/${KERNEL_VERSION}/build
 
-    echo "Installing Linux kernel-core files..."
-    if ! dnf -q -y download kernel-core-${KERNEL_VERSION} > /dev/null; then
+    echo "Downloading Linux kernel-core files..."
+    # dnf download now returns a zero return code even on failure to locate/download rpm.
+    dnf -q -y download kernel-core-${KERNEL_VERSION} > /dev/null
+    if ! ls ./kernel-core-*.rpm 2> /dev/null; then
         echo "Failed to find kernel-core-${KERNEL_VERSION} in repositories."
         echo "Trying to download kernel-core from koji..."
         KOJI_KERNEL_CORE_RPM=$KOJI_BASE_URL/packages/kernel/$KERNEL_RPM_VERSION/$KERNEL_RPM_RELEASE/$KERNEL_RPM_ARCH/kernel-core-$KERNEL_VERSION.rpm
-        if ! dnf -q -y download $KOJI_KERNEL_CORE_RPM; then
-            echo "Can't find kernel-core-${KERNEL_VERSION}"
+        curl --silent --output kernel-core-$KERNEL_VERSION.rpm ${KOJI_KERNEL_CORE_RPM}
+        if ! ls ./kernel-core-*.rpm 2> /dev/null; then
+            echo "Can't find kernel-core-${KERNEL_VERSION} at ${KOJI_KERNEL_CORE_RPM}"
             echo "Please try to update your kernel on the host system."
             exit 1
         fi
     fi
-    echo "List kernel-core rpm version installed:"
-    rpm -qa | grep ^kernel-core || true
+    echo "List kernel-core rpm version downloaded:"
+    ls ./kernel-core-*.rpm 2> /dev/null
     cat ./kernel-core-*.rpm | rpm2cpio | cpio -idm --quiet
     rm ./*.rpm
 
-    echo "Installing Linux kernel-modules-core files..."
-    if ! dnf -q -y download kernel-modules-core${KERNEL_VERSION} > /dev/null; then
+    echo "Downloading Linux kernel-modules-core files..."
+    # dnf download now returns a zero return code even on failure to locate/download rpm.
+    dnf -q -y download kernel-modules-core-${KERNEL_VERSION} > /dev/null
+    if ! ls ./kernel-modules-core-*.rpm 2> /dev/null; then
         echo "Failed to find kernel-modules-core-${KERNEL_VERSION} in repositories."
         echo "Trying to download kernel-modules-core from koji..."
         KOJI_KERNEL_CORE_RPM=$KOJI_BASE_URL/packages/kernel/$KERNEL_RPM_VERSION/$KERNEL_RPM_RELEASE/$KERNEL_RPM_ARCH/kernel-modules-core-$KERNEL_VERSION.rpm
-        if ! dnf -q -y download $KOJI_KERNEL_CORE_RPM \
-          --setopt=install_weak_deps=False; then
-            echo "Can't find kernel-modules-core-${KERNEL_VERSION}"
+        curl --silent --output kernel-modules-core-$KERNEL_VERSION.rpm ${KOJI_KERNEL_CORE_RPM}
+        if ! ls ./kernel-modules-*.rpm 2> /dev/null; then
+            echo "Can't find kernel-modules-core-${KERNEL_VERSION} at ${KOJI_KERNEL_CORE_RPM}"
             echo "Please try to update your kernel on the host system."
             exit 1
         else
             echo 'Kernel-modules-core installed from koji'
         fi
     fi
-    echo "List kernel-modules rpm version installed:"
-    rpm -qa | grep ^kernel-modules || true
+    echo "List kernel-modules rpm version downloaded:"
+    ls ./kernel-modules-*.rpm 2> /dev/null
     cat ./kernel-modules-*.rpm | rpm2cpio | cpio -idm --quiet
     rm ./*.rpm
 
@@ -240,9 +254,9 @@ _create_driver_package() (
         # lrwxrwxrwx 1 root root   36 Dec  8 20:10 default -> /etc/alternatives/ofa_kernel_headers
         # drwxr-xr-x 4 root root 4096 Dec  8 20:14 x86_64
         # lrwxrwxrwx 1 root root   44 Dec  9 19:05 5.4.0-90-generic -> /usr/src/ofa_kernel/x86_64/5.4.0-90-generic/
-        if [[ -d /run/mellanox/drivers/usr/src/ofa_kernel/x86_64/`uname -r` ]]; then
-            if [[ ! -e /usr/src/ofa_kernel/`uname -r` ]]; then
-                ln -s /run/mellanox/drivers/usr/src/ofa_kernel/x86_64/`uname -r` /usr/src/ofa_kernel/
+        if [[ -d "/run/mellanox/drivers/usr/src/ofa_kernel/$(uname -m)/$(uname -r)" ]]; then
+            if [[ ! -e "/usr/src/ofa_kernel/$(uname -r)" ]]; then
+                ln -s "/run/mellanox/drivers/usr/src/ofa_kernel/$(uname -m)/$(uname -r)" /usr/src/ofa_kernel/
             fi
         fi
     fi
@@ -287,12 +301,38 @@ _create_driver_package() (
 )
 
 _assert_nvswitch_system() {
-    [ -d /proc/driver/nvidia-nvswitch/devices ] || return 1
-    if [ -z "$(ls -A /proc/driver/nvidia-nvswitch/devices)" ]; then
+    [ -d /proc/driver/nvidia-nvswitch ] || return 1
+    entries=$(ls -1 /proc/driver/nvidia-nvswitch/devices/*)
+    if [ -z "${entries}" ]; then
         return 1
     fi
     return 0
 }
+
+_assert_nvlink5_system() (
+    for dir in /sys/class/infiniband/*/device; do
+        # Define the path to the VPD file
+        vpd_file="$dir/vpd"
+
+        # Check if the VPD file exists
+        if [ -f "$vpd_file" ]; then
+            # Search for 'SW_MNG' in the VPD file
+            if grep -q "SW_MNG" "$vpd_file"; then
+                echo "Detected NVLink5+ system"
+                return 0
+            fi
+        fi
+    done
+    return 1
+)
+
+_ensure_nvlink5_prerequisites() (
+    until  lsmod | grep mlx5_core > /dev/null 2>&1 && lsmod | grep ib_umad > /dev/null 2>&1;
+    do
+        echo "waiting for the mlx5_core and ib_umad kernel modules to be loaded"
+        sleep 10
+    done
+)
 
 # For each kernel module configuration file mounted into the container,
 # parse the file contents and extract the custom module parameters that
@@ -347,8 +387,31 @@ _load_driver() {
     echo "Parsing kernel module parameters..."
     _get_module_params
 
+
+    local nv_fw_search_path="$RUN_DIR/driver/lib/firmware"
+    local set_fw_path="true"
+    local fw_path_config_file="/sys/module/firmware_class/parameters/path"
+    for param in "${NVIDIA_MODULE_PARAMS[@]}"; do
+        if [[ "$param" == "NVreg_EnableGpuFirmware=0" ]]; then
+          set_fw_path="false"
+        fi
+    done
+
+    if [[ "$set_fw_path" == "true" ]]; then
+        echo "Configuring the following firmware search path in '$fw_path_config_file': $nv_fw_search_path"
+        if [[ ! -z $(grep '[^[:space:]]' $fw_path_config_file) ]]; then
+            echo "WARNING: A search path is already configured in $fw_path_config_file"
+            echo "         Retaining the current configuration"
+        else
+            echo -n "$nv_fw_search_path" > $fw_path_config_file || echo "WARNING: Failed to configure the firmware search path"
+        fi
+    fi
+
     echo "Loading ipmi and i2c_core kernel modules..."
     modprobe -a i2c_core ipmi_msghandler ipmi_devintf
+
+    # echo "Loading the video kernel module..."
+    # modprobe video
 
     echo "Loading NVIDIA driver kernel modules..."
     set -o xtrace +o nounset
@@ -383,7 +446,18 @@ _load_driver() {
         _start_vgpu_topology_daemon
     fi
 
-    if _assert_nvswitch_system; then
+    if _assert_nvlink5_system; then
+        _ensure_nvlink5_prerequisites || return 1
+        echo "Starting NVIDIA fabric manager daemon for NVLink5+..."
+
+        fm_config_file=/usr/share/nvidia/nvswitch/fabricmanager.cfg
+        fm_pid_file=/var/run/nvidia-fabricmanager/nv-fabricmanager.pid
+        nvlsm_config_file=/usr/share/nvidia/nvlsm/nvlsm.conf
+        nvlsm_pid_file=/var/run/nvidia-fabricmanager/nvlsm.pid
+        /usr/bin/nvidia-fabricmanager-start.sh $fm_config_file $fm_pid_file $nvlsm_config_file $nvlsm_pid_file
+
+    # If not a NVLink5+ switch, check for the presence of NVLink4 (or below) switches
+    elif _assert_nvswitch_system; then
         echo "Starting NVIDIA fabric manager daemon..."
         nv-fabricmanager -c /usr/share/nvidia/nvswitch/fabricmanager.cfg
     fi
@@ -398,8 +472,8 @@ _unload_driver() {
     local nvidia_modeset_refs=0
     local nvidia_peermem_refs=0
 
-    echo "Stopping NVIDIA persistence daemon..."
     if [ -f /var/run/nvidia-persistenced/nvidia-persistenced.pid ]; then
+        echo "Stopping NVIDIA persistence daemon..."
         local pid=$(< /var/run/nvidia-persistenced/nvidia-persistenced.pid)
 
         kill -SIGTERM "${pid}"
@@ -418,11 +492,11 @@ _unload_driver() {
         local pid=$(< /var/run/nvidia-gridd/nvidia-gridd.pid)
 
         kill -SIGTERM "${pid}"
-        for i in $(seq 1 10); do
+        for i in $(seq 1 50); do
             kill -0 "${pid}" 2> /dev/null || break
             sleep 0.1
         done
-        if [ $i -eq 10 ]; then
+        if [ $i -eq 50 ]; then
             echo "Could not stop NVIDIA Grid daemon" >&2
             return 1
         fi
@@ -439,6 +513,21 @@ _unload_driver() {
         done
         if [ $i -eq 50 ]; then
             echo "Could not stop NVIDIA fabric manager daemon" >&2
+            return 1
+        fi
+    fi
+
+    if [ -f /var/run/nvidia-fabricmanager/nvlsm.pid ]; then
+        echo "Stopping NVLink Subnet Manager daemon..."
+        local pid=$(< /var/run/nvidia-fabricmanager/nvlsm.pid)
+
+        kill -SIGTERM "${pid}"
+        for i in $(seq 1 50); do
+            kill -0 "${pid}" 2> /dev/null || break
+            sleep 0.1
+        done
+        if [ $i -eq 50 ]; then
+            echo "Could not stop NVLink Subnet Manager daemon" >&2
             return 1
         fi
     fi
@@ -553,6 +642,36 @@ _shutdown() {
     return 1
 }
 
+# _resolve_kernel_type determines which kernel module type, open or proprietary, to install.
+# This function assumes that the nvidia-installer binary is in the PATH, so this function
+# should only be invoked after the userspace driver components have been installed.
+#
+# KERNEL_MODULE_TYPE is the frontend interface that users can use to configure which module
+# to install. Valid values for KERNEL_MODULE_TYPE are 'auto' (default), 'open', and 'proprietary'.
+# When 'auto' is configured, we use the nvidia-installer to recommend the module type to install.
+_resolve_kernel_type() {
+  if [ "${KERNEL_MODULE_TYPE}" == "proprietary" ]; then
+    KERNEL_TYPE=kernel
+  elif [ "${KERNEL_MODULE_TYPE}" == "open" ]; then
+    KERNEL_TYPE=kernel-open
+  elif [ "${KERNEL_MODULE_TYPE}" == "auto" ]; then
+    kernel_module_type=$(nvidia-installer --print-recommended-kernel-module-type)
+    if [ $? -ne 0 ]; then
+      echo "failed to retrieve the recommended kernel module type from nvidia-installer, falling back to using the driver branch"
+      _resolve_kernel_type_from_driver_branch
+      return 0
+    fi
+    [[ "${kernel_module_type}" == "open" ]] && KERNEL_TYPE=kernel-open || KERNEL_TYPE=kernel
+  else
+    echo "invalid value for the KERNEL_MODULE_TYPE variable: ${KERNEL_MODULE_TYPE}"
+    return 1
+  fi
+}
+
+_resolve_kernel_type_from_driver_branch() {
+  [[ "${DRIVER_BRANCH}" -lt 560 ]] && KERNEL_TYPE=kernel || KERNEL_TYPE=kernel-open
+}
+
 _find_vgpu_driver_version() {
     local count=""
     local version=""
@@ -595,16 +714,40 @@ _start_vgpu_topology_daemon() {
     nvidia-topologyd
 }
 
+_apply_patch () {
+    # Apply a single *.patch file that has been mounted to /patch
+    if [ -d /patch ]; then
+        # Exit if multiple patches are found
+        if [ $(ls -1 /patch/*.patch | wc -l) -gt 1 ]; then
+            echo "Multiple patches found, only one patch is supported"
+            exit 1
+        fi
+        for patch in $(ls /patch/*.patch 2> /dev/null); do
+            sh NVIDIA-Linux-$DRIVER_ARCH-$DRIVER_VERSION.run --apply-patch ${patch} -m=${KERNEL_TYPE}
+            # The patched installer has by default the file name ending '-custom.run'
+            PATCHED_SUFFIX="-custom"
+            echo -e "NVIDIA Software installer patched with '/patch/${patch}'\n"
+        done
+    fi
+}
+
 _prepare() {
     if [ "${DRIVER_TYPE}" = "vgpu" ]; then
         _find_vgpu_driver_version || exit 1
     fi
 
+    _apply_patch
+
+    # Determine the kernel module type
+    _resolve_kernel_type || exit 1
+
     # Install the userspace components and copy the kernel module sources.
-    sh NVIDIA-Linux-$DRIVER_ARCH-$DRIVER_VERSION.run -x -m=${KERNEL_TYPE} && \
-        cd NVIDIA-Linux-$DRIVER_ARCH-$DRIVER_VERSION && \
-        sh /tmp/install.sh nvinstall && \
-        mkdir -p /usr/src/nvidia-$DRIVER_VERSION && \
+    sh NVIDIA-Linux-$DRIVER_ARCH-$DRIVER_VERSION${PATCHED_SUFFIX:-}.run -x -m ${KERNEL_TYPE} && \
+        cd NVIDIA-Linux-$DRIVER_ARCH-$DRIVER_VERSION${PATCHED_SUFFIX:-} && \
+        sh /tmp/install.sh nvinstall
+
+    # Copy the kernel module sources
+    mkdir -p /usr/src/nvidia-$DRIVER_VERSION && \
         mv LICENSE mkprecompiled ${KERNEL_TYPE} /usr/src/nvidia-$DRIVER_VERSION && \
         sed '9,${/^\(kernel\|LICENSE\)/!d}' .manifest > /usr/src/nvidia-$DRIVER_VERSION/.manifest
 
@@ -633,7 +776,6 @@ _build() {
     # Install dependencies
     if _kernel_requires_package; then
         _update_package_cache
-        # _resolve_kernel_version || exit 1
         _install_prerequisites
         _create_driver_package
         #_remove_prerequisites
@@ -690,15 +832,19 @@ update() {
     fi
     exec 3>&-
 
-    # vgpu driver version is choosen dynamically during runtime, so pre-compile modules for
+    # vgpu driver version is chosen dynamically during runtime, so pre-compile modules for
     # only non-vgpu driver types
     if [ "${DRIVER_TYPE}" != "vgpu" ]; then
-        # Install the userspace components and copy the kernel module sources.
         if [ ! -e /usr/src/nvidia-${DRIVER_VERSION}/mkprecompiled ]; then
-            sh NVIDIA-Linux-$DRIVER_ARCH-$DRIVER_VERSION.run -x -m=${KERNEL_TYPE} && \
+            # Determine the kernel module type
+            _resolve_kernel_type || exit 1
+            # Install the userspace components
+            sh NVIDIA-Linux-$DRIVER_ARCH-$DRIVER_VERSION.run -x -m ${KERNEL_TYPE} && \
                 cd NVIDIA-Linux-$DRIVER_ARCH-$DRIVER_VERSION && \
-                sh /tmp/install.sh nvinstall && \
-                mkdir -p /usr/src/nvidia-$DRIVER_VERSION && \
+                sh /tmp/install.sh nvinstall
+
+            # Copy the kernel module sources
+            mkdir -p /usr/src/nvidia-$DRIVER_VERSION && \
                 mv LICENSE mkprecompiled ${KERNEL_TYPE} /usr/src/nvidia-$DRIVER_VERSION && \
                 sed '9,${/^\(kernel\|LICENSE\)/!d}' .manifest > /usr/src/nvidia-$DRIVER_VERSION/.manifest
         fi
@@ -713,6 +859,8 @@ update() {
     # _resolve_kernel_version || exit 1
     _install_prerequisites
     if _kernel_requires_package; then
+        # ensure KERNEL_TYPE is set before compiling kernel modules
+        [[ -n "${KERNEL_TYPE}" ]] || _resolve_kernel_type || exit 1
         _create_driver_package
     fi
     _remove_prerequisites
@@ -751,7 +899,7 @@ reload_nvidia_peermem() {
     exit 1
 }
 
-# probe by gpu-opertor for liveness/startup checks for nvidia-peermem module to be loaded when MOFED drivers are ready
+# probe by gpu-operator for liveness/startup checks for nvidia-peermem module to be loaded when MOFED drivers are ready
 probe_nvidia_peermem() {
     if lsmod | grep mlx5_core > /dev/null 2>&1; then
         if [ ! -f /sys/module/nvidia_peermem/refcnt ]; then
@@ -769,10 +917,10 @@ usage() {
 Usage: $0 COMMAND [ARG...]
 
 Commands:
-  init   [-a | --accept-license] [-x] [-m | --max-threads MAX_THREADS]
+  init   [-x | --set-x ] [-a | --accept-license] [-m | --max-threads MAX_THREADS]
   build  [-a | --accept-license] [-m | --max-threads MAX_THREADS]
   load
-  update [-k | --kernel VERSION] [-s | --sign KEYID] [-t | --tag TAG] [-m | --max-threads MAX_THREADS]
+  update [-x | --set-x ] [-k | --kernel VERSION] [-s | --sign KEYID] [-t | --tag TAG] [-m | --max-threads MAX_THREADS]
 EOF
     exit 1
 }
@@ -782,10 +930,10 @@ if [ $# -eq 0 ]; then
 fi
 command=$1; shift
 case "${command}" in
-    init) options=$(getopt -l accept-license,max-threads: -o a:x:m: -- "$@") ;;
+    init) options=$(getopt -l set-x,accept-license,max-threads: -o xam: -- "$@") ;;
     build) options=$(getopt -l accept-license,tag:,max-threads: -o a:t:m: -- "$@") ;;
     load) options="" ;;
-    update) options=$(getopt -l kernel:,sign:,tag:,max-threads: -o k:s:t:m: -- "$@") ;;
+    update) options=$(getopt -l set-x,kernel:,sign:,tag:,max-threads: -o xk:s:t:m: -- "$@") ;;
     reload_nvidia_peermem) options="" ;;
     probe_nvidia_peermem) options="" ;;
     *) usage ;;
