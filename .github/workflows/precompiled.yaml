@@ -57,7 +57,8 @@ jobs:
           echo "dist=$dist_json" >> $GITHUB_OUTPUT
 
           # LTS_KERNEL setup
-          LTS_KERNEL=("5.15" "6.8")
+          # LTS_KERNEL=("5.15" "6.8")
+          LTS_KERNEL=("6.8")
           lts_kernel_json=$(printf '%s\n' "${LTS_KERNEL[@]}" | jq -R . | jq -cs .)
           echo "lts_kernel=$lts_kernel_json" >> $GITHUB_OUTPUT
 
