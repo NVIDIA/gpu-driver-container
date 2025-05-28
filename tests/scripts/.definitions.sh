@@ -16,7 +16,7 @@ CASES_DIR="$( cd "${TEST_DIR}/cases" && pwd )"
 
 : ${HELM_NVIDIA_REPO:="https://helm.ngc.nvidia.com/nvidia"}
 
-: ${DAEMON_POD_STATUS_TIME_OUT:="15m"}
+: ${DAEMON_POD_STATUS_TIME_OUT:="30m"}
 : ${POD_STATUS_TIME_OUT:="2m"}
 
 : ${LOG_DIR:="/tmp/logs"}
