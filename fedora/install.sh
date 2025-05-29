@@ -10,6 +10,7 @@ dep_installer () {
         ca-certificates \
         curl \
         gcc \
+        gcc-14 \
         glibc.i686 \
         make \
         cpio \
@@ -21,6 +22,7 @@ dep_installer () {
         ca-certificates \
         curl \
         gcc \
+        gcc-14 \
         glibc \
         make \
         cpio \
@@ -32,6 +34,7 @@ dep_installer () {
         ca-certificates \
         curl \
         gcc \
+        gcc-14 \
         glibc \
         make \
         cpio \
