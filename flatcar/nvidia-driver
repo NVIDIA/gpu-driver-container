@@ -123,6 +123,9 @@ emerge -gKq coreos-sources \
 rm -f /usr/src/linux
 ln -s /usr/src/linux-${KERNEL_STRING}-coreos /usr/src/linux
 cp /lib/modules/${KERNEL_VERSION}/build/.config /usr/src/linux
+# Apply kernel configuration
+cp /usr/src/kernel.config /usr/src/linux/.config
+make -C /usr/src/linux olddefconfig
 make -C /usr/src/linux modules_prepare > /dev/null
 cp /lib/modules/${KERNEL_VERSION}/build/Module.symvers /usr/src/linux/
 depmod ${KERNEL_VERSION}
