@@ -26,7 +26,7 @@ RUN useradd -u 1001 -m -s /bin/bash builder
 USER builder
 
 WORKDIR /home/builder
-COPY --chown=1001:0 x509-configuration.ini x509-configuration.ini
+COPY --chown=1001:0 x509-configuration.ini private_key.priv* public_key.der* /home/builder/
 
 RUN export KVER=$(echo ${KERNEL_VERSION} | cut -d '-' -f 1) \
         KREL=$(echo ${KERNEL_VERSION} | cut -d '-' -f 2 | sed 's/\.el._.\..\+$//') \
@@ -48,11 +48,15 @@ RUN export KVER=$(echo ${KERNEL_VERSION} | cut -d '-' -f 1) \
     fi \
     && tar -cJf SOURCES/nvidia-kmod-${DRIVER_VERSION}-${BUILD_ARCH}.tar.xz nvidia-kmod-${DRIVER_VERSION}-${BUILD_ARCH} \
     && mv kmod-nvidia.spec SPECS/ \
-    && sed -i -e "s/\$USER/${BUILDER_USER}/" -e "s/\$EMAIL/${BUILDER_EMAIL}/" ${HOME}/x509-configuration.ini \
-    && openssl req -x509 -new -nodes -utf8 -sha256 -days 36500 -batch \
-      -config ${HOME}/x509-configuration.ini \
-      -outform DER -out SOURCES/public_key.der \
-      -keyout SOURCES/private_key.priv \
+    && if test -f "/home/builder/private_key.priv" -a -f "/home/builder/public_key.der" ; then \
+        mv /home/builder/private_key.priv /home/builder/public_key.der SOURCES ; \
+    else \
+        sed -i -e "s/\$USER/${BUILDER_USER}/" -e "s/\$EMAIL/${BUILDER_EMAIL}/" ${HOME}/x509-configuration.ini ; \
+        openssl req -x509 -new -nodes -utf8 -sha256 -days 36500 -batch \
+            -config ${HOME}/x509-configuration.ini \
+            -outform DER -out SOURCES/public_key.der \
+            -keyout SOURCES/private_key.priv ; \
+    fi \
     && rpmbuild \
         --define "% _arch ${BUILD_ARCH}" \
         --define "%_topdir $(pwd)" \
