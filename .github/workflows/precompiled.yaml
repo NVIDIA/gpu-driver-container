@@ -41,12 +41,15 @@ jobs:
         id: extract_driver_branch
         run: |
           # get driver_branch
-          DRIVER_BRANCH=("535" "550" "570")
+          # DRIVER_BRANCH=("535" "550" "570")
+          DRIVER_BRANCH=("570")
+
           driver_branch_json=$(printf '%s\n' "${DRIVER_BRANCH[@]}" | jq -R . | jq -cs .)
           echo "driver_branch=$driver_branch_json" >> $GITHUB_OUTPUT
 
           # get kernel flavors
-          KERNEL_FLAVORS=("aws" "azure" "generic" "nvidia" "oracle")
+          # KERNEL_FLAVORS=("aws" "azure" "generic" "nvidia" "oracle")
+          KERNEL_FLAVORS=("aws")
           kernel_flavors_json=$(printf '%s\n' "${KERNEL_FLAVORS[@]}" | jq -R . | jq -cs .)
           echo "kernel_flavors=$kernel_flavors_json" >> $GITHUB_OUTPUT
 
@@ -56,7 +59,7 @@ jobs:
           echo "dist=$dist_json" >> $GITHUB_OUTPUT
 
           # LTS_KERNEL setup
-          LTS_KERNEL=("5.15" "6.8")
+          LTS_KERNEL=("6.8")
           lts_kernel_json=$(printf '%s\n' "${LTS_KERNEL[@]}" | jq -R . | jq -cs .)
           echo "lts_kernel=$lts_kernel_json" >> $GITHUB_OUTPUT
 

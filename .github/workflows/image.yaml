@@ -21,10 +21,10 @@ on:
       - opened
       - synchronize
     branches:
-      - test-virtual
+      - test-virtual-no
   push:
     branches:
-      - test-virtual
+      - test-virtual-no
 
 jobs:
   image:
