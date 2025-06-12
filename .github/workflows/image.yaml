@@ -21,12 +21,10 @@ on:
       - opened
       - synchronize
     branches:
-      - main
-      - release-*
+      - test-virtual
   push:
     branches:
-      - main
-      - release-*
+      - test-virtual
 
 jobs:
   image:
@@ -34,15 +32,10 @@ jobs:
     strategy:
       matrix:
         driver:
-          - 535.247.01
-          - 550.163.01
           - 570.148.08
         dist:
-          - ubuntu20.04
           - ubuntu22.04
           - ubuntu24.04
-          - rhel8
-          - rhel9
         ispr:
           - ${{github.event_name == 'pull_request'}}
         exclude:
@@ -101,8 +94,6 @@ jobs:
     strategy:
       matrix:
         driver: 
-          - 535
-          - 550
           - 570
         flavor:
           - aws
