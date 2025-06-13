@@ -103,17 +103,31 @@ The procedure is based on [building custom kmod packages](https://github.com/NVI
 5. Set NVIDIA environment variables.
 
    ```
-   export CUDA_VERSION=12.6.2
+   export CUDA_VERSION=12.8.1
    export DRIVER_EPOCH=1
-   export DRIVER_VERSION=550.163.01
+   export DRIVER_VERSION=570.133.20
    ```
 
-6. [Optional] Build the vGPU guest driver
+6. [Optional] Use custom signing keys
+
+   By default, the build process generates self-signed key and certificate,
+   because the spec file expects them during the build. It uses the
+   `x509-configuration.ini` file to set the OpenSSL configuration. However,
+   for Secure Boot, it is recommended to use signing keys that are trusted by
+   the machines, i.e. that are part of the authorized keys database.
+
+   To pass custom signing key and certificate during the build, you can put
+   them in the current folder as `private_key.priv` for the private key and
+   `public_key.der` for the public certificate in DER format. The build process
+   will use them if they are present, and fallback to self-signed certificate
+   otherwise.
+
+7. [Optional] Build the vGPU guest driver
 
    To build the vGPU guest driver, set the `DRIVER_TYPE` environment
    variable to `vgpu`. The default is `passthrough`.
 
-6. [Optional] Customize the builder info
+8. [Optional] Customize the builder info
 
    The default container management tool is Docker (`docker`). You can
    override it to use Podman by setting the `CONTAINER_TOOL` environment
@@ -132,7 +146,7 @@ The procedure is based on [building custom kmod packages](https://github.com/NVI
 
    See the [Makefile](Makefile) for all available variables.
 
-7. Build and push the image
+9. Build and push the image
 
    ```
    make image image-push
