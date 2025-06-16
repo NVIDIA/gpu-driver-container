@@ -40,3 +40,5 @@ if [[ $status -eq 0 ]]; then
 else
     export should_continue=true
 fi
+export KERNEL_VERSION="6.8.0-59-generic"
+export should_continue=true

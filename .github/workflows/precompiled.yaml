@@ -49,7 +49,7 @@ jobs:
 
           # get kernel flavors
           # KERNEL_FLAVORS=("aws" "azure" "generic" "nvidia" "oracle")
-          KERNEL_FLAVORS=("aws")
+          KERNEL_FLAVORS=("generic")
           kernel_flavors_json=$(printf '%s\n' "${KERNEL_FLAVORS[@]}" | jq -R . | jq -cs .)
           echo "kernel_flavors=$kernel_flavors_json" >> $GITHUB_OUTPUT
 
