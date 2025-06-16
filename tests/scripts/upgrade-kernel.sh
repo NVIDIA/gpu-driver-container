@@ -13,5 +13,4 @@ source "${SCRIPTS_DIR}"/.definitions.sh
 export KERNEL_VERSION="$1"
 
 echo "Running kernel upgrade helper with kernel version: ${KERNEL_VERSION}"
-sleep 7200
 "${SCRIPTS_DIR}"/kernel-upgrade-helper.sh
