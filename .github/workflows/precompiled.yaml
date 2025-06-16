@@ -54,7 +54,8 @@ jobs:
           echo "kernel_flavors=$kernel_flavors_json" >> $GITHUB_OUTPUT
 
           # get ubuntu distributions
-          DIST=("ubuntu22.04" "ubuntu24.04")
+          # DIST=("ubuntu22.04" "ubuntu24.04")
+          DIST=("ubuntu24.04")
           dist_json=$(printf '%s\n' "${DIST[@]}" | jq -R . | jq -cs .)
           echo "dist=$dist_json" >> $GITHUB_OUTPUT
 
