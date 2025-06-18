@@ -36,7 +36,7 @@ RUN chmod +x /usr/local/bin/generate-ci-config && \
 ENTRYPOINT ["/usr/bin/sleep","1000"]
 
 # Ubuntu 22.04
-FROM nvcr.io/nvidia/cuda:12.8.1-base-ubuntu22.04 AS jammy
+FROM nvcr.io/nvidia/cuda:12.9.1-base-ubuntu22.04 AS jammy
 
 SHELL ["/bin/bash", "-c"]
 
