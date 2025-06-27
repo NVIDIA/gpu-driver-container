@@ -8,7 +8,7 @@ SHELL ["/bin/bash", "-c"]
 RUN echo 'debconf debconf/frontend select Noninteractive' | debconf-set-selections
 
 # Remove cuda repository to avoid GPG errors
-RUN rm -f /etc/apt/sources.list.d/cuda*
+RUN rm -f /etc/apt/sources.list.d/cuda* && apt-get remove -y cuda-compat*
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
         apt-utils \
