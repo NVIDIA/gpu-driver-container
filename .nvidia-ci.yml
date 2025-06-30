@@ -458,6 +458,13 @@ release:ngc-rhcos4.18:
   variables:
     OUT_DIST: "rhcos4.18"
 
+release:ngc-rhcos4.19:
+  extends:
+    - .release:ngc
+    - .dist-rhel9
+  variables:
+    OUT_DIST: "rhcos4.19"
+
 release:ngc-rhel8.8:
   extends:
     - .release:ngc
