@@ -21,3 +21,7 @@ $(DRIVER_PUSH_TARGETS): push-%:
 $(VGPU_GUEST_DRIVER_PUSH_TARGETS): push-vgpuguest-%:
 	$(DOCKER) tag "$(IMAGE)" "$(OUT_IMAGE)"
 	$(DOCKER) push "$(OUT_IMAGE)"
+
+$(VGPU_HOST_DRIVER_PUSH_TARGETS): push-vgpuhost-%:
+	$(DOCKER) tag "$(IMAGE)" "$(OUT_IMAGE)"
+	$(DOCKER) push "$(OUT_IMAGE)"
