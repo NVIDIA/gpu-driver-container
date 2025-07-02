@@ -169,7 +169,7 @@ dtk-build-driver() {
         # The dkms package is not supplied or supported by Red Hat.
         # DKMS packages for RHEL are available in the third-party EPEL (Extra Packages for Enterprise Linux) repository.
         # see https://access.redhat.com/solutions/1132653
-        dnf install https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm
+        dnf install https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm
         dnf config-manager --enable epel
         dnf install -y dkms redhat-lsb-core kmod binutils net-tools iputils libudev-devel libnl3-devel udev openssl-devel userspace-rcu libmount
         dnf group install -y "Development Tools"
