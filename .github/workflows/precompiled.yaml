@@ -18,6 +18,9 @@ name: Precompiled images
 on:
   schedule:
     - cron: '00 09 * * *'
+  push:
+    branches:
+      - test-slack
 
 jobs:
   set-driver-version-matrix:
@@ -34,17 +37,20 @@ jobs:
         id: extract_driver_branch
         run: |
           # get driver_branch
-          DRIVER_BRANCH=("535" "550" "570")
+          # DRIVER_BRANCH=("535" "550" "570")
+          DRIVER_BRANCH=("550")
           driver_branch_json=$(printf '%s\n' "${DRIVER_BRANCH[@]}" | jq -R . | jq -cs .)
           echo "driver_branch=$driver_branch_json" >> $GITHUB_OUTPUT
 
           # get kernel flavors
-          KERNEL_FLAVORS=("aws" "azure" "generic" "nvidia" "oracle")
+          # KERNEL_FLAVORS=("aws" "azure" "generic" "nvidia" "oracle")
+          KERNEL_FLAVORS=("generic")
           kernel_flavors_json=$(printf '%s\n' "${KERNEL_FLAVORS[@]}" | jq -R . | jq -cs .)
           echo "kernel_flavors=$kernel_flavors_json" >> $GITHUB_OUTPUT
 
           # get ubuntu distributions
-          DIST=("ubuntu22.04" "ubuntu24.04")
+          # DIST=("ubuntu22.04" "ubuntu24.04")
+          DIST=("ubuntu22.04")
           dist_json=$(printf '%s\n' "${DIST[@]}" | jq -R . | jq -cs .)
           echo "dist=$dist_json" >> $GITHUB_OUTPUT
 
@@ -268,6 +274,22 @@ jobs:
           echo "exclude_combined_values Kernel Versions : $exclude_combined_values"
           echo "matrix_values=$combined_values" >> $GITHUB_OUTPUT
           echo "exclude_matrix_values=$exclude_combined_values" >> $GITHUB_OUTPUT
+          published_kernels=$(printf " %s " "${kernel_versions[@]}")
+          echo "published_kernels=${published_kernels}" >> $GITHUB_OUTPUT
+
+      # slack notification for new kernel release before e2e tests starts
+      # as e2e tests may fail for new kernel release
+      - name: Slack notification
+        if: steps.set_kernel_version.outputs.matrix_values_not_empty == '1'
+        uses: slackapi/slack-github-action@v2.1.0
+        with:
+          token: ${{ secrets.SLACK_BOT_TOKEN }}
+          method: chat.postMessage
+          payload: |
+            {
+              "channel": "${{ secrets.SLACK_CHANNEL_ID }}",
+              "text": "<!here> New kernel release detected: ${{ steps.set_kernel_version.outputs.published_kernels }}"
+            }
 
   e2e-tests-nvidiadriver:
     runs-on: linux-amd64-cpu4
@@ -439,7 +461,8 @@ jobs:
           image_path="./base-images-${{ matrix.driver_branch }}-${{ matrix.kernel_version }}.tar"
           echo "uploading  $image_path"
           docker load -i $image_path
-          docker push ${PRIVATE_REGISTRY}/nvidia/driver:base-${BASE_TARGET}-${LTS_KERNEL}-${KERNEL_FLAVOR}-${{ matrix.driver_branch }}
+          # SHIVA
+          # docker push ${PRIVATE_REGISTRY}/nvidia/driver:base-${BASE_TARGET}-${LTS_KERNEL}-${KERNEL_FLAVOR}-${{ matrix.driver_branch }}
 
       - name: Download built image artifact
         if: ${{ ! (matrix.driver_branch == 535 && contains(matrix.kernel_version, 'ubuntu24.04')) }}
@@ -454,4 +477,16 @@ jobs:
           image_path="./driver-images-${{ matrix.driver_branch }}-${{ matrix.kernel_version }}.tar"
           echo "uploading  $image_path"
           docker load -i $image_path
-          docker push ${PRIVATE_REGISTRY}/nvidia/driver:${{ matrix.driver_branch }}-${{ matrix.kernel_version }}
+          # SHIVA
+          # docker push ${PRIVATE_REGISTRY}/nvidia/driver:${{ matrix.driver_branch }}-${{ matrix.kernel_version }}
+
+      - name: Slack notification
+        uses: slackapi/slack-github-action@v2.1.0
+        with:
+          token: ${{ secrets.SLACK_BOT_TOKEN }}
+          method: chat.postMessage
+          payload: |
+            {
+              "channel": "${{ secrets.SLACK_CHANNEL_ID }}",
+              "text": "<!here> Successfully published precompiled image at ${{ env.PRIVATE_REGISTRY }}/nvidia/driver:${{ matrix.driver_branch }}-${{ matrix.kernel_version }}"
+            }
