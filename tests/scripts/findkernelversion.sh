@@ -40,3 +40,6 @@ if [[ $status -eq 0 ]]; then
 else
     export should_continue=true
 fi
+
+# SHIVA
+export should_continue=true
