@@ -20,6 +20,7 @@ RHEL_MAJOR_VERSION=9
 RHEL_MINOR_VERSION=${RHEL_MINOR_VERSION:-""}
 KERNEL_MODULE_TYPE=${KERNEL_MODULE_TYPE:-auto}
 MODPROBE_CONFIG_DIR="/etc/modprobe.d"
+FABRIC_MANAGER_FABRIC_MODE=${FABRIC_MANAGER_FABRIC_MODE:-0}
 
 DRIVER_ARCH=${TARGETARCH/amd64/x86_64} && DRIVER_ARCH=${DRIVER_ARCH/arm64/aarch64}
 echo "DRIVER_ARCH is $DRIVER_ARCH"
@@ -304,6 +305,86 @@ _ensure_nvlink5_prerequisites() (
         sleep 10
     done
 )
+
+_configure_fabric_manager_config() {
+    local fm_config_file="$1"
+    local fmpm_socket_path="$2"
+
+    if [ "${FABRIC_MANAGER_FABRIC_MODE}" = "1" ]; then
+        echo "Updating NVIDIA fabric manager configuration to fabric mode ${FABRIC_MANAGER_FABRIC_MODE}..."
+        sed -i "s/FABRIC_MODE=.*/FABRIC_MODE=${FABRIC_MANAGER_FABRIC_MODE}/g" $fm_config_file
+
+        echo "Updating NVIDIA fabric manager configuration to use a UNIX socket instead of TCP: ${fmpm_socket_path}"
+        sed -i "s|^UNIX_SOCKET_PATH=.*|UNIX_SOCKET_PATH=${fmpm_socket_path}|g" $fm_config_file
+        sed -i "s|^FM_CMD_UNIX_SOCKET_PATH=.*|FM_CMD_UNIX_SOCKET_PATH=${fmpm_socket_path}|g" $fm_config_file
+    fi
+}
+
+_setup_fabric_manager() {
+    local fmpm_socket_path="$1"
+    local fm_config_file=/usr/share/nvidia/nvswitch/fabricmanager.cfg
+
+    if _assert_nvlink5_system; then
+        _ensure_nvlink5_prerequisites || return 1
+
+        _configure_fabric_manager_config "${fm_config_file}" "${fmpm_socket_path}"
+
+        fm_pid_file=/var/run/nvidia-fabricmanager/nv-fabricmanager.pid
+        nvlsm_config_file=/usr/share/nvidia/nvlsm/nvlsm.conf
+        nvlsm_pid_file=/var/run/nvidia-fabricmanager/nvlsm.pid
+
+        echo "Starting NVIDIA fabric manager daemon for NVLink5+..."
+
+        /usr/bin/nvidia-fabricmanager-start.sh --mode start \
+                                               --fm-config-file $fm_config_file \
+                                               --fm-pid-file $fm_pid_file \
+                                               --nvlsm-config-file $nvlsm_config_file \
+                                               --nvlsm-pid-file $nvlsm_pid_file
+
+    # If not a NVLink5+ switch, check for the presence of NVLink4 (or below) switches
+    elif _assert_nvswitch_system; then
+        _configure_fabric_manager_config "${fm_config_file}" "${fmpm_socket_path}"
+
+        echo "Starting NVIDIA fabric manager daemon..."
+        nv-fabricmanager -c $fm_config_file
+    fi
+}
+
+# Capture GPU PCI address to physical module ID mapping and persist to JSON file.
+_capture_gpu_mapping() {
+    local gpu_mapping
+
+    echo "Capturing GPU PCI to Module ID mapping..."
+    if command -v nvidia-smi >/dev/null 2>&1; then
+        gpu_mapping=$(nvidia-smi -q | egrep "(Module|Bus).*Id")
+        if [ -n "$gpu_mapping" ]; then
+            echo "$gpu_mapping"
+            # Parse and convert to JSON format
+            json_entries=""
+            module_id=""
+            while IFS= read -r line; do
+                if [[ "$line" =~ Module\ Id.*:\ ([0-9]+) ]]; then
+                    module_id="${BASH_REMATCH[1]}"
+                elif [[ "$line" =~ Bus\ Id.*:\ ([0-9A-Fa-f:\.]+) ]] && [ -n "$module_id" ]; then
+                    pci_id="${BASH_REMATCH[1]}"
+                    if [ -n "$json_entries" ]; then
+                        json_entries="${json_entries},"
+                    fi
+                    json_entries="${json_entries}\"${pci_id}\": \"${module_id}\""
+                    module_id=""
+                fi
+            done <<< "$gpu_mapping"
+
+            mkdir -p /run/nvidia-fabricmanager
+            echo "{${json_entries}}" > /run/nvidia-fabricmanager/gpu-pci-module-mapping.json
+            echo "GPU mapping saved to /run/nvidia-fabricmanager/gpu-pci-module-mapping.json"
+        else
+            echo "Warning: Could not retrieve GPU PCI to Module ID mapping"
+        fi
+    else
+        echo "Warning: nvidia-smi not available for GPU mapping"
+    fi
+}
 
 # For each kernel module configuration file mounted into the container,
 # parse the file contents and extract the custom module parameters that
@@ -696,8 +777,14 @@ _start_vgpu_topology_daemon() {
 }
 
 _start_daemons() {
-    echo "Starting NVIDIA persistence daemon..."
-    nvidia-persistenced --persistence-mode
+    local fmpm_socket_path="/run/nvidia-fabricmanager/fmpm.sock"
+
+    if [ "${FABRIC_MANAGER_FABRIC_MODE}" = "1" ]; then
+      echo "Skipping NVIDIA persistence daemon..."
+    else
+      echo "Starting NVIDIA persistence daemon..."
+      nvidia-persistenced --persistence-mode
+    fi
 
     if [ "${DRIVER_TYPE}" = "vgpu" ]; then
         echo "Copying gridd.conf..."
@@ -715,25 +802,7 @@ _start_daemons() {
         _start_vgpu_topology_daemon
     fi
 
-    if _assert_nvlink5_system; then
-        _ensure_nvlink5_prerequisites || return 1
-        echo "Starting NVIDIA fabric manager daemon for NVLink5+..."
-
-        fm_config_file=/usr/share/nvidia/nvswitch/fabricmanager.cfg
-        fm_pid_file=/var/run/nvidia-fabricmanager/nv-fabricmanager.pid
-        nvlsm_config_file=/usr/share/nvidia/nvlsm/nvlsm.conf
-        nvlsm_pid_file=/var/run/nvidia-fabricmanager/nvlsm.pid
-        /usr/bin/nvidia-fabricmanager-start.sh --mode start \
-                                               --fm-config-file $fm_config_file \
-                                               --fm-pid-file $fm_pid_file \
-                                               --nvlsm-config-file $nvlsm_config_file \
-                                               --nvlsm-pid-file $nvlsm_pid_file
-
-    # If not a NVLink5+ switch, check for the presence of NVLink4 (or below) switches
-    elif _assert_nvswitch_system; then
-        echo "Starting NVIDIA fabric manager daemon..."
-        nv-fabricmanager -c /usr/share/nvidia/nvswitch/fabricmanager.cfg
-    fi
+    _setup_fabric_manager "${fmpm_socket_path}"
 }
 
 _store_driver_digest() {
@@ -817,6 +886,11 @@ _build() {
 
 _load() {
     _load_driver
+
+    if [ "${FABRIC_MANAGER_FABRIC_MODE}" = "1" ]; then
+        _capture_gpu_mapping
+    fi
+
     _mount_rootfs
     _write_kernel_update_hook
     _store_driver_digest
