@@ -268,6 +268,22 @@ jobs:
           echo "exclude_combined_values Kernel Versions : $exclude_combined_values"
           echo "matrix_values=$combined_values" >> $GITHUB_OUTPUT
           echo "exclude_matrix_values=$exclude_combined_values" >> $GITHUB_OUTPUT
+          published_kernels=$(printf " %s " "${kernel_versions[@]}")
+          echo "published_kernels=${published_kernels}" >> $GITHUB_OUTPUT
+
+      # slack notification for new kernel release before e2e tests starts
+      # as e2e tests may fail for new kernel release
+      - name: Slack notification
+        if: steps.set_kernel_version.outputs.matrix_values_not_empty == '1'
+        uses: slackapi/slack-github-action@v2.1.0
+        with:
+          token: ${{ secrets.SLACK_BOT_TOKEN }}
+          method: chat.postMessage
+          payload: |
+            {
+              "channel": "${{ secrets.SLACK_CHANNEL_ID }}",
+              "text": "${{ secrets.DETECTED_PRECOMPILED_KERNEL_MESSAGE }} ${{ steps.set_kernel_version.outputs.published_kernels }}"
+            }
 
   e2e-tests-nvidiadriver:
     runs-on: linux-amd64-cpu4
@@ -455,3 +471,14 @@ jobs:
           echo "uploading  $image_path"
           docker load -i $image_path
           docker push ${PRIVATE_REGISTRY}/nvidia/driver:${{ matrix.driver_branch }}-${{ matrix.kernel_version }}
+
+      - name: Slack notification
+        uses: slackapi/slack-github-action@v2.1.0
+        with:
+          token: ${{ secrets.SLACK_BOT_TOKEN }}
+          method: chat.postMessage
+          payload: |
+            {
+              "channel": "${{ secrets.SLACK_CHANNEL_ID }}",
+              "text": "${{ secrets.PUBLISHED_PRECOMPILED_IMAGE_MESSAGE }} ${{ env.PRIVATE_REGISTRY }}/nvidia/driver:${{ matrix.driver_branch }}-${{ matrix.kernel_version }}"
+            }
