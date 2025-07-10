@@ -275,7 +275,7 @@ jobs:
       # as e2e tests may fail for new kernel release
       - name: Slack notification
         if: steps.set_kernel_version.outputs.matrix_values_not_empty == '1'
-        uses: slackapi/slack-github-action@v2.1.0
+        uses: slackapi/slack-github-action@v2.1.1
         with:
           token: ${{ secrets.SLACK_BOT_TOKEN }}
           method: chat.postMessage
@@ -473,7 +473,7 @@ jobs:
           docker push ${PRIVATE_REGISTRY}/nvidia/driver:${{ matrix.driver_branch }}-${{ matrix.kernel_version }}
 
       - name: Slack notification
-        uses: slackapi/slack-github-action@v2.1.0
+        uses: slackapi/slack-github-action@v2.1.1
         with:
           token: ${{ secrets.SLACK_BOT_TOKEN }}
           method: chat.postMessage
