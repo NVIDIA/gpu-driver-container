@@ -16,6 +16,7 @@ NVIDIA_MODESET_MODULE_PARAMS=()
 NVIDIA_PEERMEM_MODULE_PARAMS=()
 TARGETARCH=${TARGETARCH:?"Missing TARGETARCH env"}
 KERNEL_MODULE_TYPE=${KERNEL_MODULE_TYPE:-auto}
+UBUNTU_PRO_TOKEN=${UBUNTU_PRO_TOKEN:-""}
 
 export DEBIAN_FRONTEND=noninteractive
 
@@ -45,6 +46,16 @@ _update_ca_certificates() {
 
 # Resolve the kernel version to the form major.minor.patch-revision-flavor where flavor defaults to generic.
 _resolve_kernel_version() {
+
+    if [ -n "${UBUNTU_PRO_TOKEN}" ]; then
+      echo "Ubuntu Pro token detected"
+      apt-get -qq install --no-install-recommends ubuntu-advantage-tools > /dev/null
+      echo "Attaching Ubuntu Pro token..."
+      pro attach --no-auto-enable "${UBUNTU_PRO_TOKEN}"
+      echo "Enabling FIPS apt repo access..."
+      pro enable --access-only --assume-yes fips-updates
+    fi
+
     local version=$(apt-cache show "linux-headers-${KERNEL_VERSION}" 2> /dev/null | \
       sed -nE 's/^Version:\s+(([0-9]+\.){2}[0-9]+)[-.]([0-9]+).*/\1-\3/p' | head -1)
     local kernel_flavor=$(echo ${KERNEL_VERSION} | sed 's/[^a-z]*//')
