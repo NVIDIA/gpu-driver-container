@@ -27,8 +27,11 @@ spec:
   containerRuntime:
     install: true
     name: containerd
+    version: 1.6.27
   kubernetes:
     install: true
     installer: kubeadm
-    version: v1.28.5
-    crictlVersion: v1.28.0
+    version: v1.29.3
+    crictlVersion: v1.29.0
+  kernel:
+    version: 5.15.0-139-generic
