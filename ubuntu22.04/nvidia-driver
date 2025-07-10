@@ -16,12 +16,24 @@ NVIDIA_MODESET_MODULE_PARAMS=()
 NVIDIA_PEERMEM_MODULE_PARAMS=()
 TARGETARCH=${TARGETARCH:?"Missing TARGETARCH env"}
 KERNEL_MODULE_TYPE=${KERNEL_MODULE_TYPE:-auto}
+UBUNTU_PRO_TOKEN=${UBUNTU_PRO_TOKEN:-""}
 
 export DEBIAN_FRONTEND=noninteractive
 
 DRIVER_ARCH=${TARGETARCH/amd64/x86_64} && DRIVER_ARCH=${DRIVER_ARCH/arm64/aarch64}
 
 echo "DRIVER_ARCH is $DRIVER_ARCH"
+
+_enable_fips_if_required() {
+    if [[ -n "${UBUNTU_PRO_TOKEN}" && ${KERNEL_VERSION} =~ "fips" ]]; then
+      echo "Ubuntu Pro token and FIPS kernel detected"
+      apt-get -qq install --no-install-recommends ubuntu-advantage-tools > /dev/null
+      echo "Attaching Ubuntu Pro token..."
+      pro attach --no-auto-enable "${UBUNTU_PRO_TOKEN}"
+      echo "Enabling FIPS apt repo access..."
+      pro enable --access-only --assume-yes fips-updates
+    fi
+}
 
 _update_package_cache() {
     if [ "${PACKAGE_TAG:-}" != "builtin" ]; then
@@ -658,6 +670,7 @@ init() {
     if _kernel_requires_package; then
         _update_ca_certificates
         _update_package_cache
+        _enable_fips_if_required
         _resolve_kernel_version || exit 1
         _install_prerequisites
         _create_driver_package
@@ -726,6 +739,7 @@ update() {
     trap "echo 'Caught signal'; exit 1" HUP INT QUIT PIPE TERM
 
     _update_package_cache
+    _enable_fips_if_required
     _resolve_kernel_version || exit 1
     _install_prerequisites
     if _kernel_requires_package; then
