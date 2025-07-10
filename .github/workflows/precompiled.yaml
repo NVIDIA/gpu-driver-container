@@ -473,6 +473,7 @@ jobs:
           docker push ${PRIVATE_REGISTRY}/nvidia/driver:${{ matrix.driver_branch }}-${{ matrix.kernel_version }}
 
       - name: Slack notification
+        if: ${{ ! (matrix.driver_branch == 535 && contains(matrix.kernel_version, 'ubuntu24.04')) }}
         uses: slackapi/slack-github-action@v2.1.0
         with:
           token: ${{ secrets.SLACK_BOT_TOKEN }}
