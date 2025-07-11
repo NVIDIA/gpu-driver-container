@@ -480,6 +480,7 @@ jobs:
     needs:
       # - publish-precompiled-image
       - set-driver-version-matrix
+      - detect-e2e-test-matrix
     runs-on: linux-amd64-cpu4
     strategy:
       matrix:
