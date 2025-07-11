@@ -18,6 +18,9 @@ name: Precompiled images
 on:
   schedule:
     - cron: '00 09 * * *'
+  push:
+    branches:
+      - test-slack
 
 jobs:
   set-driver-version-matrix:
@@ -282,7 +285,8 @@ jobs:
           payload: |
             {
               "channel": "${{ secrets.SLACK_CHANNEL_ID }}",
-              "text": "${{ secrets.DETECTED_PRECOMPILED_KERNEL_MESSAGE }} ${{ steps.set_kernel_version.outputs.published_kernels }}"
+              "text": "${{ secrets.DETECTED_PRECOMPILED_KERNEL_MESSAGE }} ${{ steps.set_kernel_version.outputs.published_kernels }} \n
+              Details: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
             }
 
   e2e-tests-nvidiadriver:
@@ -472,6 +476,30 @@ jobs:
           docker load -i $image_path
           docker push ${PRIVATE_REGISTRY}/nvidia/driver:${{ matrix.driver_branch }}-${{ matrix.kernel_version }}
 
+  slack-notification-published-precompiled-image:
+    runs-on: linux-amd64-cpu4
+    needs:
+      - publish-precompiled-image
+    strategy:
+      matrix:
+        dist: ${{ fromJson(needs.set-driver-version-matrix.outputs.dist) }}
+        driver_branch: ${{ fromJson(needs.set-driver-version-matrix.outputs.driver_branch) }}
+        exclude:
+          - dist: ubuntu24.04
+            driver_branch: 535
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+      - name: Set Slack notification kernel version
+        run: |
+          kernel_versions=()
+          for i in "${{ fromJson(needs.collect-e2e-test-matrix.outputs.matrix_values) }}"; do
+            if [[ "$i" == *"${{ matrix.dist }}"* && "$i" == *"${{ matrix.driver_branch }}"* ]]; then
+              kernel_versions+=($i)
+            fi
+          done
+          echo "SHIVA kernel_versions=${kernel_versions[*]}"
+          echo "kernel_versions=${kernel_versions[*]}" >> $GITHUB_ENV
       - name: Slack notification
         uses: slackapi/slack-github-action@v2.1.0
         with:
@@ -480,5 +508,5 @@ jobs:
           payload: |
             {
               "channel": "${{ secrets.SLACK_CHANNEL_ID }}",
-              "text": "${{ secrets.PUBLISHED_PRECOMPILED_IMAGE_MESSAGE }} ${{ env.PRIVATE_REGISTRY }}/nvidia/driver:${{ matrix.driver_branch }}-${{ matrix.kernel_version }}"
+              "text": "SHIVA CHECK ${{ secrets.PUBLISHED_PRECOMPILED_IMAGE_MESSAGE }} ${{ env.PRIVATE_REGISTRY }}/nvidia/driver:${{ matrix.driver_branch }}-${{ env.kernel_versions }}"
             }
