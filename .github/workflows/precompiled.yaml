@@ -483,23 +483,20 @@ jobs:
       - determine-e2e-test-matrix
       - collect-e2e-test-matrix
     runs-on: linux-amd64-cpu4
-    strategy:
-      matrix:
-        dist: ${{ fromJson(needs.set-driver-version-matrix.outputs.dist) }}
-        driver_branch: ${{ fromJson(needs.set-driver-version-matrix.outputs.driver_branch) }}
-        exclude:
-          - dist: ubuntu24.04
-            driver_branch: 535
     steps:
       - name: Check out code
         uses: actions/checkout@v4
       - name: Set Slack notification kernel version
         run: |
           kernel_versions=()
-          for i in "${{ fromJson(needs.collect-e2e-test-matrix.outputs.matrix_values) }}"; do
-            if [[ "$i" == *"${{ matrix.dist }}"* && "$i" == *"${{ matrix.driver_branch }}"* ]]; then
-              kernel_versions+=($i)
-            fi
+          for dist in "${{ fromJson(needs.set-driver-version-matrix.outputs.dist) }}" | jq -r '.[]'; do
+            for driver_branch in "${{ fromJson(needs.set-driver-version-matrix.outputs.driver_branch) }}" | jq -r '.[]'; do
+              for kernel_version in "${{ fromJson(needs.collect-e2e-test-matrix.outputs.matrix_values) }}"; do
+                if [[ "$kernel_version" == *"${dist}"* && "$kernel_version" == *"${driver_branch}"* ]]; then
+                  kernel_versions+=($kernel_version)
+                fi
+              done
+            done
           done
           echo "SHIVA kernel_versions=${kernel_versions[*]}"
           echo "kernel_versions=${kernel_versions[*]}" >> $GITHUB_ENV
