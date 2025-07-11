@@ -18,6 +18,9 @@ name: Precompiled images
 on:
   schedule:
     - cron: '00 09 * * *'
+  push:
+    branches:
+      - test-slack
 
 jobs:
   set-driver-version-matrix:
@@ -282,7 +285,8 @@ jobs:
           payload: |
             {
               "channel": "${{ secrets.SLACK_CHANNEL_ID }}",
-              "text": "${{ secrets.DETECTED_PRECOMPILED_KERNEL_MESSAGE }} ${{ steps.set_kernel_version.outputs.published_kernels }}"
+              "text": "${{ secrets.DETECTED_PRECOMPILED_KERNEL_MESSAGE }} ${{ steps.set_kernel_version.outputs.published_kernels }} \n
+              Details: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
             }
 
   e2e-tests-nvidiadriver:
@@ -473,6 +477,7 @@ jobs:
           docker push ${PRIVATE_REGISTRY}/nvidia/driver:${{ matrix.driver_branch }}-${{ matrix.kernel_version }}
 
       - name: Slack notification
+        if: ${{ ! (matrix.driver_branch == 535 && contains(matrix.kernel_version, 'ubuntu24.04')) }}
         uses: slackapi/slack-github-action@v2.1.0
         with:
           token: ${{ secrets.SLACK_BOT_TOKEN }}
