@@ -492,7 +492,8 @@ jobs:
           #!/bin/bash
           set -e
           echo "SHIVA CHECK"
-          kernel_versions=()
+          kernel_versions=("")
+           echo "SHIVA CHECK1"
           for dist in "${{ fromJson(needs.set-driver-version-matrix.outputs.dist) }}" | jq -r '.[]'; do
             for driver_branch in "${{ fromJson(needs.set-driver-version-matrix.outputs.driver_branch) }}" | jq -r '.[]'; do
               for kernel_version in "${{ fromJson(needs.collect-e2e-test-matrix.outputs.matrix_values) }}"; do
