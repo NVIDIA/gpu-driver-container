@@ -491,12 +491,17 @@ jobs:
         run: |
           #!/bin/bash
           set -e
-          echo "SHIVA CHECK"
           kernel_versions=("")
-           echo "SHIVA CHECK1"
-          for dist in "${{ fromJson(needs.set-driver-version-matrix.outputs.dist) }}" | jq -r '.[]'; do
-            for driver_branch in "${{ fromJson(needs.set-driver-version-matrix.outputs.driver_branch) }}" | jq -r '.[]'; do
-              for kernel_version in "${{ fromJson(needs.collect-e2e-test-matrix.outputs.matrix_values) }}"; do
+          echo "SHIVA CHECK1"
+          DIST='${{ fromJson(needs.set-driver-version-matrix.outputs.dist) }}'
+          echo "SHIVA CHECK2"
+          DRIVER_BRANCH='${{ fromJson(needs.set-driver-version-matrix.outputs.driver_branch) }}'
+          echo "SHIVA CHECK3"
+          KERNEL_VERSIONS='${{ fromJson(needs.collect-e2e-test-matrix.outputs.matrix_values) }}'
+          echo "SHIVA CHECK4"
+          for dist in "${DIST[@]}"; do
+            for driver_branch in "${DRIVER_BRANCH[@]}"; do
+              for kernel_version in "${KERNEL_VERSIONS[@]}"; do
                 if [[ dist == "ubuntu24.04" && driver_branch == "535" ]]; then
                   continue
                 fi
