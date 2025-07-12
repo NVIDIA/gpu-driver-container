@@ -487,30 +487,32 @@ jobs:
       - name: Check out code
         uses: actions/checkout@v4
       - name: Set Slack notification kernel version
-        id: set_published_kernel_version
+        usa
         run: |
           #!/bin/bash
           set -e
-          kernel_versions=("")
+          kernel_versions=()
           echo "SHIVA CHECK1"
           DIST='${{ fromJson(needs.set-driver-version-matrix.outputs.dist) }}'
-          echo "SHIVA CHECK2"
+          echo "SHIVA CHECK2 ${DIST[@]}"
           DRIVER_BRANCH='${{ fromJson(needs.set-driver-version-matrix.outputs.driver_branch) }}'
-          echo "SHIVA CHECK3"
+          echo "SHIVA CHECK3 ${DRIVER_BRANCH[@]}"
           KERNEL_VERSIONS='${{ fromJson(needs.collect-e2e-test-matrix.outputs.matrix_values) }}'
-          echo "SHIVA CHECK4"
+          echo "SHIVA CHECK4 ${KERNEL_VERSIONS[@]}"
           for dist in "${DIST[@]}"; do
             for driver_branch in "${DRIVER_BRANCH[@]}"; do
               for kernel_version in "${KERNEL_VERSIONS[@]}"; do
                 if [[ dist == "ubuntu24.04" && driver_branch == "535" ]]; then
                   continue
                 fi
-                kernel_versions+=($kernel_version)
+                kernel_versions+=(${driver_branch}-${kernel_version})
               done
             done
           done
           echo "SHIVA kernel_versions=${kernel_versions[*]}"
-          echo "kernel_versions=${kernel_versions[*]}" >> $GITHUB_OUTPUT
+          echo "SHIVA1 kernel_versions=${kernel_versions[@]}"
+          echo "kernel_versions=${kernel_versions[*]}" >> $GITHUB_ENV
+          echo "PRIVATE_REGISTRY=ghcr.io" >> $GITHUB_ENV
       - name: Slack notification
         uses: slackapi/slack-github-action@v2.1.0
         with:
@@ -519,5 +521,5 @@ jobs:
           payload: |
             {
               "channel": "${{ secrets.SLACK_CHANNEL_ID }}",
-              "text": "SHIVA CHECK ${{ secrets.PUBLISHED_PRECOMPILED_IMAGE_MESSAGE }} ${{ env.PRIVATE_REGISTRY }}/nvidia/driver:${{ matrix.driver_branch }}-${{ steps.set_published_kernel_version.outputs.kernel_versions }}"
+              "text": "SHIVA CHECK ${{ secrets.PUBLISHED_PRECOMPILED_IMAGE_MESSAGE }} ${{ env.PRIVATE_REGISTRY }}/nvidia/driver:${{ env.kernel_versions }}"
             }
