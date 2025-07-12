@@ -492,9 +492,10 @@ jobs:
           for dist in "${{ fromJson(needs.set-driver-version-matrix.outputs.dist) }}" | jq -r '.[]'; do
             for driver_branch in "${{ fromJson(needs.set-driver-version-matrix.outputs.driver_branch) }}" | jq -r '.[]'; do
               for kernel_version in "${{ fromJson(needs.collect-e2e-test-matrix.outputs.matrix_values) }}"; do
-                if [[ "$kernel_version" == *"${dist}"* && "$kernel_version" == *"${driver_branch}"* ]]; then
-                  kernel_versions+=($kernel_version)
+                if [[ dist == "ubuntu24.04" && driver_branch == "535" ]]; then
+                  continue
                 fi
+                kernel_versions+=($kernel_version)
               done
             done
           done
