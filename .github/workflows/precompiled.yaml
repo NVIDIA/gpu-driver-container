@@ -489,6 +489,8 @@ jobs:
       - name: Set Slack notification kernel version
         id: set_published_kernel_version
         run: |
+          #!/bin/bash
+          set -e
           echo "SHIVA CHECK"
           kernel_versions=()
           for dist in "${{ fromJson(needs.set-driver-version-matrix.outputs.dist) }}" | jq -r '.[]'; do
