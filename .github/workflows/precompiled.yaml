@@ -493,11 +493,14 @@ jobs:
           set -e
           kernel_versions=()
           echo "SHIVA CHECK1"
-          DIST='${{ fromJson(needs.set-driver-version-matrix.outputs.dist) }}'
+          DIST_json='${{ fromJson(needs.set-driver-version-matrix.outputs.dist) }}'
+          DIST=($(echo "$DIST_json" | jq -r '.[]'))
           echo "SHIVA CHECK2 ${DIST[@]}"
-          DRIVER_BRANCH='${{ fromJson(needs.set-driver-version-matrix.outputs.driver_branch) }}'
+          DRIVER_BRANCH_json='${{ fromJson(needs.set-driver-version-matrix.outputs.driver_branch) }}'
+          DRIVER_BRANCH=($(echo "$DRIVER_BRANCH_json" | jq -r '.[]'))
           echo "SHIVA CHECK3 ${DRIVER_BRANCH[@]}"
-          KERNEL_VERSIONS='${{ fromJson(needs.collect-e2e-test-matrix.outputs.matrix_values) }}'
+          KERNEL_VERSIONS_json='${{ fromJson(needs.collect-e2e-test-matrix.outputs.matrix_values) }}'
+          KERNEL_VERSIONS=($(echo "$KERNEL_VERSIONS_json" | jq -r '.[]'))
           echo "SHIVA CHECK4 ${KERNEL_VERSIONS[@]}"
           for dist in "${DIST[@]}"; do
             for driver_branch in "${DRIVER_BRANCH[@]}"; do
