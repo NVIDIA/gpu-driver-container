@@ -94,12 +94,6 @@ _install_prerequisites() (
     trap "rm -rf ${tmp_dir}" EXIT
     cd ${tmp_dir}
 
-    echo "Installing elfutils..."
-    if ! dnf install -q -y elfutils-libelf.$DRIVER_ARCH elfutils-libelf-devel.$DRIVER_ARCH; then
-        echo "FATAL: failed to install elfutils packages. RHEL entitlement may be improperly deployed."
-        exit 1
-    fi
-
     rm -rf /lib/modules/${KERNEL_VERSION}
     mkdir -p /lib/modules/${KERNEL_VERSION}/proc
 
@@ -125,6 +119,13 @@ _install_prerequisites() (
       else
         DNF_RELEASEVER=${RHEL_MAJOR_VERSION}
       fi
+    fi
+
+    echo "Installing elfutils..."
+    dnf install -q -y --releasever=${DNF_RELEASEVER} elfutils-libelf.$DRIVER_ARCH
+    if ! dnf install -y --releasever=${DNF_RELEASEVER} elfutils-libelf-devel.$DRIVER_ARCH; then
+        echo "FATAL: failed to install elfutils-libel-devel. RHEL entitlement may be improperly deployed."
+        exit 1
     fi
 
     echo "Installing Linux kernel headers..."
