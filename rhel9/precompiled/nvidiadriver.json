@@ -9,7 +9,7 @@
     "usePrecompiled": true,
     "repository": "quay.io/fabiendupont",
     "image": "nvidia-gpu-driver",
-    "version": "550.163.01",
+    "version": "570.158.01",
     "imagePullPolicy": "Always",
     "nodeSelector": {},
     "manager": {},

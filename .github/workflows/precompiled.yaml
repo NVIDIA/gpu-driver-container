@@ -34,7 +34,7 @@ jobs:
         id: extract_driver_branch
         run: |
           # get driver_branch
-          DRIVER_BRANCH=("535" "550" "570")
+          DRIVER_BRANCH=("535" "570")
           driver_branch_json=$(printf '%s\n' "${DRIVER_BRANCH[@]}" | jq -R . | jq -cs .)
           echo "driver_branch=$driver_branch_json" >> $GITHUB_OUTPUT
 
