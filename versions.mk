@@ -13,6 +13,6 @@
 # limitations under the License.
 
 # DRIVER_VERSIONS contains latest version in all active datacenter branches
-DRIVER_VERSIONS ?= 535.247.01 570.158.01
+DRIVER_VERSIONS ?= 535.261.03 570.172.08
 
-GOLANG_VERSION := 1.24.4
+GOLANG_VERSION := 1.24.5
