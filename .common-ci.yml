@@ -19,7 +19,7 @@ default:
       command: ["--experimental"]
 
 variables:
-  DRIVER_VERSIONS: 535.247.01 550.163.01 570.158.01 575.57.08
+  DRIVER_VERSIONS: 535.247.01 570.158.01
   BUILD_MULTI_ARCH_IMAGES: "true"
 
 stages:
@@ -81,19 +81,19 @@ trigger-pipeline:
 .driver-versions:
   parallel:
     matrix:
-      - DRIVER_VERSION: [535.247.01, 550.163.01, 570.158.01, 575.57.08]
+      - DRIVER_VERSION: [535.247.01, 570.158.01]
 
 # Define the driver versions for jobs that can be run in parallel
 .driver-versions-ubuntu24.04:
   parallel:
     matrix:
-      - DRIVER_VERSION: [550.163.01, 570.158.01, 575.57.08]
+      - DRIVER_VERSION: [570.158.01]
 
 # Define the matrix of precompiled jobs that can be run in parallel for ubuntu22.04
 .driver-versions-precompiled-ubuntu22.04:
   parallel:
     matrix:
-      - DRIVER_BRANCH: [535, 550, 570]
+      - DRIVER_BRANCH: [535, 570]
         KERNEL_FLAVOR: [aws, azure, generic, nvidia, oracle]
         LTS_KERNEL: ["5.15"]
 
@@ -101,7 +101,7 @@ trigger-pipeline:
 .driver-versions-precompiled-ubuntu24.04:
   parallel:
     matrix:
-      - DRIVER_BRANCH: [550, 570]
+      - DRIVER_BRANCH: [570]
         KERNEL_FLAVOR: [aws, azure, generic, nvidia, oracle]
         LTS_KERNEL: ["6.8"]
 
