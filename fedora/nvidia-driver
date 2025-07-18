@@ -114,8 +114,7 @@ _install_prerequisites() (
 
     echo "Downloading Linux kernel-core files..."
     # dnf download now returns a zero return code even on failure to locate/download rpm.
-    dnf -q -y download kernel-core-${KERNEL_VERSION} > /dev/null
-    if ! ls ./kernel-core-*.rpm 2> /dev/null; then
+    if ! dnf -q -y download kernel-core-${KERNEL_VERSION} > /dev/null; then
         echo "Failed to find kernel-core-${KERNEL_VERSION} in repositories."
         echo "Trying to download kernel-core from koji..."
         KOJI_KERNEL_CORE_RPM=$KOJI_BASE_URL/packages/kernel/$KERNEL_RPM_VERSION/$KERNEL_RPM_RELEASE/$KERNEL_RPM_ARCH/kernel-core-$KERNEL_VERSION.rpm
@@ -133,8 +132,7 @@ _install_prerequisites() (
 
     echo "Downloading Linux kernel-modules-core files..."
     # dnf download now returns a zero return code even on failure to locate/download rpm.
-    dnf -q -y download kernel-modules-core-${KERNEL_VERSION} > /dev/null
-    if ! ls ./kernel-modules-core-*.rpm 2> /dev/null; then
+    if ! dnf -q -y download kernel-modules-core-${KERNEL_VERSION} > /dev/null; then
         echo "Failed to find kernel-modules-core-${KERNEL_VERSION} in repositories."
         echo "Trying to download kernel-modules-core from koji..."
         KOJI_KERNEL_CORE_RPM=$KOJI_BASE_URL/packages/kernel/$KERNEL_RPM_VERSION/$KERNEL_RPM_RELEASE/$KERNEL_RPM_ARCH/kernel-modules-core-$KERNEL_VERSION.rpm
