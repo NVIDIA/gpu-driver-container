@@ -89,7 +89,7 @@ variables:
 
   CUDA_VERSION: 12.8.1
 
-  GOLANG_VERSION: 1.24.2
+  GOLANG_VERSION: 1.24.4
 
   CVE_UPDATES: "curl libc6"
 
