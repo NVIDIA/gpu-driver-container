@@ -18,15 +18,6 @@ USE_HOST_MOFED="${USE_HOST_MOFED:-false}"
 DNF_RELEASEVER=${DNF_RELEASEVER:-""}
 KERNEL_MODULE_TYPE=${KERNEL_MODULE_TYPE:-auto}
 
-# TEMPORARY WORKAROUND
-# For kernels > 6.14 force use of gcc-14 because as yet NVIDIA driver does not support gcc-15.
-_k_version=$(uname -r | cut -d - -f1 | sed -r 's/([0-9]+)/0000\1/g; s/0*([0-9]{4})/\1/g') # gives 0001.0002.0003
-if [[ "${_k_version}" > "0006.0014.0001" ]]; then
-    # Why doesn't NVCC_CCBIN work?
-    export CC='gcc-14'
-    export CC+=" -std=gnu17"
-fi
-
 DRIVER_ARCH=${TARGETARCH/amd64/x86_64} && DRIVER_ARCH=${DRIVER_ARCH/arm64/aarch64}
 echo "DRIVER_ARCH is $DRIVER_ARCH"
 
@@ -123,8 +114,7 @@ _install_prerequisites() (
 
     echo "Downloading Linux kernel-core files..."
     # dnf download now returns a zero return code even on failure to locate/download rpm.
-    dnf -q -y download kernel-core-${KERNEL_VERSION} > /dev/null
-    if ! ls ./kernel-core-*.rpm 2> /dev/null; then
+    if ! dnf -q -y download kernel-core-${KERNEL_VERSION} > /dev/null; then
         echo "Failed to find kernel-core-${KERNEL_VERSION} in repositories."
         echo "Trying to download kernel-core from koji..."
         KOJI_KERNEL_CORE_RPM=$KOJI_BASE_URL/packages/kernel/$KERNEL_RPM_VERSION/$KERNEL_RPM_RELEASE/$KERNEL_RPM_ARCH/kernel-core-$KERNEL_VERSION.rpm
@@ -142,8 +132,7 @@ _install_prerequisites() (
 
     echo "Downloading Linux kernel-modules-core files..."
     # dnf download now returns a zero return code even on failure to locate/download rpm.
-    dnf -q -y download kernel-modules-core-${KERNEL_VERSION} > /dev/null
-    if ! ls ./kernel-modules-core-*.rpm 2> /dev/null; then
+    if ! dnf -q -y download kernel-modules-core-${KERNEL_VERSION} > /dev/null; then
         echo "Failed to find kernel-modules-core-${KERNEL_VERSION} in repositories."
         echo "Trying to download kernel-modules-core from koji..."
         KOJI_KERNEL_CORE_RPM=$KOJI_BASE_URL/packages/kernel/$KERNEL_RPM_VERSION/$KERNEL_RPM_RELEASE/$KERNEL_RPM_ARCH/kernel-modules-core-$KERNEL_VERSION.rpm

@@ -486,6 +486,13 @@ release:ngc-rhel9.5:
   variables:
     OUT_DIST: "rhel9.5"
 
+release:ngc-rhel9.6:
+  extends:
+    - .release:ngc
+    - .dist-rhel9
+  variables:
+    OUT_DIST: "rhel9.6"
+
 # Define the external image signing steps for NGC
 # Download the ngc cli binary for use in the sign steps
 .ngccli-setup:
@@ -584,16 +591,16 @@ sign:ngc-ubuntu-rhel-rhcos:
     matrix:
     - SIGN_JOB_NAME: ["ubuntu"]
       VERSION: ["24.04"]
-      DRIVER_VERSION: ["550.163.01", "570.133.20"]
+      DRIVER_VERSION: ["550.163.01", "570.158.01", "575.57.08"]
     - SIGN_JOB_NAME: ["ubuntu"]
       VERSION: ["22.04"]
-      DRIVER_VERSION: ["535.247.01", "550.163.01", "570.133.20"]
+      DRIVER_VERSION: ["535.247.01", "550.163.01", "570.158.01", "575.57.08"]
     - SIGN_JOB_NAME: ["ubuntu"]
       VERSION: ["20.04"]
-      DRIVER_VERSION: ["535.247.01", "550.163.01", "570.133.20"]
+      DRIVER_VERSION: ["535.247.01", "550.163.01", "570.158.01", "575.57.08"]
     - SIGN_JOB_NAME: ["rhel"]
-      VERSION: ["8.8", "8.10", "9.4", "9.5"]
-      DRIVER_VERSION: ["535.247.01", "550.163.01", "570.133.20"]
+      VERSION: ["8.8", "8.10", "9.4", "9.5", "9.6"]
+      DRIVER_VERSION: ["535.247.01", "550.163.01", "570.158.01", "575.57.08"]
     - SIGN_JOB_NAME: ["rhcos"]
       VERSION: ["4.12", "4.13", "4.14", "4.15", "4.16", "4.17", "4.18"]
-      DRIVER_VERSION: ["535.247.01", "550.163.01", "570.133.20"]
+      DRIVER_VERSION: ["535.247.01", "550.163.01", "570.158.01", "575.57.08"]

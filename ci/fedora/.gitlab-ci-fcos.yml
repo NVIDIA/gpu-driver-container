@@ -84,12 +84,12 @@ variables:
   # To survey latest Data Center driver versions available:
   # https://www.nvidia.com/Download/Find.aspx
   # https://www.nvidia.com/en-us/drivers/unix/
-  DRIVER_VERSION: "570.133.20"
-  DRIVER_VERSIONS: 570.133.20 550.163.01 535.247.01
+  DRIVER_VERSION: "575.57.08"
+  DRIVER_VERSIONS: 575.57.08 570.158.01 550.163.01 535.247.01
 
-  CUDA_VERSION: 12.6.0
+  CUDA_VERSION: 12.8.1
 
-  GOLANG_VERSION: 1.24.2
+  GOLANG_VERSION: 1.24.4
 
   CVE_UPDATES: "curl libc6"
 
@@ -145,7 +145,7 @@ stages:
               --env HTTP_PROXY=${HTTP_PROXY} --env HTTPS_PROXY=${HTTPS_PROXY} \
               --entrypoint nvidia-driver ${DOCKER_IMAGE_NO_PRECOMPILED_KERNEL_MODULES} update -t builtin 2>&1 ) > /tmp/kernel-module-build.log); then
               echo "***********************************************************************"
-              echo "Kernel module compilation succeeded.  Below up to 500 build log lines."
+              echo "Kernel module compilation succeeded.  Below is first 500 build log lines."
               echo "***********************************************************************"
               cat /tmp/kernel-module-build.log | grep -Ev "'naked' return found in RETHUNK build|missing int3 after ret" | \
                 grep -v "'naked' return found in MITIGATION_RETHUNK build" | head -n 100 && true
@@ -153,7 +153,7 @@ stages:
               cat /tmp/kernel-module-build.log | grep -Ev "'naked' return found in RETHUNK build|missing int3 after ret" | \
                 grep -v "'naked' return found in MITIGATION_RETHUNK build" | tail -n 500 && true
               echo "***********************************************************************"
-              echo "Kernel module compilation succeeded.  Above up to 500 build log lines."
+              echo "Kernel module compilation succeeded.  Above is last 500 build log lines."
               echo "***********************************************************************"
               docker commit -m '"Compile Linux kernel modules version ${FEDORA_UNAME} for NVIDIA driver version ${_driver_version}"' \
                 --change='ENTRYPOINT ["nvidia-driver", "init"]' -c 'ENV HTTP_PROXY=' -c 'ENV HTTPS_PROXY=' \
@@ -162,7 +162,7 @@ stages:
               echo "Pushing ${DOCKER_IMAGE} with compiled kernel interface modules."
             else
               echo "***********************************************************************"
-              echo "Kernel module compilation failed.  Below is last 500 lines of log only."
+              echo "Kernel module compilation failed.  Below is first 500 lines of log only."
               echo "***********************************************************************"
               cat /tmp/kernel-module-build.log | grep -Ev "'naked' return found in RETHUNK build|missing int3 after ret" | \
                 grep -v "'naked' return found in MITIGATION_RETHUNK build" | head -n 100 && true

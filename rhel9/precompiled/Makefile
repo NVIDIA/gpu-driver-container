@@ -1,4 +1,4 @@
-RHEL_VERSION ?= 9.2
+RHEL_VERSION ?= 9.4
 RHEL_VERSION_MAJOR = $(shell echo "${RHEL_VERSION}" | awk -F. '{print $$1}')
 
 KERNEL_VERSION ?= ''
@@ -9,7 +9,7 @@ KERNEL_VERSION_NOARCH=$(shell echo "${KERNEL_VERSION}" | sed "s/\.${TARGET_ARCH}
 KERNEL_VERSION_TAG = $(shell echo "${KERNEL_VERSION_NOARCH}.${BUILD_ARCH}" | sed "s/+/_/")
 BASE_URL ?= https://us.download.nvidia.com/tesla
 
-CUDA_VERSION ?= 12.6.0
+CUDA_VERSION ?= 12.8.1
 CUDA_DIST = ubi${RHEL_VERSION_MAJOR}
 
 DRIVER_VERSION ?= ''
@@ -66,9 +66,10 @@ image: rhsm-register
 		--build-arg BUILDER_EMAIL=${BUILDER_EMAIL} \
 		--build-arg DRIVER_TOOLKIT_IMAGE=${DRIVER_TOOLKIT_IMAGE} \
 		--build-arg DRIVER_OPEN=${DRIVER_OPEN} \
-                --build-arg DRIVER_TYPE=${DRIVER_TYPE} \
+        --build-arg DRIVER_TYPE=${DRIVER_TYPE} \
 		--build-arg DRIVER_STREAM_TYPE=${DRIVER_STREAM_TYPE} \
 		--build-arg BASE_URL=${BASE_URL} \
+		--build-arg OS_TAG=${OS_TAG} \
 		--tag ${IMAGE_REGISTRY}/${IMAGE_NAME}:${DRIVER_VERSION}-${KERNEL_VERSION_TAG}-${OS_TAG} \
 		--progress=plain \
 		--file ${DOCKERFILE} .
