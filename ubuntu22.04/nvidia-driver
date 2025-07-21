@@ -353,7 +353,11 @@ _load_driver() {
         fm_pid_file=/var/run/nvidia-fabricmanager/nv-fabricmanager.pid
         nvlsm_config_file=/usr/share/nvidia/nvlsm/nvlsm.conf
         nvlsm_pid_file=/var/run/nvidia-fabricmanager/nvlsm.pid
-        /usr/bin/nvidia-fabricmanager-start.sh $fm_config_file $fm_pid_file $nvlsm_config_file $nvlsm_pid_file
+        /usr/bin/nvidia-fabricmanager-start.sh --mode start \
+                                               --fm-config-file $fm_config_file \
+                                               --fm-pid-file $fm_pid_file \
+                                               --nvlsm-config-file $nvlsm_config_file \
+                                               --nvlsm-pid-file $nvlsm_pid_file
 
     # If not a NVLink5+ switch, check for the presence of NVLink4 (or below) switches
     elif _assert_nvswitch_system; then
