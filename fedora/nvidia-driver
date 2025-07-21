@@ -18,15 +18,6 @@ USE_HOST_MOFED="${USE_HOST_MOFED:-false}"
 DNF_RELEASEVER=${DNF_RELEASEVER:-""}
 KERNEL_MODULE_TYPE=${KERNEL_MODULE_TYPE:-auto}
 
-# TEMPORARY WORKAROUND
-# For kernels > 6.14 force use of gcc-14 because as yet NVIDIA driver does not support gcc-15.
-_k_version=$(uname -r | cut -d - -f1 | sed -r 's/([0-9]+)/0000\1/g; s/0*([0-9]{4})/\1/g') # gives 0001.0002.0003
-if [[ "${_k_version}" > "0006.0014.0001" ]]; then
-    # Why doesn't NVCC_CCBIN work?
-    export CC='gcc-14'
-    export CC+=" -std=gnu17"
-fi
-
 DRIVER_ARCH=${TARGETARCH/amd64/x86_64} && DRIVER_ARCH=${DRIVER_ARCH/arm64/aarch64}
 echo "DRIVER_ARCH is $DRIVER_ARCH"
 
