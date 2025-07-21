@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: Copyright (c) NVIDIA CORPORATION. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 #! /bin/bash
 # This test case runs the operator installation / test case with the default options.
 

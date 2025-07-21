@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: Copyright (c) NVIDIA CORPORATION. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 DOCKERFILE = Dockerfile
 RHEL_VERSION ?= 8.6
 CUDA_VERSION ?= 12.6.0

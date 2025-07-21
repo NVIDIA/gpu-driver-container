@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: Copyright (c) NVIDIA CORPORATION. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 ARG SLES_VERSION
 FROM nvcr.io/nvidia/cuda:12.9.1-base-ubi8 as license
 

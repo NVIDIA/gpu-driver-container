@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: Copyright (c) NVIDIA CORPORATION. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 #!/usr/bin/env bash
 # Copyright (c) 2018-2022, NVIDIA CORPORATION. All rights reserved.
 

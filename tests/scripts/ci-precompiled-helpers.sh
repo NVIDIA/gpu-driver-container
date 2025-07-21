@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: Copyright (c) NVIDIA CORPORATION. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 get_kernel_versions_to_test() {
     if [[ "$#" -ne 4 ]]; then
 	    echo " Error:$0 must be called with KERNEL_FLAVORS DRIVER_BRANCHES DIST LTS_KERNEL" >&2

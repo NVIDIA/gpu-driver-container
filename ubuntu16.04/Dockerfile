@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: Copyright (c) NVIDIA CORPORATION. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 FROM nvcr.io/nvidia/cuda:11.3.0-base-ubuntu16.04
 
 ENV NVIDIA_VISIBLE_DEVICES=void

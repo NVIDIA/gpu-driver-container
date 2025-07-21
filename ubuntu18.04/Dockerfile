@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: Copyright (c) NVIDIA CORPORATION. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 FROM nvcr.io/nvidia/cuda:12.1.0-base-ubuntu18.04
 
 #ARG BASE_URL=http://us.download.nvidia.com/XFree86/Linux-x86_64

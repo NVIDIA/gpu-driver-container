@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: Copyright (c) NVIDIA CORPORATION. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 FROM nvcr.io/nvidia/cuda:12.9.1-base-ubuntu20.04
 
 ARG DRIVER_VERSION

@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: Copyright (c) NVIDIA CORPORATION. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 # Ubuntu 24.04
 FROM nvcr.io/nvidia/cuda:12.9.1-base-ubuntu24.04 AS noble
 
