@@ -84,8 +84,8 @@ variables:
   # To survey latest Data Center driver versions available:
   # https://www.nvidia.com/Download/Find.aspx
   # https://www.nvidia.com/en-us/drivers/unix/
-  DRIVER_VERSION: "570.133.20"
-  DRIVER_VERSIONS: 570.133.20 550.163.01 535.247.01
+  DRIVER_VERSION: "575.57.08"
+  DRIVER_VERSIONS: 575.57.08 570.158.01 550.163.01 535.247.01
 
   CUDA_VERSION: 12.6.0
 
