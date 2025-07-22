@@ -28,7 +28,7 @@ stages:
   - test
   - scan
   - release
-  - sign
+  - ngc-publish
 
 .pipeline-trigger-rules:
   rules:
@@ -164,12 +164,17 @@ trigger-pipeline:
 
 .release-generic:
   stage: release
+  allow_failure: true
   variables:
     # Define the source image for the release
     IMAGE_NAME: "${CI_REGISTRY_IMAGE}"
     VERSION: "${CI_COMMIT_SHORT_SHA}"
     # OUT_VERSION is overridden for external releases
     OUT_VERSION: "${CI_COMMIT_SHORT_SHA}"
+    OUT_DIST: "${DIST}"
+  artifacts:
+    paths:
+      - build-info-${DRIVER_VERSION}-${OUT_DIST}.txt
   before_script:
     - !reference [.regctl-setup, before_script]
     - apk add --no-cache make bash
@@ -180,6 +185,12 @@ trigger-pipeline:
     - '[ ${CI_REGISTRY} = ${OUT_REGISTRY} ] || regctl registry login "${OUT_REGISTRY}" -u "${OUT_REGISTRY_USER}" -p "${OUT_REGISTRY_TOKEN}"'
     # Since OUT_IMAGE_NAME and OUT_VERSION are set, this will push the CI image to the target
     - if [[ "${PRECOMPILED}" == "true" ]]; then ./scripts/precompiled.sh push; else make push-${DIST}-${DRIVER_VERSION}; fi
+    - |
+      if [[ -n "${OUT_VERSION}" ]]; then
+        echo "${CI_COMMIT_SHORT_SHA}-${DRIVER_VERSION}-${DIST} ${OUT_VERSION}-${DRIVER_VERSION}-${OUT_DIST}" > build-info-${DRIVER_VERSION}-${OUT_DIST}.txt
+      else
+        echo "${CI_COMMIT_SHORT_SHA}-${DRIVER_VERSION}-${DIST} ${DRIVER_VERSION}-${OUT_DIST}" > build-info-${DRIVER_VERSION}-${OUT_DIST}.txt
+      fi
 
 .release-ubuntu22.04:
   # Perform for each DRIVER_VERSION
@@ -220,37 +231,37 @@ trigger-pipeline:
   extends:
     - .release
   variables:
-    OUT_REGISTRY_USER: "${CI_REGISTRY_USER}"
-    OUT_REGISTRY_TOKEN: "${CI_REGISTRY_PASSWORD}"
-    OUT_REGISTRY: "${CI_REGISTRY}"
-    OUT_IMAGE_NAME: "${CI_REGISTRY_IMAGE}/staging/driver"
+    OUT_REGISTRY_USER: "${NGC_REGISTRY_USER}"
+    OUT_REGISTRY_TOKEN: "${NGC_REGISTRY_TOKEN}"
+    OUT_REGISTRY: "${NGC_REGISTRY}"
+    OUT_IMAGE_NAME: "${NGC_STAGING_REGISTRY}/driver"
 
 .release:staging-ubuntu22.04:
   extends:
     - .release-ubuntu22.04
   variables:
-    OUT_REGISTRY_USER: "${CI_REGISTRY_USER}"
-    OUT_REGISTRY_TOKEN: "${CI_REGISTRY_PASSWORD}"
-    OUT_REGISTRY: "${CI_REGISTRY}"
-    OUT_IMAGE_NAME: "${CI_REGISTRY_IMAGE}/staging/driver"
+    OUT_REGISTRY_USER: "${NGC_REGISTRY_USER}"
+    OUT_REGISTRY_TOKEN: "${NGC_REGISTRY_TOKEN}"
+    OUT_REGISTRY: "${NGC_REGISTRY}"
+    OUT_IMAGE_NAME: "${NGC_STAGING_REGISTRY}/driver"
 
 .release:staging-ubuntu24.04:
   extends:
     - .release-ubuntu24.04
   variables:
-    OUT_REGISTRY_USER: "${CI_REGISTRY_USER}"
-    OUT_REGISTRY_TOKEN: "${CI_REGISTRY_PASSWORD}"
-    OUT_REGISTRY: "${CI_REGISTRY}"
-    OUT_IMAGE_NAME: "${CI_REGISTRY_IMAGE}/staging/driver"
+    OUT_REGISTRY_USER: "${NGC_REGISTRY_USER}"
+    OUT_REGISTRY_TOKEN: "${NGC_REGISTRY_TOKEN}"
+    OUT_REGISTRY: "${NGC_REGISTRY}"
+    OUT_IMAGE_NAME: "${NGC_STAGING_REGISTRY}/driver"
 
 .release:staging-rhel9:
   extends:
     - .release-rhel9
   variables:
-    OUT_REGISTRY_USER: "${CI_REGISTRY_USER}"
-    OUT_REGISTRY_TOKEN: "${CI_REGISTRY_PASSWORD}"
-    OUT_REGISTRY: "${CI_REGISTRY}"
-    OUT_IMAGE_NAME: "${CI_REGISTRY_IMAGE}/staging/driver"
+    OUT_REGISTRY_USER: "${NGC_REGISTRY_USER}"
+    OUT_REGISTRY_TOKEN: "${NGC_REGISTRY_TOKEN}"
+    OUT_REGISTRY: "${NGC_REGISTRY}"
+    OUT_IMAGE_NAME: "${NGC_STAGING_REGISTRY}/driver"
 
 # Define an external release step that pushes an image to an external repository.
 .release:external:
