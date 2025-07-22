@@ -28,7 +28,7 @@ stages:
   - test
   - scan
   - release
-  - sign
+  - ngc-publish
 
 .pipeline-trigger-rules:
   rules:
@@ -170,12 +170,17 @@ trigger-pipeline:
 
 .release-generic:
   stage: release
+  allow_failure: true
   variables:
     # Define the source image for the release
     IMAGE_NAME: "${CI_REGISTRY_IMAGE}"
     VERSION: "${CI_COMMIT_SHORT_SHA}"
     # OUT_VERSION is overridden for external releases
     OUT_VERSION: "${CI_COMMIT_SHORT_SHA}"
+    OUT_DIST: "${DIST}"
+  artifacts:
+    paths:
+      - build-info-${DRIVER_VERSION}-${OUT_DIST}.txt
   before_script:
     - !reference [.regctl-setup, before_script]
     # We ensure the OUT_IMAGE_NAME is set
@@ -188,6 +193,12 @@ trigger-pipeline:
     - '[ ${CI_REGISTRY} = ${OUT_REGISTRY} ] || regctl registry login "${OUT_REGISTRY}" -u "${OUT_REGISTRY_USER}" -p "${OUT_REGISTRY_TOKEN}"'
     # Since OUT_IMAGE_NAME and OUT_VERSION are set, this will push the CI image to the target
     - if [[ "${PRECOMPILED}" == "true" ]]; then ./scripts/precompiled.sh push; else make push-${DIST}-${DRIVER_VERSION}; fi
+    - |
+      if [[ -n "${OUT_VERSION}" ]]; then
+        echo "${CI_COMMIT_SHORT_SHA}-${DRIVER_VERSION}-${DIST} ${OUT_VERSION}-${DRIVER_VERSION}-${OUT_DIST}" > build-info-${DRIVER_VERSION}-${OUT_DIST}.txt
+      else
+        echo "${CI_COMMIT_SHORT_SHA}-${DRIVER_VERSION}-${DIST} ${DRIVER_VERSION}-${OUT_DIST}" > build-info-${DRIVER_VERSION}-${OUT_DIST}.txt
+      fi
 
 .release-ubuntu20.04:
   # Perform for each DRIVER_VERSION
