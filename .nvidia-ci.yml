@@ -160,6 +160,210 @@ image-rhel9:
     - .image-pull
     - .dist-rhel9
 
+# The .scan step forms the base of the image scan operation performed before releasing
+# images.
+.scan-generic:
+  stage: scan
+  image: "${PULSE_IMAGE}"
+  variables:
+    IMAGE_NAME: "${CI_REGISTRY_IMAGE}"
+    VERSION: "${STAGING_VERSION}"
+  rules:
+    - if: $CI_COMMIT_MESSAGE =~ /\[skip[ _-]scans?\]/i
+      when: never
+    - if: $SKIP_SCANS && $SKIP_SCANS == "yes"
+      when: never
+  before_script:
+    - !reference [.regctl-setup, before_script]
+    # We ensure that the DRIVER_VERSION and PLATFORM are set
+    - 'if [[ "${PRECOMPILED}" != "true" ]]; then echo DRIVER_VERSION: ${DRIVER_VERSION} ; [[ -n "${DRIVER_VERSION}" ]] || exit 1; fi'
+    - 'echo PLATFORM: ${PLATFORM} ; [[ -n "${PLATFORM}" ]] || exit 1'
+    - apk add --no-cache make bash
+    - docker login -u "${CI_REGISTRY_USER}" -p "${CI_REGISTRY_PASSWORD}" "${CI_REGISTRY}"
+    - if [[ "${PRECOMPILED}" == "true" ]]; then ./scripts/precompiled.sh pull; else make pull-${DIST}-${DRIVER_VERSION}; fi
+    - if [[ "${PRECOMPILED}" == "true" ]]; then ./scripts/precompiled.sh archive; else make archive-${DIST}-${DRIVER_VERSION}; fi
+    - AuthHeader=$(echo -n $SSA_CLIENT_ID:$SSA_CLIENT_SECRET | base64 -w0)
+    - >
+      export SSA_TOKEN=$(curl --request POST --header "Authorization: Basic $AuthHeader" --header "Content-Type: application/x-www-form-urlencoded" ${SSA_ISSUER_URL} | jq ".access_token" |  tr -d '"')
+    - if [ -z "$SSA_TOKEN" ]; then exit 1; else echo "SSA_TOKEN set!"; fi
+  script:
+    - pulse-cli -n $NSPECT_ID --ssa $SSA_TOKEN scan -i "archive.tar" -p $CONTAINER_POLICY -o
+  artifacts:
+    when: always
+    expire_in: 1 week
+    paths:
+      - pulse-cli.log
+      - licenses.json
+      - sbom.json
+      - vulns.json
+      - policy_evaluation.json
+
+.scan-rules-common:
+  rules:
+    - if: $CI_COMMIT_MESSAGE =~ /\[skip[ _-]scans?\]/i
+      when: never
+    - if: $SKIP_SCANS && $SKIP_SCANS == "yes"
+      when: never
+
+.scan:
+  # Repeat for each DRIVER_VERSION
+  extends:
+    - .driver-versions
+    - .scan-generic
+  rules:
+    - !reference [.scan-rules-common, rules]
+    - if: $CI_PIPELINE_SOURCE == "schedule"
+      when: never
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - !reference [.pipeline-trigger-rules, rules]
+
+.scan-ubuntu22.04:
+  # Repeat for each DRIVER_VERSION
+  extends:
+    - .driver-versions
+    - .scan-generic
+  rules:
+    - !reference [.scan-rules-common, rules]
+    - if: $CI_PIPELINE_SOURCE == "schedule"
+      when: never
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - !reference [.pipeline-trigger-rules, rules]
+
+.scan-ubuntu24.04:
+  # Repeat for each DRIVER_VERSION
+  extends:
+    - .driver-versions-ubuntu24.04
+    - .scan-generic
+  rules:
+    - !reference [.scan-rules-common, rules]
+    - if: $CI_PIPELINE_SOURCE == "schedule"
+      when: never
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - !reference [.pipeline-trigger-rules, rules]
+
+.scan-precompiled-ubuntu24.04:
+  variables:
+    DIST: signed_ubuntu24.04
+    BASE_TARGET: noble
+    PRECOMPILED: "true"
+  extends:
+    - .driver-versions-precompiled-ubuntu24.04
+    - .scan-generic
+  rules:
+    - !reference [.scan-rules-common, rules]
+    - !reference [.precompiled-rules, rules]
+
+.scan-precompiled-ubuntu22.04:
+  variables:
+    DIST: signed_ubuntu22.04
+    BASE_TARGET: jammy
+    PRECOMPILED: "true"
+  extends:
+    - .driver-versions-precompiled-ubuntu22.04
+    - .scan-generic
+  rules:
+    - !reference [.scan-rules-common, rules]
+    - !reference [.precompiled-rules, rules]
+
+# Define the scan targets
+scan-ubuntu20.04-amd64:
+  extends:
+    - .scan
+    - .dist-ubuntu20.04
+    - .platform-amd64
+  needs:
+    - image-ubuntu20.04
+
+scan-ubuntu20.04-arm64:
+  extends:
+    - .scan
+    - .dist-ubuntu20.04
+    - .platform-arm64
+  needs:
+    - image-ubuntu20.04
+
+scan-ubuntu22.04-amd64:
+  extends:
+    - .scan-ubuntu22.04
+    - .dist-ubuntu22.04
+    - .platform-amd64
+  needs:
+    - image-ubuntu22.04
+
+scan-ubuntu22.04-arm64:
+  extends:
+    - .scan-ubuntu22.04
+    - .dist-ubuntu22.04
+    - .platform-arm64
+  needs:
+    - image-ubuntu22.04
+
+scan-ubuntu24.04-amd64:
+  extends:
+    - .scan-ubuntu24.04
+    - .dist-ubuntu24.04
+    - .platform-amd64
+  needs:
+    - image-ubuntu24.04
+
+scan-ubuntu24.04-arm64:
+  extends:
+    - .scan-ubuntu24.04
+    - .dist-ubuntu24.04
+    - .platform-arm64
+  needs:
+    - image-ubuntu24.04
+
+scan-precompiled-ubuntu24.04-amd64:
+  variables:
+    PLATFORM: linux/amd64
+  extends:
+    - .scan-precompiled-ubuntu24.04
+    - .platform-amd64
+  needs:
+    - image-precompiled-ubuntu24.04
+
+scan-precompiled-ubuntu22.04-amd64:
+  variables:
+    PLATFORM: linux/amd64
+  extends:
+    - .scan-precompiled-ubuntu22.04
+    - .platform-amd64
+  needs:
+    - image-precompiled-ubuntu22.04
+
+scan-rhel8-amd64:
+  extends:
+    - .scan
+    - .dist-rhel8
+    - .platform-amd64
+  needs:
+    - image-rhel8
+
+scan-rhel8-arm64:
+  extends:
+    - .scan
+    - .dist-rhel8
+    - .platform-arm64
+  needs:
+    - image-rhel8
+
+scan-rhel9-amd64:
+  extends:
+    - .scan
+    - .dist-rhel9
+    - .platform-amd64
+  needs:
+    - image-rhel9
+
+scan-rhel9-arm64:
+  extends:
+    - .scan
+    - .dist-rhel9
+    - .platform-arm64
+  needs:
+    - image-rhel9
+
 .release:ngc-variables:
   variables:
     OUT_REGISTRY_USER: "${NGC_REGISTRY_USER}"
@@ -291,18 +495,35 @@ release:ngc-rhel9.6:
   variables:
     OUT_DIST: "rhel9.6"
 
-# First job to process build information
-process-build-info:
+.process-build-info:
   stage: ngc-publish
+  allow_failure: true
+  script:
+    - |
+      distributions="ubuntu20.04 ubuntu22.04 ubuntu24.04 rhel8 rhcos4.12 rhcos4.13 rhcos4.14 rhcos4.15 rhcos4.16 rhcos4.17 rhcos4.18 rhel8.8 rhel8.10"
+      > combined-build-info.txt
+      for dist in $distributions; do
+        for driver_version in ${DRIVER_VERSIONS}; do
+          if [ -f "build-info-${driver_version}-${dist}.txt" ]; then
+            cat "build-info-${driver_version}-${dist}.txt" >> combined-build-info.txt
+          fi
+        done
+      done
+      # Verify we have data
+      if [ ! -s combined-build-info.txt ]; then
+        echo "Error: No build information was collected"
+        exit 1
+      fi
+  artifacts:
+    paths:
+      - combined-build-info.txt
+
+process-build-info-release:
+  extends:
+    - .process-build-info
+  rules:
+    - if: $CI_COMMIT_TAG
   needs:
-    - job: release:staging-ubuntu20.04
-      optional: true
-    - job: release:staging-ubuntu22.04
-      optional: true
-    - job: release:staging-ubuntu24.04
-      optional: true
-    - job: release:staging-rhel8
-      optional: true
     - job: release:ngc-ubuntu20.04
       optional: true
     - job: release:ngc-ubuntu22.04
@@ -327,39 +548,45 @@ process-build-info:
       optional: true
     - job: release:ngc-rhcos4.18
       optional: true
-  script:
-    - |
-      distributions="ubuntu20.04 ubuntu22.04 ubuntu24.04 rhel8 rhcos4.12 rhcos4.13 rhcos4.14 rhcos4.15 rhcos4.16 rhcos4.17 rhcos4.18 rhel8.8 rhel8.10"
-      > combined-build-info.txt
-      for dist in $distributions; do
-        for driver_version in ${DRIVER_VERSIONS}; do
-          if [ -f "build-info-${driver_version}-${dist}.txt" ]; then
-            cat "build-info-${driver_version}-${dist}.txt" >> combined-build-info.txt
-          fi
-        done
-      done
 
-      # Verify we got some data
-      if [ ! -s combined-build-info.txt ]; then
-        echo "Error: No build information was collected"
-        exit 1
-      fi
-  artifacts:
-    paths:
-      - combined-build-info.txt
-  
-# Second job to trigger downstream pipeline
-raise-publishing-merge-request:
-  stage: ngc-publish
+process-build-info-staging:
+  extends:
+    - .process-build-info
   needs:
-    - job: process-build-info
-      artifacts: true
+    - job: release:staging-ubuntu20.04
+      optional: true
+    - job: release:staging-ubuntu22.04
+      optional: true
+    - job: release:staging-ubuntu24.04
+      optional: true
+    - job: release:staging-rhel8
+      optional: true
+
+.raise-merge-request:
+  stage: ngc-publish
   image: 
     name: "${CNT_NGC_PUBLISH_IMAGE}"
     pull_policy: always
   variables:
     GITLAB_ACCESS_TOKEN: "${CNT_GITLAB_TOKEN}"
-    NGC_PUBLISHING_PROJECT_PATH: "dl/container-dev/ngc-automation"
   script:
     - cnt-ngc-publish render --project-name "gpu-driver-container" --versions-file "combined-build-info.txt" --output gpu-driver-container.yaml
-    - cnt-ngc-publish merge-request --files "gpu-driver-container.yaml
+    - cnt-ngc-publish merge-request --files "gpu-driver-container.yaml"
+
+raise-staging-merge-request:
+  extends:
+    - .raise-merge-request
+  needs:
+    - job: process-build-info-staging
+      artifacts: true
+  before_script:
+    - export NGC_PUBLISHING_PROJECT_PATH="dl/container-dev/ngc-automation"
+
+raise-publishing-merge-request:
+  extends:
+    - .raise-merge-request
+  rules:
+    - if: $CI_COMMIT_TAG
+  needs:
+    - job: process-build-info-release
+      artifacts: true
