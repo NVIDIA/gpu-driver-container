@@ -100,7 +100,7 @@ dtk-build-driver() {
 
     # ensure lspci is installed, as 'sriov-manage' script requires it
     if ! $(lspci >/dev/null); then
-      dnf install -y pciutils && rm -rf /var/cache/yum/*
+      rpm -ivh ${DRIVER_TOOLKIT_SHARED_DIR}/driver/rpms/pciutils/*.rpm
     fi
 
     # upon catching a signal, terminate child process to trigger driver cleanup
