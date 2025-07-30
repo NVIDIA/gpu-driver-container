@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: Copyright (c) NVIDIA CORPORATION. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 [base]
 name=CentOS-7 - Base
 baseurl=http://mirror.centos.org/centos/7/os/$basearch/

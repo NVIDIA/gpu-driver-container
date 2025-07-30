@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: Copyright (c) NVIDIA CORPORATION. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 FROM nvcr.io/nvidia/cuda:11.4.1-base-centos8
 
 ENV NVIDIA_VISIBLE_DEVICES=void

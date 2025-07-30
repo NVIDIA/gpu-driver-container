@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: Copyright (c) NVIDIA CORPORATION. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 #!/bin/bash
 #
 # Gets all tags from a gitlab container registry, saving them to a file.

@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: Copyright (c) NVIDIA CORPORATION. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 FROM ubuntu:16.04
 
 RUN apt-get update && apt-get install -y --no-install-recommends \

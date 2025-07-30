@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: Copyright (c) NVIDIA CORPORATION. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 #!/bin/bash
 # precompiled.sh holds extra steps needed for handling precompiled images
 # during GitLab pipelines
