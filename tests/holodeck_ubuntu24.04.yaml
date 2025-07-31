@@ -34,4 +34,4 @@ spec:
     version: v1.30.0
     crictlVersion: v1.30.0
   kernel:
-    version: 6.8.0-59-generic
+    version:${{ env.KERNEL_VERSION.replace('-' ~ env.DIST, '') }}
