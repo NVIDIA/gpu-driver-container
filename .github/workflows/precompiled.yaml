@@ -330,7 +330,6 @@ jobs:
           DRIVER_BRANCHES=($(echo "$driver_branch_json" | jq -r '.[]'))
           echo "DRIVER_BRANCHES=${DRIVER_BRANCHES[*]}" >> $GITHUB_ENV
       - name: Set kernel version in holodeck_${{ env.DIST }}.yaml
-        uses: mikefarah/yq@master
         run: |
           yq e '.spec.kernel.version = "${{ env.KERNEL_VERSION }}"' -i tests/holodeck_${{ env.DIST }}.yaml
 
