@@ -24,6 +24,10 @@ spec:
     image:
       architecture: amd64
       imageId: ami-0ce2cb35386fc22e9
+  containerdConfigPatches:
+  - |-
+    [plugins."io.containerd.grpc.v1.cri".registry]
+      config_path = "/etc/containerd/certs.d"
   containerRuntime:
     install: true
     name: containerd
