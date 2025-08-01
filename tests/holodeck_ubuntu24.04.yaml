@@ -24,6 +24,10 @@ spec:
     image:
       architecture: amd64
       imageId: ami-0da424eb883458071
+  containerdConfigPatches:
+  - |-
+    [plugins."io.containerd.grpc.v1.cri".registry]
+      config_path = "/etc/containerd/certs.d"
   containerRuntime:
     install: true
     name: containerd
@@ -33,3 +37,5 @@ spec:
     installer: kubeadm
     version: v1.30.0
     crictlVersion: v1.30.0
+  kernel:
+    version:${{ env.KERNEL_VERSION }}
