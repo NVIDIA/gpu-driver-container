@@ -23,7 +23,7 @@ kubectl create namespace "${TEST_NAMESPACE}"
 # Run the helm install command
 echo "OPERATOR_OPTIONS: ${OPERATOR_OPTIONS}"
 
-sleep 2400
+# sleep 2400
 eval ${HELM} install gpu-operator  nvidia/gpu-operator \
 	-n "${TEST_NAMESPACE}" \
 	"${OPERATOR_OPTIONS}" \
