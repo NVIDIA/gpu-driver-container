@@ -52,10 +52,67 @@ repo_setup () {
     fi
 }
 
+fabricmanager_install() {
+  if [ "$DRIVER_BRANCH" -ge "580" ]; then
+    apt-get install -y --no-install-recommends nvidia-fabricmanager=${DRIVER_VERSION}-1
+  else
+    apt-get install -y --no-install-recommends nvidia-fabricmanager-${DRIVER_BRANCH}=${DRIVER_VERSION}-1
+  fi
+}
+
+nscq_install() {
+  if [ "$DRIVER_BRANCH" -ge "580" ]; then
+    apt-get install -y --no-install-recommends libnvidia-nscq=${DRIVER_VERSION}-1
+  else
+    apt-get install -y --no-install-recommends libnvidia-nscq-${DRIVER_BRANCH}=${DRIVER_VERSION}-1
+  fi
+}
+
+# libnvsdm packages are not available for arm64
+nvsdm_install() {
+  if [ "$TARGETARCH" = "amd64" ]; then
+    if [ "$DRIVER_BRANCH" -ge "580" ]; then
+       apt-get install -y --no-install-recommends libnvsdm=${DRIVER_VERSION}-1
+    elif [ "$DRIVER_BRANCH" -ge "570" ]; then
+       apt-get install -y --no-install-recommends libnvsdm-${DRIVER_BRANCH}=${DRIVER_VERSION}-1
+    fi
+  fi
+}
+
+nvlink5_pkgs_install() {
+  if [ "$DRIVER_BRANCH" -ge "550" ]; then
+    apt-get install -y --no-install-recommends nvlsm infiniband-diags
+  fi
+}
+
+imex_install() {
+  if [ "$DRIVER_BRANCH" -ge "580" ]; then
+    apt-get install -y --no-install-recommends nvidia-imex=${DRIVER_VERSION}-1
+  elif [ "$DRIVER_BRANCH" -ge "550" ]; then
+    apt-get install -y --no-install-recommends nvidia-imex-${DRIVER_BRANCH}=${DRIVER_VERSION}-1;
+  fi
+}
+
+extra_pkgs_install() {
+  if [ "$DRIVER_TYPE" != "vgpu" ]; then
+      apt-get update
+
+      fabricmanager_install
+      nscq_install
+      nvsdm_install
+      nvlink5_pkgs_install
+      imex_install
+
+      rm -rf /var/lib/apt/lists/*
+  fi
+}
+
 if [ "$1" = "reposetup" ]; then
   repo_setup
 elif [ "$1" = "depinstall" ]; then
   dep_install
+elif [ "$1" = "extra_pkgs_install" ]; then
+  extra_pkgs_install
 elif [ "$1" = "download_installer" ]; then
   download_installer
 else
