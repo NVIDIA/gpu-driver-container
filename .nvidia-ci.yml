@@ -590,3 +590,50 @@ raise-publishing-merge-request:
   needs:
     - job: process-build-info-release
       artifacts: true
+
+.update-nspect:
+  stage: ngc-publish
+  image: 
+    name: "${NSPECT_STREAM_IMAGE}"
+    pull_policy: always
+  variables:
+    RELEASE_VERSION: "v1.0.0"
+    PROJECT_NAME: "gpu-driver-container"
+    REPO_URL: "https://github.com/NVIDIA/${PROJECT_NAME}.git"
+  script:
+    - |
+      export NSPECT_CLIENT_ID="${NSPECT_TEST_ID}"
+      export NSPECT_CLIENT_SECRET="${NSPECT_TEST_SECRET}"
+      program-version --env stage add --nspect-id "${NSPECT_ID}" --version-name "${RELEASE_VERSION}" --release-date "2025-07-02" --max-attempts 10
+      program-version-repos add --nspect-id "${NSPECT_ID}" --version-name "${RELEASE_VERSION}" --repos '{"sourcePointer": "${REPO_URL}", "componentName": "${PROJECT_NAME}"}' --max-attempts 10
+
+      while read -r line; do
+        read -r source_version target_version <<< "$line"
+        image="${NGC_STAGING_REGISTRY}/${PROJECT_NAME}:${source_version}"
+
+        echo "Adding container image to nSpect: ${image}"
+        
+        program-version-container-images --env stage add --nspect-id "${NSPECT_ID}" --version-name "${RELEASE_VERSION}" --container-images "{\"imageUrl\": \"${image}\"}" --max-attempts 10
+      done < "combined-build-info.txt"
+
+update-nspect-staging:
+  needs:
+    - job: process-build-info-staging
+      artifacts: true
+  extends:
+    - .update-nspect
+  variables:
+    NSPECT_TEST_ID: "${NSPECT_STAGING_CLIENT_ID}"
+    NSPECT_TEST_SECRET: "${NSPECT_STAGING_CLIENT_SECRET}"
+
+update-nspect-publishing:
+  needs:
+    - job: process-build-info-release
+      artifacts: true
+  extends:
+    - .update-nspect
+  rules:
+    - if: $CI_COMMIT_TAG
+  variables:
+    NSPECT_TEST_ID: "${NSPECT_PUBLISHING_CLIENT_ID}"
+    NSPECT_TEST_SECRET: "${NSPECT_PUBLISHING_CLIENT_SECRET}"
