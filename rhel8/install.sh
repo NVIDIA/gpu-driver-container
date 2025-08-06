@@ -88,10 +88,67 @@ nvidia_installer () {
   fi
 }
 
+fabricmanager_install() {
+  if [ "$DRIVER_BRANCH" -ge "580" ]; then
+    dnf install -y nvidia-fabricmanager-${DRIVER_VERSION}-1
+  else
+    dnf install -y nvidia-fabric-manager-${DRIVER_VERSION}-1
+  fi
+}
+
+nscq_install() {
+  if [ "$DRIVER_BRANCH" -ge "580" ]; then
+    dnf install -y libnvidia-nscq-${DRIVER_VERSION}-1
+  else
+    dnf install -y libnvidia-nscq-${DRIVER_BRANCH}-${DRIVER_VERSION}-1
+  fi
+}
+
+nvsdm_install() {
+  if [ "$TARGETARCH" = "amd64" ]; then
+    if [ "$DRIVER_BRANCH" -ge "580" ]; then
+      dnf install -y libnvsdm-${DRIVER_VERSION}-1
+      return 0
+    fi
+    if [ "$DRIVER_BRANCH" -ge "570" ]; then
+      dnf install -y libnvsdm-${DRIVER_BRANCH}-${DRIVER_VERSION}-1
+      return 0
+    fi
+  fi
+}
+
+nvlink5_pkgs_install() {
+  if [ "$DRIVER_BRANCH" -ge "550" ]; then
+    dnf install -y infiniband-diags nvlsm
+  fi
+}
+
+imex_install() {
+  if [ "$DRIVER_BRANCH" -ge "580" ]; then
+    dnf install -y nvidia-imex-${DRIVER_VERSION}-1
+  elif [ "$DRIVER_BRANCH" -ge "550" ]; then
+    dnf install -y nvidia-imex-${DRIVER_BRANCH}-${DRIVER_VERSION}-1
+  fi
+}
+
+extra_pkgs_install() {
+  if [ "$DRIVER_TYPE" != "vgpu" ]; then
+      dnf module enable -y nvidia-driver:${DRIVER_BRANCH}-dkms
+
+      fabricmanager_install
+      nscq_install
+      nvsdm_install
+      nvlink5_pkgs_install
+      imex_install
+  fi
+}
+
 if [ "$1" = "nvinstall" ]; then
   nvidia_installer
 elif [ "$1" = "depinstall" ]; then
   dep_installer
+elif [ "$1" = "extrapkgsinstall" ]; then
+  extra_pkgs_install
 else
   echo "Unknown function: $1"
 fi

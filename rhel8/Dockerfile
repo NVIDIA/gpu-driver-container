@@ -62,31 +62,14 @@ RUN sh /tmp/install.sh depinstall && \
 
 ADD drivers drivers/
 
-# Fetch the installer, fabricmanager and libnvidia-nscq automatically for passthrough/baremetal types
 RUN if [ "$DRIVER_TYPE" != "vgpu" ]; then \
     cd drivers && \
     DRIVER_ARCH=${TARGETARCH/amd64/x86_64} && DRIVER_ARCH=${DRIVER_ARCH/arm64/aarch64} && \
     curl -fSsl -O $BASE_URL/$DRIVER_VERSION/NVIDIA-Linux-$DRIVER_ARCH-$DRIVER_VERSION.run && \
-    chmod +x  NVIDIA-Linux-$DRIVER_ARCH-$DRIVER_VERSION.run && \
-    versionArray=(${DRIVER_VERSION//./ }); \
-    DRIVER_BRANCH=${versionArray[0]}; \
-    if [ ${versionArray[0]} -ge 470 ] || ([ ${versionArray[0]} == 460 ] && [ ${versionArray[1]} -ge 91 ]); then \
-      fmPackage=nvidia-fabric-manager-${DRIVER_VERSION}-1; \
-    else \
-      fmPackage=nvidia-fabricmanager-${DRIVER_BRANCH}-${DRIVER_VERSION}-1; \
-    fi; \
-    nscqPackage=libnvidia-nscq-${DRIVER_BRANCH}-${DRIVER_VERSION}-1; \
-    dnf install -y ${fmPackage} ${nscqPackage}; fi
+    chmod +x  NVIDIA-Linux-$DRIVER_ARCH-$DRIVER_VERSION.run; fi
 
-RUN if [ "$DRIVER_TYPE" != "vgpu" ] && [ "$DRIVER_BRANCH" -ge "550" ]; then \
-    dnf install -y nvidia-imex-${DRIVER_BRANCH}-${DRIVER_VERSION}-1; fi
-
-RUN if [ "$DRIVER_TYPE" != "vgpu" ] && [ "$DRIVER_BRANCH" -ge "570" ]; then \
-    dnf install -y infiniband-diags nvlsm; fi
-
-# libnvsdm packages are not available for arm64
-RUN if [ "$DRIVER_TYPE" != "vgpu" ] && [ "$DRIVER_BRANCH" -ge "570" ] && [ "$TARGETARCH" != "arm64" ]; then \
-    dnf install -y libnvsdm-${DRIVER_BRANCH}-${DRIVER_VERSION}-1; fi
+# Fetch the installer, fabricmanager, libnvidia-nscq, libnvsdm, imex packages
+RUN sh /tmp/install.sh extrapkgsinstall
 
 COPY nvidia-driver /usr/local/bin
 COPY ocp_dtk_entrypoint /usr/local/bin

@@ -318,6 +318,12 @@ _ensure_nvlink5_prerequisites() (
 #   the correct set of parameters are passed to 'modprobe'.
 _get_module_params() {
     local base_path="/drivers"
+
+    # Starting from R580, we need to enable the CDMM (Coherent Driver Memory Management) module parameter.
+    # This prevents the GPU memory for coherent systems (GH200, GB200 etc) from being exposed as a NUMA node
+    # and thereby preventing over-reporting of a Kubernetes node's memory. This is needed for Kubernetes use-cases
+    NVIDIA_MODULE_PARAMS+=("NVreg_CoherentGPUMemoryMode=driver")
+
     # nvidia
     if [ -f "${base_path}/nvidia.conf" ]; then
        while IFS="" read -r param || [ -n "$param" ]; do
