@@ -437,7 +437,7 @@ jobs:
 
       - name: Download base image artifact
         if: ${{ ! (matrix.driver_branch == 535 && contains(matrix.kernel_version, 'ubuntu24.04')) }}
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           name: base-images-${{ matrix.driver_branch }}-${{ matrix.kernel_version }}
           path: ./
@@ -460,7 +460,7 @@ jobs:
 
       - name: Download built image artifact
         if: ${{ ! (matrix.driver_branch == 535 && contains(matrix.kernel_version, 'ubuntu24.04')) }}
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
            name: driver-images-${{ matrix.driver_branch }}-${{ matrix.kernel_version }}
            path: ./
