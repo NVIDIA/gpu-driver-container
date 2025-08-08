@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: Copyright (c) NVIDIA CORPORATION. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 #!/bin/bash
 
 # BUG: assumes you're running script from the top-level directory. (e.g. ci/localbuild.sh)

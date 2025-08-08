@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: Copyright (c) NVIDIA CORPORATION. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 RHEL_VERSION ?= 9.4
 RHEL_VERSION_MAJOR = $(shell echo "${RHEL_VERSION}" | awk -F. '{print $$1}')
 

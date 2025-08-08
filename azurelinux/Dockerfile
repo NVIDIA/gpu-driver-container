@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: Copyright (c) NVIDIA CORPORATION. All rights reserved.
+# SPDX-License-Identifier: Apache-2.0
+
 ARG AZURE_LINUX_VERSION=''
 FROM mcr.microsoft.com/azurelinux/base/core:${AZURE_LINUX_VERSION}
 
