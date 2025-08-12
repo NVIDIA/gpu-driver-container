@@ -1,4 +1,4 @@
-FROM nvcr.io/nvidia/cuda:12.9.1-base-ubi8
+FROM nvcr.io/nvidia/cuda:13.0.0-base-ubi8
 
 ARG DRIVER_VERSION
 ENV DRIVER_VERSION=$DRIVER_VERSION
