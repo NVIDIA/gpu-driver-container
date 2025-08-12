@@ -84,6 +84,12 @@ trigger-pipeline:
       - DRIVER_VERSION: [535.261.03, 570.172.08, 580.65.06]
 
 # Define the driver versions for jobs that can be run in parallel
+.driver-versions-ubuntu20.04:
+  parallel:
+    matrix:
+      - DRIVER_VERSION: [535.261.03, 570.172.08]
+
+# Define the driver versions for jobs that can be run in parallel
 .driver-versions-ubuntu24.04:
   parallel:
     matrix:
@@ -183,6 +189,14 @@ trigger-pipeline:
     # Since OUT_IMAGE_NAME and OUT_VERSION are set, this will push the CI image to the target
     - if [[ "${PRECOMPILED}" == "true" ]]; then ./scripts/precompiled.sh push; else make push-${DIST}-${DRIVER_VERSION}; fi
 
+.release-ubuntu20.04:
+  # Perform for each DRIVER_VERSION
+  extends:
+    - .release-generic
+    - .driver-versions-ubuntu20.04
+  rules:
+    - if: $CI_PIPELINE_SOURCE != "schedule"
+
 .release-ubuntu22.04:
   # Perform for each DRIVER_VERSION
   extends:
@@ -221,6 +235,15 @@ trigger-pipeline:
 .release:staging:
   extends:
     - .release
+  variables:
+    OUT_REGISTRY_USER: "${NGC_REGISTRY_USER}"
+    OUT_REGISTRY_TOKEN: "${NGC_REGISTRY_TOKEN}"
+    OUT_REGISTRY: "${NGC_REGISTRY}"
+    OUT_IMAGE_NAME: "${NGC_STAGING_REGISTRY}/driver"
+
+.release:staging-ubuntu20.04:
+  extends:
+    - .release-ubuntu20.04
   variables:
     OUT_REGISTRY_USER: "${NGC_REGISTRY_USER}"
     OUT_REGISTRY_TOKEN: "${NGC_REGISTRY_TOKEN}"
@@ -296,7 +319,7 @@ trigger-pipeline:
 
 release:staging-ubuntu20.04:
   extends:
-    - .release:staging
+    - .release:staging-ubuntu20.04
     - .dist-ubuntu20.04
   needs:
     - image-ubuntu20.04
