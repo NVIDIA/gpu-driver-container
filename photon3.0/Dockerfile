@@ -1,4 +1,4 @@
-FROM nvcr.io/nvidia/cuda:12.9.1-base-ubi8 as license
+FROM nvcr.io/nvidia/cuda:13.0.0-base-ubi8 as license
 
 FROM photon:3.0
 
