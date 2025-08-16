@@ -319,9 +319,12 @@ jobs:
           driver_branch_json="${{ needs.set-driver-version-matrix.outputs.driver_branch }}"
           DRIVER_BRANCHES=($(echo "$driver_branch_json" | jq -r '.[]'))
           echo "DRIVER_BRANCHES=${DRIVER_BRANCHES[*]}" >> $GITHUB_ENV
+      - name: Set kernel version in holodeck_${{ env.DIST }}.yaml
+        run: |
+          yq eval '.spec += {"kernel": {"version": strenv(KERNEL_VERSION)}}' -i tests/holodeck_${{ env.DIST }}.yaml
 
       - name: Set up Holodeck
-        uses: NVIDIA/holodeck@v0.2.6
+        uses: NVIDIA/holodeck@v0.2.15
         env:
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
@@ -345,27 +348,6 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y gh
-
-      - name: Upgrade the kernel for Precompiled e2e test
-        env:
-          UPGRADE_KERNEL_SCRIPT: "./tests/scripts/upgrade-kernel.sh"
-        run: |
-          status=0
-          ./tests/ci-remote-exec.sh "${UPGRADE_KERNEL_SCRIPT}" "${KERNEL_VERSION}" || status=$?
-          # On the target system, all scripts/test-case exit with code 1 for error handling.
-          # However, since reboot-related disconnections break the SSH connection
-          # and can cause the entire job to exit, we should ignore all errors except
-          # exit code 1. During a reboot, exit code 1 will not be thrown, so handling
-          # other errors as code 1 will ensure proper management of reboot scenarios
-          if [ $status -eq 1 ]; then
-            echo "Kernel version $KERNEL_VERSION upgrade failed"
-            exit 1
-          fi
-          ./tests/scripts/remote_retry.sh || status=$?
-          if [ $status -ne 0 ]; then
-              echo "Failed to connect to remote instance"
-              exit $status
-          fi
 
       - name: Precompiled e2e test gpu driver validation
         env:
