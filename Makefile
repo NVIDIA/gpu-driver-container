@@ -59,10 +59,12 @@ PUSH_TARGETS := $(patsubst %, push-%, $(DISTRIBUTIONS))
 BASE_FROM := noble jammy focal
 PUSH_TARGETS := $(patsubst %, push-%, $(DISTRIBUTIONS))
 VGPU_GUEST_DRIVER_PUSH_TARGETS := $(patsubst %, push-vgpuguest-%, $(DISTRIBUTIONS))
+VGPU_HOST_DRIVER_PUSH_TARGETS := $(patsubst %, push-vgpuhost-%, $(DISTRIBUTIONS))
 DRIVER_PUSH_TARGETS := $(foreach push_target, $(PUSH_TARGETS), $(addprefix $(push_target)-, $(DRIVER_VERSIONS)))
 BUILD_TARGETS := $(patsubst %, build-%, $(DISTRIBUTIONS))
 DRIVER_BUILD_TARGETS := $(foreach build_target, $(BUILD_TARGETS), $(addprefix $(build_target)-, $(DRIVER_VERSIONS)))
 VGPU_GUEST_DRIVER_BUILD_TARGETS := $(patsubst %, build-vgpuguest-%, $(DISTRIBUTIONS))
+VGPU_HOST_DRIVER_BUILD_TARGETS := $(patsubst %, build-vgpuhost-%, $(DISTRIBUTIONS))
 TEST_TARGETS := $(patsubst %, test-%, $(DISTRIBUTIONS))
 PULL_TARGETS := $(patsubst %, pull-%, $(DISTRIBUTIONS))
 DRIVER_PULL_TARGETS := $(foreach pull_target, $(PULL_TARGETS), $(addprefix $(pull_target)-, $(DRIVER_VERSIONS)))
@@ -73,7 +75,7 @@ BASE_PUSH := $(patsubst %, push-base-%, $(BASE_FROM))
 BASE_BUILD_TARGETS := $(foreach target,$(BASE_BUILD),$(target))
 BASE_PUSH_TARGETS := $(foreach target,$(BASE_PUSH),$(target))
 
-PHONY: $(BASE_BUILD_TARGETS) $(BASE_PUSH_TARGETS) $(DISTRIBUTIONS) $(PUSH_TARGETS) $(BUILD_TARGETS) $(TEST_TARGETS) $(PULL_TARGETS) $(ARCHIVE_TARGETS) $(DRIVER_PUSH_TARGETS) $(DRIVER_BUILD_TARGETS) $(DRIVER_PULL_TARGETS) $(DRIVER_ARCHIVE_TARGETS) $(VGPU_GUEST_DRIVER_BUILD_TARGETS) $(VGPU_GUEST_DRIVER_PUSH_TARGETS)
+PHONY: $(BASE_BUILD_TARGETS) $(BASE_PUSH_TARGETS) $(DISTRIBUTIONS) $(PUSH_TARGETS) $(BUILD_TARGETS) $(TEST_TARGETS) $(PULL_TARGETS) $(ARCHIVE_TARGETS) $(DRIVER_PUSH_TARGETS) $(DRIVER_BUILD_TARGETS) $(DRIVER_PULL_TARGETS) $(DRIVER_ARCHIVE_TARGETS) $(VGPU_GUEST_DRIVER_BUILD_TARGETS) $(VGPU_GUEST_DRIVER_PUSH_TARGETS) $(VGPU_HOST_DRIVER_BUILD_TARGETS) $(VGPU_HOST_DRIVER_PUSH_TARGETS)
 
 ifeq ($(BUILD_MULTI_ARCH_IMAGES),true)
 include $(CURDIR)/multi-arch.mk
@@ -266,4 +268,40 @@ push-vgpuguest-%: $(if $(VGPU_GUEST_DRIVER_VERSION),,$(error "VGPU_GUEST_DRIVER_
 # Remove '-grid' substring in the image tag
 push-vgpuguest-%: DRIVER_TAG = $(VGPU_GUEST_DRIVER_VERSION:-grid=)
 push-vgpuguest-%: DIST = $(word 3,$(subst -, ,$@))
+
+# $(VGPU_HOST_DRIVER_BUILD_TARGETS) is in the form of build-vgpuhost-$(DIST)
+# The vGPU host driver .run file is assumed to be present in the $SUBDIR/drivers/ directory.
+# VGPU_HOST_DRIVER_VERSION must be defined in the environment when invoking this target.
+VGPU_HOST_DRIVER_VERSION ?= ""
+build-vgpuhost-%: $(if $(VGPU_HOST_DRIVER_VERSION),,$(error "VGPU_HOST_DRIVER_VERSION is not set"))
+build-vgpuhost-%: DRIVER_VERSION := $(VGPU_HOST_DRIVER_VERSION)
+build-vgpuhost-%: DRIVER_BRANCH = $(word 1,$(subst ., ,${DRIVER_VERSION}))
+build-vgpuhost-%: DIST = $(word 3,$(subst -, ,$@))
+build-vgpuhost-%: SUBDIR = $(word 3,$(subst -, ,$@))
+build-vgpuhost-%: DOCKERFILE = $(CURDIR)/vgpu-manager/$(SUBDIR)/Dockerfile
+
+build-vgpuhost-rhcos%: SUBDIR = rhel8
+
+$(VGPU_HOST_DRIVER_BUILD_TARGETS):
+	DOCKER_BUILDKIT=1 \
+		$(DOCKER) $(BUILDX) build --pull \
+				$(DOCKER_BUILD_OPTIONS) \
+				$(DOCKER_BUILD_PLATFORM_OPTIONS) \
+				--tag $(IMAGE) \
+				--build-arg DRIVER_BRANCH="$(DRIVER_BRANCH)" \
+				--build-arg DRIVER_VERSION="$(DRIVER_VERSION)" \
+				--build-arg GOLANG_VERSION="$(GOLANG_VERSION)" \
+				--build-arg CVE_UPDATES="$(CVE_UPDATES)" \
+				--build-arg CUDA_VERSION="$(CUDA_VERSION)" \
+				$(DOCKER_BUILD_ARGS) \
+				--file $(DOCKERFILE) \
+				$(CURDIR)/vgpu-manager/$(SUBDIR)
+
+
+
+# $(VGPU_HOST_DRIVER_PUSH_TARGETS) is in the form of push-vgpuhost-$(DIST)
+# VGPU_HOST_DRIVER_VERSION must be defined in the environment when invoking this target.
+push-vgpuhost-%: $(if $(VGPU_HOST_DRIVER_VERSION),,$(error "VGPU_HOST_DRIVER_VERSION is not set"))
+push-vgpuhost-%: DRIVER_TAG = $(VGPU_HOST_DRIVER_VERSION)
+push-vgpuhost-%: DIST = $(word 3,$(subst -, ,$@))
 
