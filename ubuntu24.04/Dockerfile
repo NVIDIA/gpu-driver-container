@@ -1,4 +1,6 @@
-FROM nvcr.io/nvidia/cuda:13.0.0-base-ubuntu24.04 as build
+ARG BASE_IMAGE=ubuntu:noble-20250716
+
+FROM ${BASE_IMAGE} as build
 
 ARG TARGETARCH
 ARG GOLANG_VERSION
@@ -34,7 +36,7 @@ RUN git clone https://github.com/NVIDIA/gpu-driver-container driver && \
     go build -o vgpu-util && \
     mv vgpu-util /work
 
-FROM nvcr.io/nvidia/cuda:13.0.0-base-ubuntu24.04
+FROM ${BASE_IMAGE}
 
 SHELL ["/bin/bash", "-c"]
 
@@ -87,11 +89,5 @@ RUN if [ -n "${CVE_UPDATES}" ]; then \
         apt-get update && apt-get upgrade -y ${CVE_UPDATES} && \
         rm -rf /var/lib/apt/lists/*; \
     fi
-
-# Remove cuda repository to avoid GPG errors
-RUN rm -f /etc/apt/sources.list.d/cuda*
-
-# Add NGC DL license from the CUDA image
-RUN mkdir /licenses && mv /NGC-DL-CONTAINER-LICENSE /licenses/NGC-DL-CONTAINER-LICENSE
 
 ENTRYPOINT ["nvidia-driver", "init"]

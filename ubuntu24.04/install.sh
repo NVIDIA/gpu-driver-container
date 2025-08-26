@@ -17,6 +17,7 @@ dep_install () {
             curl \
             kmod \
             file \
+            gnupg \
             libelf-dev \
             libglvnd-dev \
             pkg-config && \
@@ -29,6 +30,7 @@ dep_install () {
             curl \
             kmod \
             file \
+            gnupg \
             libelf-dev \
             libglvnd-dev && \
         rm -rf /var/lib/apt/lists/*
@@ -36,10 +38,6 @@ dep_install () {
 }
 
 setup_cuda_repo() {
-    # Remove any existing CUDA GPG keys that are unconditionally trusted by apt
-    apt-key del 3bf863cc
-    rm /etc/apt/sources.list.d/cuda.list
-
     # Fetch public CUDA GPG key and configure apt to only use this key when downloading CUDA packages
     OS_ARCH=${TARGETARCH/amd64/x86_64} && OS_ARCH=${OS_ARCH/arm64/sbsa};
     curl -fSsL "https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2404/${OS_ARCH}/cuda-keyring_1.1-1_all.deb" -o cuda-keyring_1.1-1_all.deb
