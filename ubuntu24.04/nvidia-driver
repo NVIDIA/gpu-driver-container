@@ -28,10 +28,20 @@ _enable_fips_if_required() {
     if [[ -n "${UBUNTU_PRO_TOKEN}" && ${KERNEL_VERSION} =~ "fips" ]]; then
       echo "Ubuntu Pro token and FIPS kernel detected"
       apt-get -qq install --no-install-recommends ubuntu-advantage-tools > /dev/null
+
+      # This workaround is needed in Ubuntu 24.04 as OpenSSL attempts to leverage the FIPS provider
+      # when the underlying kernel is FIPS enabled.
+      export OPENSSL_FORCE_FIPS_MODE=0
+
       echo "Attaching Ubuntu Pro token..."
       pro attach --no-auto-enable "${UBUNTU_PRO_TOKEN}"
       echo "Enabling FIPS apt repo access..."
       pro enable --access-only --assume-yes fips-updates
+      echo "Installing the OpenSSL FIPS modules"
+      apt-get -qq install --no-install-recommends ubuntu-fips-userspace > /dev/null
+
+      # With the OpenSSL FIPS module installed, OpenSSL can now work with the default settings,
+      unset OPENSSL_FORCE_FIPS_MODE
     fi
 }
 
