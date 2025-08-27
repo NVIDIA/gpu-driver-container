@@ -17,6 +17,7 @@ NVIDIA_PEERMEM_MODULE_PARAMS=()
 TARGETARCH=${TARGETARCH:?"Missing TARGETARCH env"}
 KERNEL_MODULE_TYPE=${KERNEL_MODULE_TYPE:-auto}
 UBUNTU_PRO_TOKEN=${UBUNTU_PRO_TOKEN:-""}
+MODPROBE_CONFIG_DIR="/etc/modprobe.d"
 
 export DEBIAN_FRONTEND=noninteractive
 
@@ -303,11 +304,30 @@ _get_module_params() {
     fi
 }
 
-# Load the kernel modules and start persistenced.
-_load_driver() {
+_create_module_params_conf() {
     echo "Parsing kernel module parameters..."
     _get_module_params
 
+    if [ ${#NVIDIA_MODULE_PARAMS[@]} -gt 0 ]; then
+        echo "Configuring nvidia module parameters in ${MODPROBE_CONFIG_DIR}/nvidia.conf"
+        echo "options nvidia ${NVIDIA_MODULE_PARAMS[@]}" > ${MODPROBE_CONFIG_DIR}/nvidia.conf
+    fi
+    if [ ${#NVIDIA_UVM_MODULE_PARAMS[@]} -gt 0 ]; then
+        echo "Configuring nvidia-uvm module parameters in ${MODPROBE_CONFIG_DIR}/nvidia-uvm.conf"
+        echo "options nvidia-uvm ${NVIDIA_UVM_MODULE_PARAMS[@]}" > ${MODPROBE_CONFIG_DIR}/nvidia-uvm.conf
+    fi
+    if [ ${#NVIDIA_MODESET_MODULE_PARAMS[@]} -gt 0 ]; then
+        echo "Configuring nvidia-modeset module parameters in ${MODPROBE_CONFIG_DIR}/nvidia-modeset.conf"
+        echo "options nvidia-modeset ${NVIDIA_MODESET_MODULE_PARAMS[@]}" > ${MODPROBE_CONFIG_DIR}/nvidia-modeset.conf
+    fi
+    if [ ${#NVIDIA_PEERMEM_MODULE_PARAMS[@]} -gt 0 ]; then
+        echo "Configuring nvidia-peermem module parameters in ${MODPROBE_CONFIG_DIR}/nvidia-peermem.conf"
+        echo "options nvidia-peermem ${NVIDIA_PEERMEM_MODULE_PARAMS[@]}" > ${MODPROBE_CONFIG_DIR}/nvidia-peermem.conf
+    fi
+}
+
+# Load the kernel modules and start persistenced.
+_load_driver() {
     local nv_fw_search_path="$RUN_DIR/driver/lib/firmware"
     local set_fw_path="true"
     local fw_path_config_file="/sys/module/firmware_class/parameters/path"
@@ -332,15 +352,15 @@ _load_driver() {
 
     echo "Loading NVIDIA driver kernel modules..."
     set -o xtrace +o nounset
-    modprobe nvidia "${NVIDIA_MODULE_PARAMS[@]}"
-    modprobe nvidia-uvm "${NVIDIA_UVM_MODULE_PARAMS[@]}"
-    modprobe nvidia-modeset "${NVIDIA_MODESET_MODULE_PARAMS[@]}"
+    modprobe nvidia
+    modprobe nvidia-uvm
+    modprobe nvidia-modeset
     set +o xtrace -o nounset
 
     if _gpu_direct_rdma_enabled; then
         echo "Loading NVIDIA Peer Memory kernel module..."
         set -o xtrace +o nounset
-        modprobe nvidia-peermem "${NVIDIA_PEERMEM_MODULE_PARAMS[@]}"
+        modprobe nvidia-peermem
         set +o xtrace -o nounset
     fi
 
@@ -695,6 +715,7 @@ init() {
         #_cleanup_package_cache
     fi
 
+    _create_module_params_conf
     _install_driver
     _load_driver || exit 1
     _mount_rootfs
