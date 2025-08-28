@@ -16,8 +16,15 @@
 name: Precompiled images
 
 on:
-  schedule:
-    - cron: '00 09 * * *'
+  pull_request:
+    types:
+      - opened
+      - synchronize
+    branches:
+      - holodeck-testing
+  push:
+    branches:
+      - holodeck-testing
 
 jobs:
   set-driver-version-matrix:
@@ -34,22 +41,26 @@ jobs:
         id: extract_driver_branch
         run: |
           # get driver_branch
-          DRIVER_BRANCH=("535" "570")
+          # DRIVER_BRANCH=("535" "570")
+          DRIVER_BRANCH=("570")
           driver_branch_json=$(printf '%s\n' "${DRIVER_BRANCH[@]}" | jq -R . | jq -cs .)
           echo "driver_branch=$driver_branch_json" >> $GITHUB_OUTPUT
 
           # get kernel flavors
           KERNEL_FLAVORS=("aws" "azure" "generic" "nvidia" "oracle")
+          # KERNEL_FLAVORS=("generic")
           kernel_flavors_json=$(printf '%s\n' "${KERNEL_FLAVORS[@]}" | jq -R . | jq -cs .)
           echo "kernel_flavors=$kernel_flavors_json" >> $GITHUB_OUTPUT
 
           # get ubuntu distributions
           DIST=("ubuntu22.04" "ubuntu24.04")
+          # DIST=("ubuntu22.04")
           dist_json=$(printf '%s\n' "${DIST[@]}" | jq -R . | jq -cs .)
           echo "dist=$dist_json" >> $GITHUB_OUTPUT
 
           # LTS_KERNEL setup
           LTS_KERNEL=("5.15" "6.8")
+          # LTS_KERNEL=("5.15")
           lts_kernel_json=$(printf '%s\n' "${LTS_KERNEL[@]}" | jq -R . | jq -cs .)
           echo "lts_kernel=$lts_kernel_json" >> $GITHUB_OUTPUT
 
@@ -273,18 +284,18 @@ jobs:
 
       # slack notification for new kernel release before e2e tests starts
       # as e2e tests may fail for new kernel release
-      - name: Slack notification
-        if: steps.set_kernel_version.outputs.matrix_values_not_empty == '1'
-        uses: slackapi/slack-github-action@v2.1.1
-        with:
-          token: ${{ secrets.SLACK_BOT_TOKEN }}
-          method: chat.postMessage
-          payload: |
-            {
-              "channel": "${{ secrets.SLACK_CHANNEL_ID }}",
-              "text": "${{ secrets.DETECTED_PRECOMPILED_KERNEL_MESSAGE }} ${{ steps.set_kernel_version.outputs.published_kernels }} \n
-              Details: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-            }
+      # - name: Slack notification
+      #   if: steps.set_kernel_version.outputs.matrix_values_not_empty == '1'
+      #   uses: slackapi/slack-github-action@v2.1.1
+      #   with:
+      #     token: ${{ secrets.SLACK_BOT_TOKEN }}
+      #     method: chat.postMessage
+      #     payload: |
+      #       {
+      #         "channel": "${{ secrets.SLACK_CHANNEL_ID }}",
+      #         "text": "${{ secrets.DETECTED_PRECOMPILED_KERNEL_MESSAGE }} ${{ steps.set_kernel_version.outputs.published_kernels }} \n
+      #         Details: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+      #       }
 
   e2e-tests-nvidiadriver:
     runs-on: linux-amd64-cpu4
@@ -324,7 +335,7 @@ jobs:
           yq eval '.spec += {"kernel": {"version": strenv(KERNEL_VERSION)}}' -i tests/holodeck_${{ env.DIST }}.yaml
 
       - name: Set up Holodeck
-        uses: NVIDIA/holodeck@v0.2.15
+        uses: NVIDIA/holodeck@main
         env:
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
@@ -438,7 +449,7 @@ jobs:
           image_path="./base-images-${{ matrix.driver_branch }}-${{ matrix.kernel_version }}.tar"
           echo "uploading  $image_path"
           docker load -i $image_path
-          docker push ${PRIVATE_REGISTRY}/nvidia/driver:base-${BASE_TARGET}-${LTS_KERNEL}-${KERNEL_FLAVOR}-${{ matrix.driver_branch }}
+          # docker push ${PRIVATE_REGISTRY}/nvidia/driver:base-${BASE_TARGET}-${LTS_KERNEL}-${KERNEL_FLAVOR}-${{ matrix.driver_branch }}
 
       - name: Download built image artifact
         if: ${{ ! (matrix.driver_branch == 535 && contains(matrix.kernel_version, 'ubuntu24.04')) }}
@@ -453,16 +464,16 @@ jobs:
           image_path="./driver-images-${{ matrix.driver_branch }}-${{ matrix.kernel_version }}.tar"
           echo "uploading  $image_path"
           docker load -i $image_path
-          docker push ${PRIVATE_REGISTRY}/nvidia/driver:${{ matrix.driver_branch }}-${{ matrix.kernel_version }}
+          # docker push ${PRIVATE_REGISTRY}/nvidia/driver:${{ matrix.driver_branch }}-${{ matrix.kernel_version }}
 
-      - name: Slack notification
-        if: ${{ ! (matrix.driver_branch == 535 && contains(matrix.kernel_version, 'ubuntu24.04')) }}
-        uses: slackapi/slack-github-action@v2.1.1
-        with:
-          token: ${{ secrets.SLACK_BOT_TOKEN }}
-          method: chat.postMessage
-          payload: |
-            {
-              "channel": "${{ secrets.SLACK_CHANNEL_ID }}",
-              "text": "${{ secrets.PUBLISHED_PRECOMPILED_IMAGE_MESSAGE }} ${{ env.PRIVATE_REGISTRY }}/nvidia/driver:${{ matrix.driver_branch }}-${{ matrix.kernel_version }}"
-            }
+      # - name: Slack notification
+      #   if: ${{ ! (matrix.driver_branch == 535 && contains(matrix.kernel_version, 'ubuntu24.04')) }}
+      #   uses: slackapi/slack-github-action@v2.1.1
+      #   with:
+      #     token: ${{ secrets.SLACK_BOT_TOKEN }}
+      #     method: chat.postMessage
+      #     payload: |
+      #       {
+      #         "channel": "${{ secrets.SLACK_CHANNEL_ID }}",
+      #         "text": "${{ secrets.PUBLISHED_PRECOMPILED_IMAGE_MESSAGE }} ${{ env.PRIVATE_REGISTRY }}/nvidia/driver:${{ matrix.driver_branch }}-${{ matrix.kernel_version }}"
+      #       }
