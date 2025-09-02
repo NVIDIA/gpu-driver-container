@@ -532,6 +532,23 @@ _install_driver() {
     if [ "${ACCEPT_LICENSE}" = "yes" ]; then
         install_args+=("--accept-license")
     fi
+
+    # Specify the --skip-module-load flag for versions of the nvidia-installer that
+    # support it. From the nvidia-installer help output:
+    #
+    #    --skip-module-load
+    #         Skip the test load of the NVIDIA kernel modules after the modules are built,
+    #         and skip loading them after installation is complete.
+    #
+    # Without this flag, a subtle bug can occur if the nvidia-installer fails to unload
+    # the NVIDIA kernel modules after the test load. The modules will remain loaded and
+    # any custom NVIDIA module parameters configured as input to the driver container
+    # will not be applied.
+    #
+    if [ "${DRIVER_BRANCH}" -ge "550" ]; then
+        install_args+=("--skip-module-load")
+    fi
+
     IGNORE_CC_MISMATCH=1 nvidia-installer --kernel-module-only --no-drm --ui=none --no-nouveau-check -m=${KERNEL_TYPE} ${install_args[@]+"${install_args[@]}"}
     # May need to add no-cc-check for Rhel, otherwise it complains about cc missing in path
     # /proc/version and lib/modules/KERNEL_VERSION/proc are different, by default installer looks at /proc/ so, added the proc-mount-point
