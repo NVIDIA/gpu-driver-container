@@ -38,6 +38,13 @@ dep_installer () {
         cpio \
         kmod
   fi
+
+  # Download unzboot as kernel images are compressed in the zboot format on RHEL 9 arm64
+  # unzboot is only available on the EPEL RPM repo
+  dnf install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm
+  dnf config-manager --enable epel
+  dnf install -y unzboot
+
   rm -rf /var/cache/yum/*
 }
 
