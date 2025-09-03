@@ -142,24 +142,22 @@ _install_prerequisites() (
     depmod ${KERNEL_VERSION}
 
     echo "Generating Linux kernel version string..."
-    if [ "$TARGETARCH" = "arm64" ]; then
-        # Download unzboot as kernel images are compressed in the zboot format on RHEL 9 arm64
-        # unzboot is only available on the EPEL RPM repo
-        dnf -q -y --releasever=${DNF_RELEASEVER} install https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm
-        dnf config-manager --enable epel
-        dnf -q -y --releasever=${DNF_RELEASEVER} install unzboot
+    extract-vmlinux /lib/modules/${KERNEL_VERSION}/vmlinuz | strings | grep -E '^Linux version' | sed 's/^\(.*\)\s\+(.*)$/\1/' > version
 
-        if ! unzboot /lib/modules/${KERNEL_VERSION}/vmlinuz vmlinuz.out; then
-          echo "Could not extract /lib/modules/${KERNEL_VERSION}/vmlinuz" >&2
-          return 1
-        fi
-
+    if [ -z "$(<version)" ]; then
+        echo "extract-vmlinux image extraction failed. Falling back to unzboot..."
+        unzboot /lib/modules/${KERNEL_VERSION}/vmlinuz vmlinuz.out
         < vmlinuz.out strings | grep -E '^Linux version' | sed 's/^\(.*\)\s\+(.*)$/\1/' > version
         rm vmlinuz.out
-    else
-        extract-vmlinux /lib/modules/${KERNEL_VERSION}/vmlinuz | strings | grep -E '^Linux version' | sed 's/^\(.*\)\s\+(.*)$/\1/' > version
     fi
+
     if [ -z "$(<version)" ]; then
+        echo "unzboot image extraction failed. Falling back to gunzip..."
+        gunzip -c /lib/modules/${KERNEL_VERSION}/vmlinuz | strings | grep -E '^Linux version' | sed 's/^\(.*\)\s\+(.*)$/\1/' > version
+    fi
+
+    if [ -z "$(<version)" ]; then
+        echo "All attempts to extract /lib/modules/${KERNEL_VERSION}/vmlinuz failed"
         echo "Could not locate Linux kernel version string" >&2
         return 1
     fi

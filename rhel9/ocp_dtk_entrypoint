@@ -26,6 +26,7 @@ nv-ctr-run-with-dtk() {
            /usr/local/bin/common.sh \
            /usr/local/bin/extract-vmlinux \
            /usr/local/bin/vgpu-util \
+           /usr/bin/unzboot \
            /drivers \
            /licenses \
            "$DRIVER_TOOLKIT_SHARED_DIR/"
@@ -137,6 +138,7 @@ dtk-build-driver() {
        "$DRIVER_TOOLKIT_SHARED_DIR/common.sh" \
        "$DRIVER_TOOLKIT_SHARED_DIR/extract-vmlinux" \
        "$DRIVER_TOOLKIT_SHARED_DIR/vgpu-util" \
+       "$DRIVER_TOOLKIT_SHARED_DIR/unzboot" \
        "${DRIVER_TOOLKIT_SHARED_DIR}/bin"
 
     ln -s $(which true) ${DRIVER_TOOLKIT_SHARED_DIR}/bin/dnf --force
