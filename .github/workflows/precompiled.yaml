@@ -29,7 +29,7 @@ jobs:
       lts_kernel: ${{ steps.extract_driver_branch.outputs.lts_kernel }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
       - name: Read driver versions
         id: extract_driver_branch
         run: |
@@ -68,7 +68,7 @@ jobs:
           - lts_kernel: 5.15
             dist: ubuntu24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         name: Check out code
       - name: Calculate build vars
         id: vars
@@ -177,7 +177,7 @@ jobs:
       - set-driver-version-matrix
     steps:
       - name: Check out code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
       - name: Login to GitHub Container Registry
         uses: docker/login-action@v3
         with:
@@ -231,7 +231,7 @@ jobs:
       exclude_matrix_values: ${{ steps.set_kernel_version.outputs.exclude_matrix_values }}
     steps:
       - name: Check out code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
       - name: Set and append matrix values for ubuntu
         id: set_kernel_version
         env:
@@ -298,7 +298,7 @@ jobs:
         exclude: ${{ fromJson(needs.collect-e2e-test-matrix.outputs.exclude_matrix_values) }}
     steps:
       - name: Check out code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
       - name: Login to GitHub Container Registry
         uses: docker/login-action@v3
         with:
@@ -405,7 +405,7 @@ jobs:
         kernel_version: ${{ fromJson(needs.collect-e2e-test-matrix.outputs.matrix_values) }}
     steps:
       - name: Check out code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
       - name: Login to GitHub Container Registry
         uses: docker/login-action@v3
         with:
