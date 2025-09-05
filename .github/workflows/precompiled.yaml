@@ -67,6 +67,9 @@ jobs:
             driver_branch: 535
           - lts_kernel: 5.15
             dist: ubuntu24.04
+          # FIXME -- remove once we need to release 6.8 kernel for ubuntu22.04
+          - lts_kernel: 6.8
+            dist: ubuntu22.04
     steps:
       - uses: actions/checkout@v4
         name: Check out code
