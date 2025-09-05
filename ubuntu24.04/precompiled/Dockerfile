@@ -46,11 +46,6 @@ RUN if [ -n "${CVE_UPDATES}" ]; then \
         rm -rf /var/lib/apt/lists/*; \
     fi
 
-RUN if [ "$DRIVER_BRANCH" -ge "550" ]; then \
-    apt-get update && \
-    apt-get install -y --no-install-recommends nvidia-imex-${DRIVER_BRANCH}=${DRIVER_VERSION}-1 && \
-    rm -rf /var/lib/apt/lists/*; fi
-
 COPY nvidia-driver /usr/local/bin
 
 ADD local-repo.sh /tmp
