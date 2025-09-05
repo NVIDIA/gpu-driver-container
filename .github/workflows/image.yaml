@@ -21,12 +21,10 @@ on:
       - opened
       - synchronize
     branches:
-      - main
-      - release-*
+      - main-no
   push:
     branches:
-      - main
-      - release-*
+      - main-no
 
 jobs:
   image:
