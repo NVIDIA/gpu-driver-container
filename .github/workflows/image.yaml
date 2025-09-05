@@ -36,7 +36,7 @@ jobs:
         driver:
           - 535.261.03
           - 570.172.08
-          - 580.65.06
+          - 580.82.07
         dist:
           - ubuntu20.04
           - ubuntu22.04
@@ -52,7 +52,7 @@ jobs:
           - dist: ubuntu24.04
             driver: 535.261.03
           - dist: ubuntu20.04
-            driver: 580.65.06
+            driver: 580.82.07
       fail-fast: false
     steps:
       - uses: actions/checkout@v4
