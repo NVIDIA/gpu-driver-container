@@ -37,17 +37,22 @@ download_driver_package_deps () {
   download_apt_with_dep libnvidia-encode-${DRIVER_BRANCH}-server
   download_apt_with_dep libnvidia-fbc1-${DRIVER_BRANCH}-server
 
-  download_apt_with_dep nvidia-fabricmanager-${DRIVER_BRANCH} ${DRIVER_VERSION}-1
-  download_apt_with_dep libnvidia-nscq-${DRIVER_BRANCH} ${DRIVER_VERSION}-1
-
-  if [ "$DRIVER_BRANCH" -ge "550" ]; then
+  if [ "$DRIVER_BRANCH" -ge "580" ]; then
+    download_apt_with_dep nvidia-fabricmanager=${DRIVER_VERSION}-1
+    download_apt_with_dep libnvidia-nscq=${DRIVER_VERSION}-1
+    download_apt_with_dep nvlsm
+    download_apt_with_dep infiniband-diags
+    download_apt_with_dep nvidia-imex=${DRIVER_VERSION}-1
+    download_apt_with_dep libnvsdm=${DRIVER_VERSION}-1
+  else
+    download_apt_with_dep nvidia-fabricmanager-${DRIVER_BRANCH} ${DRIVER_VERSION}-1
+    download_apt_with_dep libnvidia-nscq-${DRIVER_BRANCH} ${DRIVER_VERSION}-1
+    if [ "$DRIVER_BRANCH" -ge "570" ]; then
       download_apt_with_dep nvlsm
       download_apt_with_dep infiniband-diags
       download_apt_with_dep nvidia-imex-${DRIVER_BRANCH} ${DRIVER_VERSION}-1
-  fi
-
-  if [ "$DRIVER_BRANCH" -ge "560" ]; then
       download_apt_with_dep libnvsdm-${DRIVER_BRANCH} ${DRIVER_VERSION}-1
+    fi
   fi
 
   ls -al .
@@ -71,12 +76,28 @@ fetch_nvidia_installer () {
   rm $DRIVER_RUN_FILE.run
 }
 
+imex_install() {
+  if [ "$DRIVER_BRANCH" -ge "580" ]; then
+    apt-get install -y --no-install-recommends nvidia-imex=${DRIVER_VERSION}-1
+  elif [ "$DRIVER_BRANCH" -ge "570" ]; then
+    apt-get install -y --no-install-recommends nvidia-imex-${DRIVER_BRANCH}=${DRIVER_VERSION}-1;
+  fi
+}
+
+extra_pkgs_install() {
+      apt-get update
+      imex_install
+      rm -rf /var/lib/apt/lists/*
+}
+
 if [ "$1" = "download_driver_package_deps" ]; then
   download_driver_package_deps
 elif [ "$1" = "build_local_apt_repo" ]; then
   build_local_apt_repo
 elif [ "$1" = "fetch_nvidia_installer" ]; then
   fetch_nvidia_installer
+elif [ "$1" = "extra_pkgs_install" ]; then
+  extra_pkgs_install
 else
   echo "Unknown function: $1"
   exit 1

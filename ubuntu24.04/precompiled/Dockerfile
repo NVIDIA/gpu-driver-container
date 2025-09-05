@@ -46,11 +46,6 @@ RUN if [ -n "${CVE_UPDATES}" ]; then \
         rm -rf /var/lib/apt/lists/*; \
     fi
 
-RUN if [ "$DRIVER_BRANCH" -ge "550" ]; then \
-    apt-get update && \
-    apt-get install -y --no-install-recommends nvidia-imex-${DRIVER_BRANCH}=${DRIVER_VERSION}-1 && \
-    rm -rf /var/lib/apt/lists/*; fi
-
 COPY nvidia-driver /usr/local/bin
 
 ADD local-repo.sh /tmp
@@ -59,6 +54,7 @@ RUN mkdir -p /usr/local/repos && \
     /tmp/local-repo.sh download_driver_package_deps && \
     /tmp/local-repo.sh build_local_apt_repo && \
     /tmp/local-repo.sh fetch_nvidia_installer && \
+    /tmp/local-repo.sh extra_pkgs_install && \
     # Remove all other ubuntu apt sources to ensure we only pull from the local apt repo
     rm /etc/apt/sources.list.d/*
 
