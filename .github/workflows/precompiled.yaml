@@ -296,6 +296,7 @@ jobs:
       matrix:
         kernel_version: ${{ fromJson(needs.collect-e2e-test-matrix.outputs.matrix_values) }}
         exclude: ${{ fromJson(needs.collect-e2e-test-matrix.outputs.exclude_matrix_values) }}
+      max-parallel: 5
     steps:
       - name: Check out code
         uses: actions/checkout@v5
