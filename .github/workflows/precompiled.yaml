@@ -307,6 +307,8 @@ jobs:
       matrix:
         kernel_version: ${{ fromJson(needs.collect-e2e-test-matrix.outputs.matrix_values) }}
         exclude: ${{ fromJson(needs.collect-e2e-test-matrix.outputs.exclude_matrix_values) }}
+      # no of jobs to run in parallel
+      max-parallel: 5
     steps:
       - name: Check out code
         uses: actions/checkout@v4
@@ -335,7 +337,7 @@ jobs:
           yq eval '.spec += {"kernel": {"version": strenv(KERNEL_VERSION)}}' -i tests/holodeck_${{ env.DIST }}.yaml
 
       - name: Set up Holodeck
-        uses: NVIDIA/holodeck@main
+        uses: NVIDIA/holodeck@defaultcalicoexistingerror
         env:
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
