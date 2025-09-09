@@ -54,6 +54,7 @@ RUN NVIDIA_GPGKEY_SUM=d0664fbbdb8c32356d45de36c5984617217b2d0bef41b93ccecd326ba3
     echo "$NVIDIA_GPGKEY_SUM  /etc/pki/rpm-gpg/RPM-GPG-KEY-NVIDIA" | sha256sum -c --strict -
 
 RUN sh /tmp/install.sh depinstall && \
+    sh /tmp/install.sh setup_cuda_repo && \
     curl -fsSL -o /usr/local/bin/donkey https://github.com/3XX0/donkey/releases/download/v1.1.0/donkey && \
     curl -fsSL -o /usr/local/bin/extract-vmlinux https://raw.githubusercontent.com/torvalds/linux/master/scripts/extract-vmlinux && \
     chmod +x /usr/local/bin/donkey /usr/local/bin/extract-vmlinux && \
@@ -92,9 +93,6 @@ LABEL version="${DRIVER_VERSION}"
 LABEL release="N/A"
 LABEL summary="Provision the NVIDIA driver through containers"
 LABEL description="See summary"
-
-# Add NGC DL license from the CUDA image
-RUN mkdir /licenses && mv /NGC-DL-CONTAINER-LICENSE /licenses/NGC-DL-CONTAINER-LICENSE
 
 # Install / upgrade packages here that are required to resolve CVEs
 ARG CVE_UPDATES
