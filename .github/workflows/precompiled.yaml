@@ -35,6 +35,14 @@ jobs:
       dist: ${{ steps.extract_driver_branch.outputs.dist }}
       lts_kernel: ${{ steps.extract_driver_branch.outputs.lts_kernel }}
     steps:
+      - name: Cache Go modules
+        uses: actions/cache@v3
+        with:
+          path: ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
+
       - name: Checkout code
         uses: actions/checkout@v4
       - name: Read driver versions
