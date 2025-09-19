@@ -1,7 +1,7 @@
 ARG SLES_VERSION
 FROM nvcr.io/nvidia/cuda:13.0.0-base-ubi8 as license
 
-FROM registry.suse.com/bci/golang:1.17 as build
+FROM registry.suse.com/bci/golang:1.25 as build
 
 RUN zypper --non-interactive install -y git wget tar gzip
 
