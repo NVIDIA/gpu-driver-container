@@ -99,7 +99,7 @@ trigger-pipeline:
 .driver-versions-precompiled-ubuntu22.04:
   parallel:
     matrix:
-      - DRIVER_BRANCH: [535, 570]
+      - DRIVER_BRANCH: [535, 570, 580]
         KERNEL_FLAVOR: [aws, azure, generic, nvidia, oracle]
         LTS_KERNEL: ["5.15", "6.8"]
 
@@ -107,7 +107,7 @@ trigger-pipeline:
 .driver-versions-precompiled-ubuntu24.04:
   parallel:
     matrix:
-      - DRIVER_BRANCH: [570]
+      - DRIVER_BRANCH: [570, 580]
         KERNEL_FLAVOR: [aws, azure, generic, nvidia, oracle]
         LTS_KERNEL: ["6.8"]
 
