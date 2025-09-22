@@ -22,6 +22,48 @@ download_apt_with_dep () {
   fi
 }
 
+nvlink5_pkgs_download() {
+  if [ "$DRIVER_BRANCH" -ge "570" ]; then
+    download_apt_with_dep nvlsm
+    download_apt_with_dep infiniband-diags
+  fi
+}
+
+# libnvsdm packages are not available for arm64
+nvsdm_download() {
+  if [ "$TARGETARCH" = "amd64" ]; then
+    if [ "$DRIVER_BRANCH" -ge "580" ]; then
+       download_apt_with_dep libnvsdm ${DRIVER_VERSION}-1
+    elif [ "$DRIVER_BRANCH" -ge "560" ]; then
+       download_apt_with_dep libnvsdm-${DRIVER_BRANCH} ${DRIVER_VERSION}-1
+    fi
+  fi
+}
+
+fabricmanager_download() {
+  if [ "$DRIVER_BRANCH" -ge "580" ]; then
+    download_apt_with_dep nvidia-fabricmanager ${DRIVER_VERSION}-1
+  else
+    download_apt_with_dep nvidia-fabricmanager-${DRIVER_BRANCH} ${DRIVER_VERSION}-1
+  fi
+}
+
+nscq_download() {
+  if [ "$DRIVER_BRANCH" -ge "580" ]; then
+     download_apt_with_dep libnvidia-nscq ${DRIVER_VERSION}-1
+  else
+    download_apt_with_dep libnvidia-nscq-${DRIVER_BRANCH} ${DRIVER_VERSION}-1
+  fi
+}
+
+imex_download() {
+  if [ "$DRIVER_BRANCH" -ge "580" ]; then
+    download_apt_with_dep nvidia-imex ${DRIVER_VERSION}-1
+  elif [ "$DRIVER_BRANCH" -ge "550" ]; then
+    download_apt_with_dep nvidia-imex-${DRIVER_BRANCH} ${DRIVER_VERSION}-1
+  fi
+}
+
 download_driver_package_deps () {
   apt-get update
   pushd ${LOCAL_REPO_DIR}
@@ -37,18 +79,11 @@ download_driver_package_deps () {
   download_apt_with_dep libnvidia-encode-${DRIVER_BRANCH}-server
   download_apt_with_dep libnvidia-fbc1-${DRIVER_BRANCH}-server
 
-  download_apt_with_dep nvidia-fabricmanager-${DRIVER_BRANCH} ${DRIVER_VERSION}-1
-  download_apt_with_dep libnvidia-nscq-${DRIVER_BRANCH} ${DRIVER_VERSION}-1
-
-  if [ "$DRIVER_BRANCH" -ge "550" ]; then
-      download_apt_with_dep nvlsm
-      download_apt_with_dep infiniband-diags
-      download_apt_with_dep nvidia-imex-${DRIVER_BRANCH} ${DRIVER_VERSION}-1
-  fi
-
-  if [ "$DRIVER_BRANCH" -ge "560" ]; then
-      download_apt_with_dep libnvsdm-${DRIVER_BRANCH} ${DRIVER_VERSION}-1
-  fi
+  fabricmanager_download
+  nscq_download
+  nvlink5_pkgs_download
+  imex_download
+  nvsdm_download
 
   ls -al .
   popd
