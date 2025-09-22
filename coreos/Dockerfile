@@ -8,7 +8,7 @@ COPY nvidia-container-runtime .
 RUN go install -v nvidia-container-runtime
 
 # Build driver image
-FROM ubuntu:16.04
+FROM ubuntu:24.04
 
 RUN dpkg --add-architecture i386 && \
     apt-get update && apt-get install -y --no-install-recommends \
