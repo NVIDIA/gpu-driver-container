@@ -16,6 +16,48 @@ NVIDIA_PEERMEM_MODULE_PARAMS=()
 TARGETARCH=${TARGETARCH:?"Missing TARGETARCH env"}
 KERNEL_MODULE_TYPE=${KERNEL_MODULE_TYPE:-auto}
 
+fabricmanager_install() {
+  if [ "$DRIVER_BRANCH" -ge "580" ]; then
+    apt-get install -y --no-install-recommends nvidia-fabricmanager=${DRIVER_VERSION}-1
+  else
+    apt-get install -y --no-install-recommends nvidia-fabricmanager-${DRIVER_BRANCH}=${DRIVER_VERSION}-1
+  fi
+}
+
+nscq_install() {
+  if [ "$DRIVER_BRANCH" -ge "580" ]; then
+     apt-get install -y --no-install-recommends libnvidia-nscq=${DRIVER_VERSION}-1
+  else
+    apt-get install -y --no-install-recommends libnvidia-nscq-${DRIVER_BRANCH}=${DRIVER_VERSION}-1
+  fi
+}
+
+imex_install() {
+  if [ "$DRIVER_BRANCH" -ge "580" ]; then
+    apt-get install -y --no-install-recommends nvidia-imex=${DRIVER_VERSION}-1
+  elif [ "$DRIVER_BRANCH" -ge "550" ]; then
+    apt-get install -y --no-install-recommends nvidia-imex-${DRIVER_BRANCH}=${DRIVER_VERSION}-1
+  fi
+}
+
+nvlink5_pkgs_install() {
+  if [ "$DRIVER_BRANCH" -ge "570" ]; then
+    apt-get install -y --no-install-recommends nvlsm
+    apt-get install -y --no-install-recommends infiniband-diags
+  fi
+}
+
+# libnvsdm packages are not available for arm64
+nvsdm_install() {
+  if [ "$TARGETARCH" = "amd64" ]; then
+    if [ "$DRIVER_BRANCH" -ge "580" ]; then
+       apt-get install -y --no-install-recommends libnvsdm=${DRIVER_VERSION}-1
+    elif [ "$DRIVER_BRANCH" -ge "560" ]; then
+       apt-get install -y --no-install-recommends libnvsdm-${DRIVER_BRANCH}=${DRIVER_VERSION}-1
+    fi
+  fi
+}
+
 _update_package_cache() {
     if [ "${PACKAGE_TAG:-}" != "builtin" ]; then
         echo "Updating the package cache..."
@@ -172,11 +214,11 @@ _load_driver() {
         _ensure_nvlink5_prerequisites || return 1
 
         echo "Installing NVIDIA fabric manager, libnvsdm and nvlsm packages..."
-        apt-get install -y --no-install-recommends \
-            infiniband-diags \
-            nvidia-fabricmanager-${DRIVER_BRANCH}=${DRIVER_VERSION}-1 \
-            libnvsdm-${DRIVER_BRANCH}=${DRIVER_VERSION}-1 \
-            nvlsm
+        
+        nvlink5_pkgs_install
+        fabricmanager_install
+        nvsdm_install
+        imex_install
 
         echo "Starting NVIDIA fabric manager daemon for NVLink5+..."
 
@@ -193,10 +235,9 @@ _load_driver() {
     # If not a NVLink5+ switch, check for the presence of NVLink4 (or below) switches
     elif _assert_nvswitch_system; then
         echo "Installing NVIDIA fabric manager and libnvidia NSCQ packages..."
-        apt-get install -y --no-install-recommends \
-            nvidia-fabricmanager-${DRIVER_BRANCH}=${DRIVER_VERSION}-1 \
-            libnvidia-nscq-${DRIVER_BRANCH}=${DRIVER_VERSION}-1
-
+        fabricmanager_install
+        nscq_install
+        imex_install
         echo "Starting NVIDIA fabric manager daemon..."
         nv-fabricmanager -c /usr/share/nvidia/nvswitch/fabricmanager.cfg
     fi
