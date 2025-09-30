@@ -28,9 +28,9 @@ jobs:
     strategy:
       matrix:
         driver:
-          - 535.261.03
-          - 570.172.08
-          - 580.82.07
+          - 535.274.02
+          - 570.195.03
+          - 580.95.05
         dist:
           - ubuntu20.04
           - ubuntu22.04
@@ -42,11 +42,13 @@ jobs:
         exclude:
           - ispr: true
             dist: ubuntu20.04
-            driver: 535.261.03
+            driver: 535.274.02
           - dist: ubuntu24.04
-            driver: 535.261.03
+            driver: 535.274.02
           - dist: ubuntu20.04
-            driver: 580.82.07
+            driver: 580.95.05
+          - dist: ubuntu20.04
+            driver: 570.195.03
       fail-fast: false
     steps:
       - uses: actions/checkout@v5
