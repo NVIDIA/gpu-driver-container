@@ -84,12 +84,6 @@ trigger-pipeline:
       - DRIVER_VERSION: [535.274.02, 570.195.03, 580.95.05]
 
 # Define the driver versions for jobs that can be run in parallel
-.driver-versions-ubuntu20.04:
-  parallel:
-    matrix:
-      - DRIVER_VERSION: [535.274.02, 570.195.03]
-
-# Define the driver versions for jobs that can be run in parallel
 .driver-versions-ubuntu24.04:
   parallel:
     matrix:
@@ -110,12 +104,6 @@ trigger-pipeline:
       - DRIVER_BRANCH: [570, 580]
         KERNEL_FLAVOR: [aws, azure, generic, nvidia, oracle]
         LTS_KERNEL: ["6.8"]
-
-# Define the distribution targets
-.dist-ubuntu20.04:
-  variables:
-    DIST: ubuntu20.04
-    CVE_UPDATES: "openssl"
 
 .dist-ubuntu22.04:
   variables:
@@ -189,14 +177,6 @@ trigger-pipeline:
     # Since OUT_IMAGE_NAME and OUT_VERSION are set, this will push the CI image to the target
     - if [[ "${PRECOMPILED}" == "true" ]]; then ./scripts/precompiled.sh push; else make push-${DIST}-${DRIVER_VERSION}; fi
 
-.release-ubuntu20.04:
-  # Perform for each DRIVER_VERSION
-  extends:
-    - .release-generic
-    - .driver-versions-ubuntu20.04
-  rules:
-    - if: $CI_PIPELINE_SOURCE != "schedule"
-
 .release-ubuntu22.04:
   # Perform for each DRIVER_VERSION
   extends:
@@ -235,15 +215,6 @@ trigger-pipeline:
 .release:staging:
   extends:
     - .release
-  variables:
-    OUT_REGISTRY_USER: "${NGC_REGISTRY_USER}"
-    OUT_REGISTRY_TOKEN: "${NGC_REGISTRY_TOKEN}"
-    OUT_REGISTRY: "${NGC_REGISTRY}"
-    OUT_IMAGE_NAME: "${NGC_STAGING_REGISTRY}/driver"
-
-.release:staging-ubuntu20.04:
-  extends:
-    - .release-ubuntu20.04
   variables:
     OUT_REGISTRY_USER: "${NGC_REGISTRY_USER}"
     OUT_REGISTRY_TOKEN: "${NGC_REGISTRY_TOKEN}"
@@ -316,13 +287,6 @@ trigger-pipeline:
       variables:
         VERSION: "${RELEASE_DEVEL_TAG}"
         OUT_VERSION: "${DEVEL_RELEASE_IMAGE_VERSION}"
-
-release:staging-ubuntu20.04:
-  extends:
-    - .release:staging-ubuntu20.04
-    - .dist-ubuntu20.04
-  needs:
-    - image-ubuntu20.04
 
 release:staging-ubuntu22.04:
   extends:

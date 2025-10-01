@@ -101,16 +101,6 @@ image-precompiled-ubuntu24.04:
     - .driver-versions-precompiled-ubuntu24.04
     - .image-pull-generic
 
-.image-pull-ubuntu20.04:
-  # Perform for each DRIVER_VERSION
-  extends:
-    - .driver-versions-ubuntu20.04
-    - .image-pull-generic
-  rules:
-    - if: $CI_PIPELINE_SOURCE == "schedule"
-      when: never
-    - !reference [.image-pull-rules, rules]
-
 .image-pull-ubuntu22.04:
   # Perform for each DRIVER_VERSION
   extends:
@@ -134,11 +124,6 @@ image-precompiled-ubuntu22.04:
   extends:
     - .driver-versions-precompiled-ubuntu22.04
     - .image-pull-generic
-
-image-ubuntu20.04:
-  extends:
-    - .image-pull-ubuntu20.04
-    - .dist-ubuntu20.04
 
 image-ubuntu22.04:
   extends:
@@ -217,18 +202,6 @@ image-rhel9:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
     - !reference [.pipeline-trigger-rules, rules]
 
-.scan-ubuntu20.04:
-  # Repeat for each DRIVER_VERSION
-  extends:
-    - .driver-versions-ubuntu20.04
-    - .scan-generic
-  rules:
-    - !reference [.scan-rules-common, rules]
-    - if: $CI_PIPELINE_SOURCE == "schedule"
-      when: never
-    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
-    - !reference [.pipeline-trigger-rules, rules]
-
 .scan-ubuntu22.04:
   # Repeat for each DRIVER_VERSION
   extends:
@@ -276,23 +249,6 @@ image-rhel9:
   rules:
     - !reference [.scan-rules-common, rules]
     - !reference [.precompiled-rules, rules]
-
-# Define the scan targets
-scan-ubuntu20.04-amd64:
-  extends:
-    - .scan-ubuntu20.04
-    - .dist-ubuntu20.04
-    - .platform-amd64
-  needs:
-    - image-ubuntu20.04
-
-scan-ubuntu20.04-arm64:
-  extends:
-    - .scan-ubuntu20.04
-    - .dist-ubuntu20.04
-    - .platform-arm64
-  needs:
-    - image-ubuntu20.04
 
 scan-ubuntu22.04-amd64:
   extends:
@@ -388,12 +344,6 @@ scan-rhel9-arm64:
   extends:
     - .release:external
     - .release:ngc-variables
-
-release:ngc-ubuntu20.04:
-  extends:
-    - .release:ngc
-    - .dist-ubuntu20.04
-    - .driver-versions-ubuntu20.04
 
 release:ngc-ubuntu22.04:
   extends:
@@ -603,9 +553,6 @@ sign:ngc-ubuntu-rhel-rhcos:
     - SIGN_JOB_NAME: ["ubuntu"]
       VERSION: ["22.04"]
       DRIVER_VERSION: ["535.274.02", "570.195.03", "580.95.05"]
-    - SIGN_JOB_NAME: ["ubuntu"]
-      VERSION: ["20.04"]
-      DRIVER_VERSION: ["535.274.02"]
     - SIGN_JOB_NAME: ["rhel"]
       VERSION: ["8.8", "8.10", "9.4", "9.5", "9.6"]
       DRIVER_VERSION: ["535.274.02", "570.195.03", "580.95.05"]
