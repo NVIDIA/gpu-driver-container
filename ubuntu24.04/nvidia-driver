@@ -244,6 +244,33 @@ _get_module_params() {
     fi
 }
 
+# Read the currently loaded NVIDIA driver version from sysfs.
+_read_loaded_version() {
+	cat /sys/module/nvidia/version 2>/dev/null || return 1
+}
+
+_is_rootfs_mounted() {
+	findmnt -rno TARGET "${RUN_DIR}/driver" >/dev/null 2>&1
+}
+
+# Ensure the driver rootfs is mounted exactly once.
+_ensure_rootfs_mounted_idempotent() {
+	_is_rootfs_mounted || _mount_rootfs
+}
+
+_ensure_persistence_running() {
+	local pid_file=/var/run/nvidia-persistenced/nvidia-persistenced.pid pid
+	if pid=$(<"${pid_file}" 2>/dev/null) && [ -n "${pid}" ] && kill -0 "${pid}" 2>/dev/null; then
+		return 0
+	fi
+
+	if command -v nvidia-persistenced >/dev/null 2>&1; then
+		nvidia-persistenced --persistence-mode || true
+	else
+		echo "nvidia-persistenced not found; continuing without persistence"
+	fi
+}
+
 # Load the kernel modules and start persistenced.
 _load_driver() {
     echo "Parsing kernel module parameters..."
@@ -584,7 +611,27 @@ init() {
     trap "echo 'Caught signal'; exit 1" HUP INT QUIT PIPE TERM
     trap "_shutdown" EXIT
 
-    _unload_driver || exit 1
+	# Fast path: if the NVIDIA kernel modules are already loaded and match the desired
+	# version, avoid any heavy reinstall/build. Ensure rootfs is mounted and
+	# persistenced is running, then hold the container.
+	if [ -f /sys/module/nvidia/refcnt ]; then
+		loaded_version=$(_read_loaded_version || true)
+		if [ -n "${loaded_version}" ] && [ "${loaded_version}" = "${DRIVER_VERSION}" ]; then
+			echo "Detected matching loaded driver (${loaded_version}); skipping reinstall"
+			_ensure_rootfs_mounted_idempotent
+			_ensure_persistence_running
+			_write_kernel_update_hook
+			echo "Done, now waiting for signal"
+			sleep infinity &
+			trap "echo 'Caught signal'; _shutdown && { kill $!; exit 0; }" HUP INT QUIT PIPE TERM
+			trap - EXIT
+			while true; do wait $! || continue; done
+			exit 0
+		fi
+	fi
+
+
+	_unload_driver || exit 1
     _unmount_rootfs
 
     _update_ca_certificates
