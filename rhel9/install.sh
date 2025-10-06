@@ -41,6 +41,7 @@ dep_installer () {
 
   # Download unzboot as kernel images are compressed in the zboot format on RHEL 9 arm64
   # unzboot is only available on the EPEL RPM repo
+  rpm --import  https://dl.fedoraproject.org/pub/epel/RPM-GPG-KEY-EPEL-9
   dnf install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm
   dnf config-manager --enable epel
   dnf install -y unzboot
@@ -153,12 +154,19 @@ extra_pkgs_install() {
   fi
 }
 
+setup_cuda_repo() {
+    OS_ARCH=${TARGETARCH/amd64/x86_64} && OS_ARCH=${OS_ARCH/arm64/sbsa};
+    dnf config-manager --add-repo https://developer.download.nvidia.com/compute/cuda/repos/rhel9/${OS_ARCH}/cuda-rhel9.repo
+}
+
 if [ "$1" = "nvinstall" ]; then
   nvidia_installer
 elif [ "$1" = "depinstall" ]; then
   dep_installer
 elif [ "$1" = "extrapkgsinstall" ]; then
   extra_pkgs_install
+elif [ "$1" = "setup_cuda_repo" ]; then
+  setup_cuda_repo
 else
   echo "Unknown function: $1"
 fi
