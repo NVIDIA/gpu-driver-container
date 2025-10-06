@@ -16,15 +16,9 @@
 name: image
 
 on:
-  pull_request:
-    types:
-      - opened
-      - synchronize
-    branches:
-      - main
-      - release-*
   push:
     branches:
+      - "pull-request/[0-9]+"
       - main
       - release-*
 
