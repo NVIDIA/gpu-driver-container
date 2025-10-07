@@ -5,6 +5,10 @@ FROM ${BASE_IMAGE} as build
 ARG TARGETARCH
 ARG GOLANG_VERSION
 
+# Arg to indicate if driver type is either of passthrough(baremetal) or vgpu
+ARG DRIVER_TYPE=passthrough
+ENV DRIVER_TYPE=$DRIVER_TYPE
+
 SHELL ["/bin/bash", "-c"]
 
 RUN dnf install -y git wget
@@ -18,10 +22,11 @@ ENV PATH /usr/local/go/bin:$PATH
 
 WORKDIR /work
 
-RUN git clone https://github.com/NVIDIA/gpu-driver-container driver && \
+RUN if [ "$DRIVER_TYPE" = "vgpu" ]; then \
+    git clone https://github.com/NVIDIA/gpu-driver-container driver && \
     cd driver/vgpu/src && \
     go build -o vgpu-util && \
-    mv vgpu-util /work
+    mv vgpu-util /work; fi
 
 FROM nvcr.io/nvidia/cuda:13.0.1-base-ubi9
 
@@ -78,7 +83,7 @@ COPY nvidia-driver /usr/local/bin
 COPY ocp_dtk_entrypoint /usr/local/bin
 COPY common.sh /usr/local/bin
 
-COPY --from=build /work/vgpu-util /usr/local/bin
+COPY --from=build /work/vgpu-util* /usr/local/bin
 
 WORKDIR /drivers
 
