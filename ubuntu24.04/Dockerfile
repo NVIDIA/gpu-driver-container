@@ -5,6 +5,10 @@ FROM ${BASE_IMAGE} as build
 ARG TARGETARCH
 ARG GOLANG_VERSION
 
+# Arg to indicate if driver type is either of passthrough(baremetal) or vgpu
+ARG DRIVER_TYPE=passthrough
+ENV DRIVER_TYPE=$DRIVER_TYPE
+
 SHELL ["/bin/bash", "-c"]
 
 RUN echo 'debconf debconf/frontend select Noninteractive' | debconf-set-selections
@@ -31,10 +35,11 @@ ENV PATH /usr/local/go/bin:$PATH
 
 WORKDIR /work
 
-RUN git clone https://github.com/NVIDIA/gpu-driver-container driver && \
+RUN if [ "$DRIVER_TYPE" = "vgpu" ]; then \
+    git clone https://github.com/NVIDIA/gpu-driver-container driver && \
     cd driver/vgpu/src && \
     go build -o vgpu-util && \
-    mv vgpu-util /work
+    mv vgpu-util /work; fi
 
 FROM ${BASE_IMAGE}
 
@@ -70,7 +75,7 @@ RUN usermod -o -u 0 -g 0 _apt && \
 
 COPY nvidia-driver /usr/local/bin
 
-COPY --from=build /work/vgpu-util /usr/local/bin
+COPY --from=build /work/vgpu-util* /usr/local/bin
 
 ADD drivers drivers/
 
