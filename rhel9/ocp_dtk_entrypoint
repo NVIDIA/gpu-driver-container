@@ -25,10 +25,13 @@ nv-ctr-run-with-dtk() {
            /usr/local/bin/nvidia-driver \
            /usr/local/bin/common.sh \
            /usr/local/bin/extract-vmlinux \
-           /usr/local/bin/vgpu-util \
            /usr/bin/unzboot \
            /drivers \
            "$DRIVER_TOOLKIT_SHARED_DIR/"
+
+        if [[ -f "/usr/local/bin/vgpu-util" ]]; then
+          cp /usr/local/bin/vgpu-util "$DRIVER_TOOLKIT_SHARED_DIR/"
+        fi
 
         env | sed 's/=/="/' | sed 's/$/"/' > "$DRIVER_TOOLKIT_SHARED_DIR/env"
 
@@ -136,9 +139,12 @@ dtk-build-driver() {
        "$DRIVER_TOOLKIT_SHARED_DIR/nvidia-driver" \
        "$DRIVER_TOOLKIT_SHARED_DIR/common.sh" \
        "$DRIVER_TOOLKIT_SHARED_DIR/extract-vmlinux" \
-       "$DRIVER_TOOLKIT_SHARED_DIR/vgpu-util" \
        "$DRIVER_TOOLKIT_SHARED_DIR/unzboot" \
        "${DRIVER_TOOLKIT_SHARED_DIR}/bin"
+
+    if [[ -f "$DRIVER_TOOLKIT_SHARED_DIR/vgpu-util" ]]; then
+      cp -v "$DRIVER_TOOLKIT_SHARED_DIR/vgpu-util" "$DRIVER_TOOLKIT_SHARED_DIR/bin"
+    fi
 
     ln -s $(which true) ${DRIVER_TOOLKIT_SHARED_DIR}/bin/dnf --force
 
