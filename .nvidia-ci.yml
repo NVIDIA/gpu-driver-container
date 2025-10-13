@@ -34,6 +34,7 @@ variables:
   # Define the public staging registry
   STAGING_REGISTRY: ghcr.io/nvidia
   STAGING_VERSION: "${CI_COMMIT_SHORT_SHA}"
+  PUBLISH_VERSIONS: 535.274.02 570.195.03 580.95.05
 
 .image-pull-rules:
   # We delay the job start to allow the public pipeline to generate the required images.
@@ -337,7 +338,7 @@ scan-rhel9-arm64:
     OUT_REGISTRY_USER: "${NGC_REGISTRY_USER}"
     OUT_REGISTRY_TOKEN: "${NGC_REGISTRY_TOKEN}"
     OUT_REGISTRY: "${NGC_REGISTRY}"
-    OUT_IMAGE_NAME: "${NGC_REGISTRY_IMAGE}"
+    OUT_IMAGE_NAME: "${NGC_STAGING_REGISTRY}/driver"
 
 # Define the external release helpers
 .release:ngc:
@@ -451,111 +452,95 @@ release:ngc-rhel9.6:
   variables:
     OUT_DIST: "rhel9.6"
 
-# Define the external image signing steps for NGC
-# Download the ngc cli binary for use in the sign steps
-.ngccli-setup:
-  before_script:
-    - apt-get update && apt-get install -y curl unzip jq bash make
-    - export REGCTL_VERSION=v0.7.1
-    - mkdir -p bin
-    - curl -sSLo bin/regctl https://github.com/regclient/regclient/releases/download/${REGCTL_VERSION}/regctl-linux-amd64
-    - chmod a+x bin/regctl
-    - export PATH=$(pwd)/bin:${PATH}
+generate-build-info:
+  stage: ngc-publish
+  artifacts:
+    paths:
+      - build-info/${CI_PIPELINE_ID}-full.txt
+  script:
     - |
-      if [ -z "${NGCCLI_VERSION}" ]; then
-        NGC_VERSION_URL="https://api.ngc.nvidia.com/v2/resources/nvidia/ngc-apps/ngc_cli/versions"
-        # Extract the latest version from the JSON data using jq
-        export NGCCLI_VERSION=$(curl -s $NGC_VERSION_URL | jq -r '.recipe.latestVersionIdStr')
+      for DRIVER_VERSION in ${PUBLISH_VERSIONS}; do
+        for file in build-info/${CI_PIPELINE_ID}-${DRIVER_VERSION}-*; do
+          cat "$file" >> build-info/${CI_PIPELINE_ID}-full.txt
+        done
+      done
+      if [ ! -s "build-info/${CI_PIPELINE_ID}-full.txt" ]; then
+        echo "Error: No build information was collected from the release jobs"
+        exit 1
       fi
-      echo "NGCCLI_VERSION ${NGCCLI_VERSION}"
-    - curl -sSLo ngccli_linux.zip https://api.ngc.nvidia.com/v2/resources/nvidia/ngc-apps/ngc_cli/versions/${NGCCLI_VERSION}/files/ngccli_linux.zip
-    - unzip ngccli_linux.zip
-    - chmod u+x ngc-cli/ngc
 
-# .sign forms the base of the deployment jobs which signs images in the CI registry.
-# This is extended with the image name and version to be deployed.
-.sign:ngc:
-  image: ubuntu:latest
-  timeout: 30 minutes
-  when: always
-  stage: sign
+.update-nspect:
+  stage: ngc-publish
+  needs:
+    - job: generate-build-info
+      artifacts: true
+  image: 
+    name: "${CNT_NGC_PUBLISH_IMAGE}"
+    pull_policy: always
+  variables:
+    PROJECT_NAME: "gpu-driver-container"
+    REPO_URL: "https://github.com/NVIDIA/gpu-driver-container.git"
+  before_script:
+    - export RELEASE_VERSION="${PUBLISH_VERSIONS// /_}"
+  script:
+    - cnt-ngc-publish nspect --versions-file "build-info/${CI_PIPELINE_ID}-full.txt"
+
+# Update the nspect staging environment to test the nspect publishing logic
+update-nspect-staging:
+  extends:
+    - .update-nspect
+  except:
+    - tags
+  variables:
+    ENV: "stage"
+    NSPECT_CLIENT_ID: "${NSPECT_STAGING_CLIENT_ID}"
+    NSPECT_CLIENT_SECRET: "${NSPECT_STAGING_CLIENT_SECRET}"
+
+# Update the nspect production environment with the new release
+update-nspect:
+  extends:
+    - .update-nspect
   rules:
     - if: $CI_COMMIT_TAG
-      variables:
-        DIST: "${SIGN_JOB_NAME}${VERSION}"
   variables:
-    OUT_REGISTRY_USER: "${CI_REGISTRY_USER}"
-    OUT_REGISTRY_TOKEN: "${CI_REGISTRY_PASSWORD}"
-    OUT_REGISTRY: "${CI_REGISTRY}"
-    NGC_CLI_API_KEY: "${NGC_REGISTRY_TOKEN}"
-    IMAGE_NAME: "${NGC_REGISTRY_IMAGE}"
-    IMAGE_TAG: "${CI_COMMIT_TAG}"
-  before_script:
-    - !reference [.ngccli-setup, before_script]
-    - 'if [[ "${PRECOMPILED}" != "true" ]]; then echo DRIVER_VERSION: ${DRIVER_VERSION} ; [[ -n "${DRIVER_VERSION}" ]] || exit 1; fi'
-    - regctl registry login "${OUT_REGISTRY}" -u "${OUT_REGISTRY_USER}" -p "${OUT_REGISTRY_TOKEN}"
-    - |
-      if [[ "${PRECOMPILED}" == "true" ]]; then
-        ./scripts/precompiled.sh version;
-        source kernel_version.txt
-        export IMAGE_TAG=${DRIVER_BRANCH}-${KERNEL_VERSION}-${DIST##*_}
-      else
-          export IMAGE_TAG=${DRIVER_VERSION}-${DIST##*_}
-      fi
-    # We ensure that the IMAGE_NAME and IMAGE_TAG is set
-    - 'echo Image Name: ${IMAGE_NAME} && [[ -n "${IMAGE_NAME}" ]] || exit 1'
-    - 'echo Image Tag: ${IMAGE_TAG} && [[ -n "${IMAGE_TAG}" ]] || exit 1'
+    OSRB_BUG_ID: "${OSRB_BUG_ID}"
+    ENV: "prod"
+    NSPECT_CLIENT_ID: "${NSPECT_PROD_CLIENT_ID}"
+    NSPECT_CLIENT_SECRET: "${NSPECT_PROD_CLIENT_SECRET}"
+
+.publish-images:
+  stage: ngc-publish
+  image:
+    name: "${CNT_NGC_PUBLISH_IMAGE}"
+    pull_policy: always
+  variables:
+    GITLAB_ACCESS_TOKEN: "${CNT_GITLAB_TOKEN}"
   script:
-    - 'echo "Signing the image ${IMAGE_NAME}:${IMAGE_TAG}"'
-    - ngc-cli/ngc registry image publish --source ${IMAGE_NAME}:${IMAGE_TAG} ${IMAGE_NAME}:${IMAGE_TAG} --public --discoverable --allow-guest --sign --org nvidia
+    - cnt-ngc-publish render --project-name "gpu-driver-container" --versions-file "build-info/${CI_PIPELINE_ID}-full.txt" --output gpu-driver-container.yaml
+    - cnt-ngc-publish merge-request --files "gpu-driver-container.yaml"
 
-sign:ngc-precompiled-ubuntu24.04:
- extends:
-   - .driver-versions-precompiled-ubuntu24.04
-   - .dist-ubuntu24.04
-   - .release-generic
-   - .release:ngc-variables
-   - .sign:ngc
- variables:
-   DIST: signed_ubuntu24.04
-   BASE_TARGET: noble
-   PRECOMPILED: "true"
- needs:
-   - release:ngc-precompiled-ubuntu24.04
- rules:
-   # Only run NGC release job on scheduled pipelines
-   - if: $CI_PIPELINE_SOURCE == "schedule"
-
-sign:ngc-precompiled-ubuntu22.04:
+# Raise an MR to publish the image to NGC
+ngc-image-publish:
   extends:
-    - .driver-versions-precompiled-ubuntu22.04
-    - .dist-ubuntu22.04
-    - .release-generic
-    - .release:ngc-variables
-    - .sign:ngc
-  variables:
-    DIST: signed_ubuntu22.04
-    BASE_TARGET: jammy
-    PRECOMPILED: "true"
-  needs:
-    - release:ngc-precompiled-ubuntu22.04
+    - .publish-images
   rules:
-    - !reference [.precompiled-rules, rules]
+    - if: $CI_COMMIT_TAG
+  needs:
+    - job: update-nspect
+    - job: generate-build-info
+      artifacts: true
+  variables:
+    NGC_PUBLISHING_PROJECT_PATH: "${NGC_PUBLISHING_PROD_PROJECT_PATH}"
 
-sign:ngc-ubuntu-rhel-rhcos:
+# Create a dummy MR that exercises the publishing logic
+mock-image-publish:
   extends:
-    - .sign:ngc
-  parallel:
-    matrix:
-    - SIGN_JOB_NAME: ["ubuntu"]
-      VERSION: ["24.04"]
-      DRIVER_VERSION: ["570.195.03", "580.95.05"]
-    - SIGN_JOB_NAME: ["ubuntu"]
-      VERSION: ["22.04"]
-      DRIVER_VERSION: ["535.274.02", "570.195.03", "580.95.05"]
-    - SIGN_JOB_NAME: ["rhel"]
-      VERSION: ["8.8", "8.10", "9.4", "9.5", "9.6"]
-      DRIVER_VERSION: ["535.274.02", "570.195.03", "580.95.05"]
-    - SIGN_JOB_NAME: ["rhcos"]
-      VERSION: ["4.14", "4.15", "4.16", "4.17", "4.18"]
-      DRIVER_VERSION: ["535.274.02", "570.195.03", "580.95.05"]
+    - .publish-images
+  except:
+    - tags
+  needs:
+    - job: update-nspect-staging
+    - job: generate-build-info
+      artifacts: true
+  variables:
+    NGC_PUBLISHING_PROJECT_PATH: "${NGC_PUBLISHING_TEST_PROJECT_PATH}"
