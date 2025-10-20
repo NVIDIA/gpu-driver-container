@@ -5,7 +5,11 @@ ENV DRIVER_VERSION=$DRIVER_VERSION
 ARG DRIVER_ARCH=x86_64
 ENV DRIVER_ARCH=$DRIVER_ARCH
 
-RUN mkdir -p /driver
+RUN mkdir -p /driver/rpms/pciutils
+WORKDIR /driver/rpms/pciutils
+
+RUN dnf download --resolve pciutils && dnf clean all
+
 WORKDIR /driver
 COPY NVIDIA-Linux-${DRIVER_ARCH}-${DRIVER_VERSION}-vgpu-kvm.run .
 RUN chmod +x NVIDIA-Linux-${DRIVER_ARCH}-${DRIVER_VERSION}-vgpu-kvm.run
