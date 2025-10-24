@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-FROM ubuntu:20.04 as builder
+FROM ubuntu:24.04 as builder
 
 ARG GOLANG_VERSION=1.20
 ENV GOLANG_VERSION=${GOLANG_VERSION}
@@ -26,7 +26,7 @@ WORKDIR /work
 COPY src/. .
 RUN go build -o vgpu-util
 
-FROM ubuntu:20.04
+FROM ubuntu:24.04
 COPY --from=builder /work/vgpu-util /usr/local/bin/vgpu-util
 ARG VERSION
 
