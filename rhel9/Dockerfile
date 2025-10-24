@@ -28,7 +28,7 @@ RUN if [ "$DRIVER_TYPE" = "vgpu" ]; then \
     go build -o vgpu-util && \
     mv vgpu-util /work; fi
 
-FROM nvcr.io/nvidia/cuda:13.0.1-base-ubi9
+FROM ${BASE_IMAGE}
 
 ARG TARGETARCH
 ENV TARGETARCH=$TARGETARCH
