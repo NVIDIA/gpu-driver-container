@@ -12,7 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-DOCKER_BUILD_PLATFORM_OPTIONS = --platform=linux/amd64
+PUSH_ON_BUILD ?= false
+DOCKER_BUILD_OPTIONS ?= --output=type=image,push=$(PUSH_ON_BUILD)
+DOCKER_BUILD_PLATFORM_OPTIONS ?= --platform=linux/amd64
 
 $(DRIVER_PUSH_TARGETS): push-%:
 	$(DOCKER) tag "$(IMAGE)" "$(OUT_IMAGE)"
