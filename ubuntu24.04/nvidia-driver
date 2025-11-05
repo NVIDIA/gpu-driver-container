@@ -244,33 +244,6 @@ _get_module_params() {
     fi
 }
 
-# Read the currently loaded NVIDIA driver version from sysfs.
-_read_loaded_version() {
-	cat /sys/module/nvidia/version 2>/dev/null || return 1
-}
-
-_is_rootfs_mounted() {
-	findmnt -rno TARGET "${RUN_DIR}/driver" >/dev/null 2>&1
-}
-
-# Ensure the driver rootfs is mounted exactly once.
-_ensure_rootfs_mounted_idempotent() {
-	_is_rootfs_mounted || _mount_rootfs
-}
-
-_ensure_persistence_running() {
-	local pid_file=/var/run/nvidia-persistenced/nvidia-persistenced.pid pid
-	if pid=$(<"${pid_file}" 2>/dev/null) && [ -n "${pid}" ] && kill -0 "${pid}" 2>/dev/null; then
-		return 0
-	fi
-
-	if command -v nvidia-persistenced >/dev/null 2>&1; then
-		nvidia-persistenced --persistence-mode || true
-	else
-		echo "nvidia-persistenced not found; continuing without persistence"
-	fi
-}
-
 # Load the kernel modules and start persistenced.
 _load_driver() {
     echo "Parsing kernel module parameters..."
@@ -611,59 +584,7 @@ init() {
     trap "echo 'Caught signal'; exit 1" HUP INT QUIT PIPE TERM
     trap "_shutdown" EXIT
 
-	# Fast path: if the NVIDIA kernel modules are already loaded and match the desired
-	# version, skip kernel module build/load but install userspace components.
-	# This handles non-clean restarts where modules are in use and can't be unloaded.
-	if [ -f /sys/module/nvidia/refcnt ]; then
-		loaded_version=$(_read_loaded_version || true)
-		if [ -n "${loaded_version}" ] && [ "${loaded_version}" = "${DRIVER_VERSION}" ]; then
-			echo "Detected matching loaded driver (${loaded_version}); performing userspace-only install"
-			
-			# Skip kernel module unload since they're already loaded with correct version
-			# Unmount any existing rootfs
-			_unmount_rootfs
-			
-			# Update package cache for userspace install
-			_update_ca_certificates
-			_update_package_cache
-			_resolve_kernel_version || exit 1
-			_install_prerequisites
-			
-		# Install userspace components only (libraries, binaries)
-		# The --no-kernel-module flag tells nvidia-installer to skip kernel module build/install
-		echo "Installing userspace components (libraries and binaries)..."
-		cd /drivers
-		# Extract the driver first
-		sh NVIDIA-Linux-${DRIVER_ARCH}-${DRIVER_VERSION}.run -x
-		cd NVIDIA-Linux-${DRIVER_ARCH}-${DRIVER_VERSION}
-		./nvidia-installer \
-			--silent \
-			--no-kernel-module \
-			--no-nouveau-check \
-			--no-nvidia-modprobe \
-			--no-drm \
-			--no-peermem
-			
-			# Mount the driver rootfs to make components available
-			_mount_rootfs
-			
-			# Ensure persistence daemon is running
-			_ensure_persistence_running
-			
-			# Write kernel update hook
-			_write_kernel_update_hook
-			
-			echo "Userspace-only install complete, now waiting for signal"
-			sleep infinity &
-			trap "echo 'Caught signal'; _shutdown && { kill $!; exit 0; }" HUP INT QUIT PIPE TERM
-			trap - EXIT
-			while true; do wait $! || continue; done
-			exit 0
-		fi
-	fi
-
-
-	_unload_driver || exit 1
+    _unload_driver || exit 1
     _unmount_rootfs
 
     _update_ca_certificates

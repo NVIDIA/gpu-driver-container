@@ -530,6 +530,7 @@ _mount_rootfs() {
     mount --make-private /sys
     mkdir -p ${RUN_DIR}/driver
     mount --rbind / ${RUN_DIR}/driver
+    echo "Driver container rootfs mounted at ${RUN_DIR}/driver"
 }
 
 # Unmount the driver rootfs from the run directory.
@@ -638,20 +639,6 @@ _start_vgpu_topology_daemon() {
     nvidia-topologyd
 }
 
-# Read the currently loaded NVIDIA driver version from sysfs.
-_read_loaded_version() {
-	cat /sys/module/nvidia/version 2>/dev/null || return 1
-}
-
-_is_rootfs_mounted() {
-	findmnt -rno TARGET "${RUN_DIR}/driver" >/dev/null 2>&1
-}
-
-# Ensure the driver rootfs is mounted exactly once.
-_ensure_rootfs_mounted_idempotent() {
-	_is_rootfs_mounted || _mount_rootfs
-}
-
 _ensure_persistence_running() {
 	local pid_file=/var/run/nvidia-persistenced/nvidia-persistenced.pid pid
 	if pid=$(<"${pid_file}" 2>/dev/null) && [ -n "${pid}" ] && kill -0 "${pid}" 2>/dev/null; then
@@ -663,6 +650,31 @@ _ensure_persistence_running() {
 	else
 		echo "nvidia-persistenced not found; continuing without persistence"
 	fi
+}
+
+_build_driver_config() {
+	local config="DRIVER_VERSION=${DRIVER_VERSION}
+KERNEL_VERSION=$(uname -r)
+GPU_DIRECT_RDMA_ENABLED=${GPU_DIRECT_RDMA_ENABLED}
+USE_HOST_MOFED=${USE_HOST_MOFED}
+KERNEL_MODULE_TYPE=${KERNEL_MODULE_TYPE}"
+
+	# Append config file contents directly
+	for conf_file in nvidia.conf nvidia-uvm.conf nvidia-modeset.conf nvidia-peermem.conf; do
+		if [ -f "/drivers/$conf_file" ]; then
+			config="${config}
+$(cat "/drivers/$conf_file")"
+		fi
+	done
+
+	echo "$config"
+}
+
+_store_driver_config() {
+	local config_file="/run/nvidia/driver-config.state"
+	echo "Storing driver configuration state..."
+	_build_driver_config > "$config_file"
+	echo "Driver configuration stored at $config_file"
 }
 
 init() {
@@ -683,13 +695,15 @@ init() {
     trap "echo 'Caught signal'; exit 1" HUP INT QUIT PIPE TERM
     trap "_shutdown" EXIT
 
-	# Fast path: if the NVIDIA kernel modules are already loaded and match the desired
-	# version, skip kernel module build/load but install userspace components.
+	# Fast path: if the NVIDIA kernel modules are already loaded and driver config matches,
+	# skip kernel module build/load but install userspace components.
 	# This handles non-clean restarts where modules are in use and can't be unloaded.
-	if [ -f /sys/module/nvidia/refcnt ]; then
-		loaded_version=$(_read_loaded_version || true)
-		if [ -n "${loaded_version}" ] && [ "${loaded_version}" = "${DRIVER_VERSION}" ]; then
-			echo "Detected matching loaded driver (${loaded_version}); performing userspace-only install"
+	if [ -f /sys/module/nvidia/refcnt ] && [ -f /run/nvidia/driver-config.state ]; then
+		current_config=$(_build_driver_config)
+		stored_config=$(cat /run/nvidia/driver-config.state)
+		
+		if [ "${current_config}" = "${stored_config}" ]; then
+			echo "Detected matching loaded driver & config (${DRIVER_VERSION}); performing userspace-only install"
 			
 			# Skip kernel module unload since they're already loaded with correct version
 			# Unmount any existing rootfs
@@ -715,16 +729,27 @@ init() {
 			--no-drm \
 			--no-peermem
 			
-			# Mount the driver rootfs to make components available
-			_mount_rootfs
+		# Determine the kernel module type
+		_resolve_kernel_type || exit 1
+		
+		# Copy the kernel module sources for sidecar containers (gdrcopy, nvidia-fs, etc.)
+		mkdir -p /usr/src/nvidia-${DRIVER_VERSION} && \
+			cp -r LICENSE mkprecompiled ${KERNEL_TYPE} /usr/src/nvidia-${DRIVER_VERSION}/ && \
+			sed '9,${/^\(kernel\|LICENSE\)/!d}' .manifest > /usr/src/nvidia-${DRIVER_VERSION}/.manifest
 			
-			# Ensure persistence daemon is running
-			_ensure_persistence_running
-			
-			# Write kernel update hook
-			_write_kernel_update_hook
-			
-			echo "Userspace-only install complete, now waiting for signal"
+		# Mount the driver rootfs to make components available
+		_mount_rootfs
+		
+		# Ensure persistence daemon is running
+		_ensure_persistence_running
+		
+		# Write kernel update hook
+		_write_kernel_update_hook
+		
+		# Store driver configuration
+		_store_driver_config
+		
+		echo "Userspace-only install complete, now waiting for signal"
 			sleep infinity &
 			trap "echo 'Caught signal'; _shutdown && { kill $!; exit 0; }" HUP INT QUIT PIPE TERM
 			trap - EXIT
@@ -776,6 +801,7 @@ init() {
     _load_driver || exit 1
     _mount_rootfs
     _write_kernel_update_hook
+    _store_driver_config
 
     echo "Done, now waiting for signal"
     sleep infinity &
