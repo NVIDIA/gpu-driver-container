@@ -55,16 +55,17 @@ OUT_IMAGE = $(OUT_IMAGE_NAME):$(OUT_IMAGE_TAG)
 
 ##### Public rules #####
 DISTRIBUTIONS := ubuntu18.04 ubuntu20.04 ubuntu22.04 ubuntu24.04 signed_ubuntu20.04 signed_ubuntu22.04 signed_ubuntu24.04 rhel8 rhel9 flatcar fedora36 sles15.3 precompiled_rhcos
+RHCOS_VERSIONS := rhcos4.14 rhcos4.15 rhcos4.16 rhcos4.17 rhcos4.18 rhel9.6
 PUSH_TARGETS := $(patsubst %, push-%, $(DISTRIBUTIONS))
 BASE_FROM := noble jammy focal
 PUSH_TARGETS := $(patsubst %, push-%, $(DISTRIBUTIONS))
-VGPU_GUEST_DRIVER_PUSH_TARGETS := $(patsubst %, push-vgpuguest-%, $(DISTRIBUTIONS))
-VGPU_HOST_DRIVER_PUSH_TARGETS := $(patsubst %, push-vgpuhost-%, $(DISTRIBUTIONS))
+VGPU_GUEST_DRIVER_PUSH_TARGETS := $(patsubst %, push-vgpuguest-%, $(DISTRIBUTIONS) $(RHCOS_VERSIONS))
+VGPU_HOST_DRIVER_PUSH_TARGETS := $(patsubst %, push-vgpuhost-%, $(DISTRIBUTIONS) $(RHCOS_VERSIONS))
 DRIVER_PUSH_TARGETS := $(foreach push_target, $(PUSH_TARGETS), $(addprefix $(push_target)-, $(DRIVER_VERSIONS)))
 BUILD_TARGETS := $(patsubst %, build-%, $(DISTRIBUTIONS))
 DRIVER_BUILD_TARGETS := $(foreach build_target, $(BUILD_TARGETS), $(addprefix $(build_target)-, $(DRIVER_VERSIONS)))
-VGPU_GUEST_DRIVER_BUILD_TARGETS := $(patsubst %, build-vgpuguest-%, $(DISTRIBUTIONS))
-VGPU_HOST_DRIVER_BUILD_TARGETS := $(patsubst %, build-vgpuhost-%, $(DISTRIBUTIONS))
+VGPU_GUEST_DRIVER_BUILD_TARGETS := $(patsubst %, build-vgpuguest-%, $(DISTRIBUTIONS) $(RHCOS_VERSIONS))
+VGPU_HOST_DRIVER_BUILD_TARGETS := $(patsubst %, build-vgpuhost-%, $(DISTRIBUTIONS) $(RHCOS_VERSIONS))
 TEST_TARGETS := $(patsubst %, test-%, $(DISTRIBUTIONS))
 PULL_TARGETS := $(patsubst %, pull-%, $(DISTRIBUTIONS))
 DRIVER_PULL_TARGETS := $(foreach pull_target, $(PULL_TARGETS), $(addprefix $(pull_target)-, $(DRIVER_VERSIONS)))
@@ -174,7 +175,7 @@ $(DRIVER_BUILD_TARGETS):
 				--file $(DOCKERFILE) \
 				$(CURDIR)/$(SUBDIR)
 
-build-rhcos%: SUBDIR = rhel8
+build-rhcos%: SUBDIR = rhel9
 
 build-fedora%: SUBDIR = fedora
 
@@ -243,7 +244,9 @@ build-vgpuguest-%: DOCKERFILE = $(CURDIR)/$(SUBDIR)/Dockerfile
 # Remove '-grid' substring in the image tag
 build-vgpuguest-%: DRIVER_TAG = $(DRIVER_VERSION:-grid=)
 
-build-vgpuguest-rhcos%: SUBDIR = rhel8
+# Source of truth for RHEL and CoreOS compatibility https://access.redhat.com/articles/6907891
+build-vgpuguest-rhcos%: SUBDIR = rhel9
+
 
 $(VGPU_GUEST_DRIVER_BUILD_TARGETS):
 	DOCKER_BUILDKIT=1 \
@@ -280,7 +283,8 @@ build-vgpuhost-%: DIST = $(word 3,$(subst -, ,$@))
 build-vgpuhost-%: SUBDIR = $(word 3,$(subst -, ,$@))
 build-vgpuhost-%: DOCKERFILE = $(CURDIR)/vgpu-manager/$(SUBDIR)/Dockerfile
 
-build-vgpuhost-rhcos%: SUBDIR = rhel8
+# Source of truth for RHEL and CoreOS compatibility https://access.redhat.com/articles/6907891
+build-vgpuhost-rhcos%: SUBDIR = rhel9
 
 $(VGPU_HOST_DRIVER_BUILD_TARGETS):
 	DOCKER_BUILDKIT=1 \
@@ -296,8 +300,6 @@ $(VGPU_HOST_DRIVER_BUILD_TARGETS):
 				$(DOCKER_BUILD_ARGS) \
 				--file $(DOCKERFILE) \
 				$(CURDIR)/vgpu-manager/$(SUBDIR)
-
-
 
 # $(VGPU_HOST_DRIVER_PUSH_TARGETS) is in the form of push-vgpuhost-$(DIST)
 # VGPU_HOST_DRIVER_VERSION must be defined in the environment when invoking this target.
