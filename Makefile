@@ -243,7 +243,32 @@ build-vgpuguest-%: DOCKERFILE = $(CURDIR)/$(SUBDIR)/Dockerfile
 # Remove '-grid' substring in the image tag
 build-vgpuguest-%: DRIVER_TAG = $(DRIVER_VERSION:-grid=)
 
-build-vgpuguest-rhcos%: SUBDIR = rhel8
+# Source of truth https://access.redhat.com/articles/6907891
+build-vgpuguest-rhcos4.12: SUBDIR = rhel8
+build-vgpuguest-rhcos4.13: SUBDIR = rhel8
+build-vgpuguest-rhcos4.14: SUBDIR = rhel8
+build-vgpuguest-rhcos4.15: SUBDIR = rhel9
+build-vgpuguest-rhcos4.16: SUBDIR = rhel9
+build-vgpuguest-rhcos4.17: SUBDIR = rhel9
+build-vgpuguest-rhcos4.18: SUBDIR = rhel9
+build-vgpuguest-rhcos4.19: SUBDIR = rhel9
+build-vgpuguest-rhcos4.20: SUBDIR = rhel9
+
+build-vgpuguest-rhcos%:
+	DOCKER_BUILDKIT=1 \
+		$(DOCKER) $(BUILDX) build --pull \
+				$(DOCKER_BUILD_OPTIONS) \
+				$(DOCKER_BUILD_PLATFORM_OPTIONS) \
+				--tag $(IMAGE) \
+				--build-arg DRIVER_TYPE=vgpu \
+				--build-arg VGPU_LICENSE_SERVER_TYPE=NLS \
+				--build-arg DRIVER_VERSION="$(DRIVER_VERSION)" \
+				--build-arg DRIVER_BRANCH="$(DRIVER_BRANCH)" \
+				--build-arg GOLANG_VERSION="$(GOLANG_VERSION)" \
+				--build-arg CVE_UPDATES="$(CVE_UPDATES)" \
+				$(DOCKER_BUILD_ARGS) \
+				--file $(DOCKERFILE) \
+				$(CURDIR)/$(SUBDIR)
 
 $(VGPU_GUEST_DRIVER_BUILD_TARGETS):
 	DOCKER_BUILDKIT=1 \
@@ -280,9 +305,19 @@ build-vgpuhost-%: DIST = $(word 3,$(subst -, ,$@))
 build-vgpuhost-%: SUBDIR = $(word 3,$(subst -, ,$@))
 build-vgpuhost-%: DOCKERFILE = $(CURDIR)/vgpu-manager/$(SUBDIR)/Dockerfile
 
-build-vgpuhost-rhcos%: SUBDIR = rhel8
+# Source of truth https://access.redhat.com/articles/6907891
+build-vgpuhost-rhcos4.12: SUBDIR = rhel8
+build-vgpuhost-rhcos4.13: SUBDIR = rhel8
+build-vgpuhost-rhcos4.14: SUBDIR = rhel8
+build-vgpuhost-rhcos4.15: SUBDIR = rhel9
+build-vgpuhost-rhcos4.16: SUBDIR = rhel9
+build-vgpuhost-rhcos4.17: SUBDIR = rhel9
+build-vgpuhost-rhcos4.18: SUBDIR = rhel9
+build-vgpuhost-rhcos4.19: SUBDIR = rhel9
+build-vgpuhost-rhcos4.20: SUBDIR = rhel9
 
-$(VGPU_HOST_DRIVER_BUILD_TARGETS):
+# TODO(mvalsecchi): find a better way than just duplicate the recipe
+build-vgpuhost-rhcos%:
 	DOCKER_BUILDKIT=1 \
 		$(DOCKER) $(BUILDX) build --pull \
 				$(DOCKER_BUILD_OPTIONS) \
@@ -297,7 +332,20 @@ $(VGPU_HOST_DRIVER_BUILD_TARGETS):
 				--file $(DOCKERFILE) \
 				$(CURDIR)/vgpu-manager/$(SUBDIR)
 
-
+$(VGPU_HOST_DRIVER_BUILD_TARGETS):
+	DOCKER_BUILDKIT=1 \
+                $(DOCKER) $(BUILDX) build --pull \
+                                $(DOCKER_BUILD_OPTIONS) \
+                                $(DOCKER_BUILD_PLATFORM_OPTIONS) \
+                                --tag $(IMAGE) \
+                                --build-arg DRIVER_BRANCH="$(DRIVER_BRANCH)" \
+                                --build-arg DRIVER_VERSION="$(DRIVER_VERSION)" \
+                                --build-arg GOLANG_VERSION="$(GOLANG_VERSION)" \
+                                --build-arg CVE_UPDATES="$(CVE_UPDATES)" \
+                                --build-arg CUDA_VERSION="$(CUDA_VERSION)" \
+                                $(DOCKER_BUILD_ARGS) \
+                                --file $(DOCKERFILE) \
+                                $(CURDIR)/vgpu-manager/$(SUBDIR)
 
 # $(VGPU_HOST_DRIVER_PUSH_TARGETS) is in the form of push-vgpuhost-$(DIST)
 # VGPU_HOST_DRIVER_VERSION must be defined in the environment when invoking this target.
