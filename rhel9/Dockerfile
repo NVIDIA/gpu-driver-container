@@ -1,4 +1,4 @@
-ARG BASE_IMAGE=nvcr.io/nvidia/cuda:13.0.1-base-ubi9
+ARG BASE_IMAGE=nvcr.io/nvidia/cuda:13.0.2-base-ubi9
 
 FROM ${BASE_IMAGE} as build
 
