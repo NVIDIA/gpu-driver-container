@@ -243,7 +243,8 @@ build-vgpuguest-%: DOCKERFILE = $(CURDIR)/$(SUBDIR)/Dockerfile
 # Remove '-grid' substring in the image tag
 build-vgpuguest-%: DRIVER_TAG = $(DRIVER_VERSION:-grid=)
 
-# Source of truth https://access.redhat.com/articles/6907891
+# Source of truth for RHEL and CoreOS compatibility https://access.redhat.com/articles/6907891
+# Note: replace SUBDIR, as per the above macro build-vgpuhost-rhcos4.18 would be "rchos4.18"
 build-vgpuguest-rhcos4.12: SUBDIR = rhel8
 build-vgpuguest-rhcos4.13: SUBDIR = rhel8
 build-vgpuguest-rhcos4.14: SUBDIR = rhel8
@@ -305,7 +306,8 @@ build-vgpuhost-%: DIST = $(word 3,$(subst -, ,$@))
 build-vgpuhost-%: SUBDIR = $(word 3,$(subst -, ,$@))
 build-vgpuhost-%: DOCKERFILE = $(CURDIR)/vgpu-manager/$(SUBDIR)/Dockerfile
 
-# Source of truth https://access.redhat.com/articles/6907891
+# Source of truth for RHEL and CoreOS compatibility https://access.redhat.com/articles/6907891
+# Note: replace SUBDIR, as per the above macro build-vgpuhost-rhcos4.18 would be "rchos4.18"
 build-vgpuhost-rhcos4.12: SUBDIR = rhel8
 build-vgpuhost-rhcos4.13: SUBDIR = rhel8
 build-vgpuhost-rhcos4.14: SUBDIR = rhel8
