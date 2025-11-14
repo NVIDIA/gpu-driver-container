@@ -639,7 +639,7 @@ _start_vgpu_topology_daemon() {
     nvidia-topologyd
 }
 
-_ensure_persistence_running() {
+_ensure_persistenced() {
 	local pid_file=/var/run/nvidia-persistenced/nvidia-persistenced.pid pid
 	if pid=$(<"${pid_file}" 2>/dev/null) && [ -n "${pid}" ] && kill -0 "${pid}" 2>/dev/null; then
 		return 0
@@ -653,11 +653,31 @@ _ensure_persistence_running() {
 }
 
 _build_driver_config() {
+	local nvidia_params="" nvidia_uvm_params="" nvidia_modeset_params="" nvidia_peermem_params=""
+	
+	# Read module parameters from conf files
+	if [ -f "/drivers/nvidia.conf" ]; then
+		nvidia_params=$(cat "/drivers/nvidia.conf" | tr '\n' ' ')
+	fi
+	if [ -f "/drivers/nvidia-uvm.conf" ]; then
+		nvidia_uvm_params=$(cat "/drivers/nvidia-uvm.conf" | tr '\n' ' ')
+	fi
+	if [ -f "/drivers/nvidia-modeset.conf" ]; then
+		nvidia_modeset_params=$(cat "/drivers/nvidia-modeset.conf" | tr '\n' ' ')
+	fi
+	if [ -f "/drivers/nvidia-peermem.conf" ]; then
+		nvidia_peermem_params=$(cat "/drivers/nvidia-peermem.conf" | tr '\n' ' ')
+	fi
+	
 	local config="DRIVER_VERSION=${DRIVER_VERSION}
 KERNEL_VERSION=$(uname -r)
 GPU_DIRECT_RDMA_ENABLED=${GPU_DIRECT_RDMA_ENABLED}
 USE_HOST_MOFED=${USE_HOST_MOFED}
-KERNEL_MODULE_TYPE=${KERNEL_MODULE_TYPE}"
+KERNEL_MODULE_TYPE=${KERNEL_MODULE_TYPE}
+NVIDIA_MODULE_PARAMS=${nvidia_params}
+NVIDIA_UVM_MODULE_PARAMS=${nvidia_uvm_params}
+NVIDIA_MODESET_MODULE_PARAMS=${nvidia_modeset_params}
+NVIDIA_PEERMEM_MODULE_PARAMS=${nvidia_peermem_params}"
 
 	# Append config file contents directly
 	for conf_file in nvidia.conf nvidia-uvm.conf nvidia-modeset.conf nvidia-peermem.conf; do
@@ -741,7 +761,7 @@ init() {
 		_mount_rootfs
 		
 		# Ensure persistence daemon is running
-		_ensure_persistence_running
+		_ensure_persistenced
 		
 		# Write kernel update hook
 		_write_kernel_update_hook
