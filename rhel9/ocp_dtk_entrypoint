@@ -18,6 +18,13 @@ nv-ctr-run-with-dtk() {
         exec bash -x nvidia-driver init
     fi
 
+    if _should_use_fast_path; then
+        echo "Fast path detected: skipping DTK build and module copy, proceeding with userspace-only install"
+        exec bash -x nvidia-driver init
+    fi
+
+    echo "Fast path not detected: building driver and modules"
+
     if [[ ! -f "$DRIVER_TOOLKIT_SHARED_DIR/dir_prepared" ]]; then
         cp -r \
            /tmp/install.sh \
@@ -80,6 +87,19 @@ dtk-build-driver() {
     if [[ "${RHCOS_IMAGE_MISSING:-}" == "true" ]]; then
         echo "WARNING: 'istag/driver-toolkit:${RHCOS_VERSION} -n openshift' missing, nothing to do in openshift-driver-toolkit-ctr container"
         sleep inf
+    fi
+
+    # Check if fast path is being used - if so, skip building and signal completion
+    if _should_use_fast_path; then
+        echo "Fast path detected in DTK container: driver already loaded with matching config, skipping build"
+        echo "Signaling driver_built and sleeping forever..."
+        touch "$DRIVER_TOOLKIT_SHARED_DIR/driver_build_started"
+        touch "$DRIVER_TOOLKIT_SHARED_DIR/driver_built"
+        while [ -f "$DRIVER_TOOLKIT_SHARED_DIR/driver_built" ]; do
+            sleep 30
+        done
+        echo "WARNING: driver_built flag disappeared"
+        exit 0
     fi
 
     if ! [[ -f "/lib/modules/$(uname -r)/vmlinuz" ]]; then

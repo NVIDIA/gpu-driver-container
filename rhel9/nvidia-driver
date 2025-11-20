@@ -8,12 +8,13 @@ PID_FILE=${RUN_DIR}/${0##*/}.pid
 DRIVER_VERSION=${DRIVER_VERSION:?"Missing DRIVER_VERSION env"}
 KERNEL_UPDATE_HOOK=/run/kernel/postinst.d/update-nvidia-driver
 NUM_VGPU_DEVICES=0
+GPU_DIRECT_RDMA_ENABLED="${GPU_DIRECT_RDMA_ENABLED:-false}"
+USE_HOST_MOFED="${USE_HOST_MOFED:-false}"
 NVIDIA_MODULE_PARAMS=()
 NVIDIA_UVM_MODULE_PARAMS=()
 NVIDIA_MODESET_MODULE_PARAMS=()
 NVIDIA_PEERMEM_MODULE_PARAMS=()
 TARGETARCH=${TARGETARCH:?"Missing TARGETARCH env"}
-USE_HOST_MOFED="${USE_HOST_MOFED:-false}"
 DNF_RELEASEVER=${DNF_RELEASEVER:-""}
 RHEL_VERSION=${RHEL_VERSION:-""}
 RHEL_MAJOR_VERSION=9
@@ -211,7 +212,10 @@ _create_driver_package() (
     local nvidia_modeset_sign_args=""
     local nvidia_uvm_sign_args=""
 
-    trap "make -s -j ${MAX_THREADS} SYSSRC=/lib/modules/${KERNEL_VERSION}/build clean > /dev/null" EXIT
+    # Skip cleanup trap for DTK builds - modules are copied after this function returns
+    if [ "${PACKAGE_TAG:-}" != "builtin" ]; then
+        trap "make -s -j ${MAX_THREADS} SYSSRC=/lib/modules/${KERNEL_VERSION}/build clean > /dev/null" EXIT
+    fi
 
     echo "Compiling NVIDIA driver kernel modules..."
     cd /usr/src/nvidia-${DRIVER_VERSION}/${KERNEL_TYPE}
@@ -398,44 +402,7 @@ _load_driver() {
         set +o xtrace -o nounset
     fi
 
-    echo "Starting NVIDIA persistence daemon..."
-    nvidia-persistenced --persistence-mode
-
-    if [ "${DRIVER_TYPE}" = "vgpu" ]; then
-        echo "Copying gridd.conf..."
-        cp /drivers/gridd.conf /etc/nvidia/gridd.conf
-        if [ "${VGPU_LICENSE_SERVER_TYPE}" = "NLS" ]; then
-            echo "Copying ClientConfigToken..."
-            mkdir -p  /etc/nvidia/ClientConfigToken/
-            cp /drivers/ClientConfigToken/* /etc/nvidia/ClientConfigToken/
-        fi
-
-        echo "Starting nvidia-gridd.."
-        LD_LIBRARY_PATH=/usr/lib64/nvidia/gridd nvidia-gridd
-
-        # Start virtual topology daemon
-        _start_vgpu_topology_daemon
-    fi
-
-    if _assert_nvlink5_system; then
-        _ensure_nvlink5_prerequisites || return 1
-        echo "Starting NVIDIA fabric manager daemon for NVLink5+..."
-
-        fm_config_file=/usr/share/nvidia/nvswitch/fabricmanager.cfg
-        fm_pid_file=/var/run/nvidia-fabricmanager/nv-fabricmanager.pid
-        nvlsm_config_file=/usr/share/nvidia/nvlsm/nvlsm.conf
-        nvlsm_pid_file=/var/run/nvidia-fabricmanager/nvlsm.pid
-        /usr/bin/nvidia-fabricmanager-start.sh --mode start \
-                                               --fm-config-file $fm_config_file \
-                                               --fm-pid-file $fm_pid_file \
-                                               --nvlsm-config-file $nvlsm_config_file \
-                                               --nvlsm-pid-file $nvlsm_pid_file
-
-    # If not a NVLink5+ switch, check for the presence of NVLink4 (or below) switches
-    elif _assert_nvswitch_system; then
-        echo "Starting NVIDIA fabric manager daemon..."
-        nv-fabricmanager -c /usr/share/nvidia/nvswitch/fabricmanager.cfg
-    fi
+    _start_daemons
 }
 
 # Stop persistenced and unload the kernel modules if they are currently loaded.
@@ -566,11 +533,7 @@ _install_driver() {
         install_args+=("--skip-module-load")
     fi
 
-    IGNORE_CC_MISMATCH=1 nvidia-installer --kernel-module-only --no-drm --ui=none --no-nouveau-check -m=${KERNEL_TYPE} ${install_args[@]+"${install_args[@]}"}
-    # May need to add no-cc-check for Rhel, otherwise it complains about cc missing in path
-    # /proc/version and lib/modules/KERNEL_VERSION/proc are different, by default installer looks at /proc/ so, added the proc-mount-point
-    # TODO: remove the -a flag. its not needed. in the new driver version, license-acceptance is implicit
-    #nvidia-installer --kernel-module-only --no-drm --ui=none --no-nouveau-check --no-cc-version-check --proc-mount-point /lib/modules/${KERNEL_VERSION}/proc ${install_args[@]+"${install_args[@]}"}
+    IGNORE_CC_MISMATCH=1 nvidia-installer --silent --kernel-module-only --no-drm --ui=none --no-nouveau-check -m=${KERNEL_TYPE} ${install_args[@]+"${install_args[@]}"}
 }
 
 # Mount the driver rootfs into the run directory with the exception of sysfs.
@@ -701,6 +664,110 @@ _start_vgpu_topology_daemon() {
     nvidia-topologyd
 }
 
+_ensure_persistence() {
+    local pid_file=/var/run/nvidia-persistenced/nvidia-persistenced.pid pid
+    if pid=$(<"${pid_file}" 2>/dev/null) && [ -n "${pid}" ] && kill -0 "${pid}" 2>/dev/null; then
+        return 0
+    fi
+
+    if command -v nvidia-persistenced >/dev/null 2>&1; then
+        nvidia-persistenced --persistence-mode || true
+    else
+        echo "nvidia-persistenced not found; continuing without persistence"
+    fi
+}
+
+_start_daemons() {
+    echo "Starting NVIDIA persistence daemon..."
+    nvidia-persistenced --persistence-mode
+
+    if [ "${DRIVER_TYPE}" = "vgpu" ]; then
+        echo "Copying gridd.conf..."
+        cp /drivers/gridd.conf /etc/nvidia/gridd.conf
+        if [ "${VGPU_LICENSE_SERVER_TYPE}" = "NLS" ]; then
+            echo "Copying ClientConfigToken..."
+            mkdir -p  /etc/nvidia/ClientConfigToken/
+            cp /drivers/ClientConfigToken/* /etc/nvidia/ClientConfigToken/
+        fi
+
+        echo "Starting nvidia-gridd.."
+        LD_LIBRARY_PATH=/usr/lib64/nvidia/gridd nvidia-gridd
+
+        # Start virtual topology daemon
+        _start_vgpu_topology_daemon
+    fi
+
+    if _assert_nvlink5_system; then
+        _ensure_nvlink5_prerequisites || return 1
+        echo "Starting NVIDIA fabric manager daemon for NVLink5+..."
+
+        fm_config_file=/usr/share/nvidia/nvswitch/fabricmanager.cfg
+        fm_pid_file=/var/run/nvidia-fabricmanager/nv-fabricmanager.pid
+        nvlsm_config_file=/usr/share/nvidia/nvlsm/nvlsm.conf
+        nvlsm_pid_file=/var/run/nvidia-fabricmanager/nvlsm.pid
+        /usr/bin/nvidia-fabricmanager-start.sh --mode start \
+                                               --fm-config-file $fm_config_file \
+                                               --fm-pid-file $fm_pid_file \
+                                               --nvlsm-config-file $nvlsm_config_file \
+                                               --nvlsm-pid-file $nvlsm_pid_file
+
+    # If not a NVLink5+ switch, check for the presence of NVLink4 (or below) switches
+    elif _assert_nvswitch_system; then
+        echo "Starting NVIDIA fabric manager daemon..."
+        nv-fabricmanager -c /usr/share/nvidia/nvswitch/fabricmanager.cfg
+    fi
+}
+
+_store_driver_config() {
+	local config_file="/run/nvidia/driver-config.state"
+	echo "Storing driver configuration state..."
+	_build_driver_config > "$config_file"
+	echo "Driver configuration stored at $config_file"
+}
+
+_userspace_only_install() {
+    echo "Detected matching loaded driver & config (${DRIVER_VERSION}); performing userspace-only install"
+    
+    _unmount_rootfs
+    _update_package_cache
+    
+    # Skip kernel-related steps for userspace-only install
+    # KERNEL_VERSION is already set from uname -r, no need to resolve from yum
+    # Kernel headers/devel/modules are not needed for userspace-only install
+    
+    cd /drivers
+    [ ! -d "NVIDIA-Linux-${DRIVER_ARCH}-${DRIVER_VERSION}" ] && sh NVIDIA-Linux-${DRIVER_ARCH}-${DRIVER_VERSION}.run -x
+    cd NVIDIA-Linux-${DRIVER_ARCH}-${DRIVER_VERSION}
+    
+
+    echo "DEBUG: Current directory: $(pwd)"
+    echo "DEBUG: Checking for ./nvidia-installer:"
+    ls -la ./nvidia-installer 2>&1 || echo "  ./nvidia-installer NOT FOUND"
+    echo "DEBUG: Checking PATH for nvidia-installer:"
+    which nvidia-installer 2>&1 || echo "  nvidia-installer NOT in PATH"
+
+
+    echo "Installing userspace components (libraries and binaries)..."
+    local install_args="--silent --no-kernel-module --no-nouveau-check --no-nvidia-modprobe --no-drm --no-peermem --ui=none"
+    [ "${ACCEPT_LICENSE}" = "yes" ] && install_args="$install_args --accept-license"
+    IGNORE_CC_MISMATCH=1 ./nvidia-installer $install_args
+    
+    # Copy kernel module sources if not already present (needed for other containers)
+    if [ ! -d "/usr/src/nvidia-${DRIVER_VERSION}" ]; then
+        _resolve_kernel_type || exit 1
+        mkdir -p /usr/src/nvidia-${DRIVER_VERSION}
+        cp -r LICENSE mkprecompiled ${KERNEL_TYPE} /usr/src/nvidia-${DRIVER_VERSION}/
+        sed '9,${/^\(kernel\|LICENSE\)/!d}' .manifest > /usr/src/nvidia-${DRIVER_VERSION}/.manifest
+    fi
+    
+    _mount_rootfs
+    _start_daemons
+    _write_kernel_update_hook
+    _store_driver_config
+    
+    echo "Userspace-only install complete"
+}
+
 _prepare() {
     if [ "${DRIVER_TYPE}" = "vgpu" ]; then
         _find_vgpu_driver_version || exit 1
@@ -758,6 +825,7 @@ _load() {
     _load_driver
     _mount_rootfs
     _write_kernel_update_hook
+    _store_driver_config
 
     echo "Done, now waiting for signal"
     sleep infinity &
@@ -768,7 +836,49 @@ _load() {
 }
 
 init() {
-    _prepare_exclusive
+    if [ "${DRIVER_TYPE}" = "vgpu" ]; then
+        _find_vgpu_driver_version || exit 1
+    fi
+
+    echo -e "\n========== NVIDIA Software Installer ==========\n"
+    echo -e "Starting installation of NVIDIA driver version ${DRIVER_VERSION} for Linux kernel version ${KERNEL_VERSION}\n"
+
+    exec 3> ${PID_FILE}
+    if ! flock -n 3; then
+        echo "An instance of the NVIDIA driver is already running, aborting"
+        exit 1
+    fi
+    echo $$ >&3
+
+    trap "echo 'Caught signal'; exit 1" HUP INT QUIT PIPE TERM
+    trap "_shutdown" EXIT
+
+    if _should_use_fast_path; then
+        _userspace_only_install
+        
+        echo "Userspace-only install complete, now waiting for signal"
+        sleep infinity &
+        trap "echo 'Caught signal'; _shutdown && { kill $!; exit 0; }" HUP INT QUIT PIPE TERM
+        trap - EXIT
+        while true; do wait $! || continue; done
+        exit 0
+    fi
+
+    _unload_driver || exit 1
+    _unmount_rootfs
+
+    # Install the userspace components and copy the kernel module sources.
+    sh NVIDIA-Linux-$DRIVER_ARCH-$DRIVER_VERSION.run -x && \
+        cd NVIDIA-Linux-$DRIVER_ARCH-$DRIVER_VERSION && \
+        sh /tmp/install.sh nvinstall
+
+    # Determine the kernel module type
+    _resolve_kernel_type || exit 1
+
+    # Copy the kernel module sources
+    mkdir -p /usr/src/nvidia-$DRIVER_VERSION && \
+        mv LICENSE mkprecompiled ${KERNEL_TYPE} /usr/src/nvidia-$DRIVER_VERSION && \
+        sed '9,${/^\(kernel\|LICENSE\)/!d}' .manifest > /usr/src/nvidia-$DRIVER_VERSION/.manifest
 
     _build
 
