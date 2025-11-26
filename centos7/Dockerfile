@@ -21,6 +21,9 @@ RUN sh /tmp/install.sh depinstall && \
     curl -fsSL -o /usr/local/bin/extract-vmlinux https://raw.githubusercontent.com/torvalds/linux/master/scripts/extract-vmlinux && \
     chmod +x /usr/local/bin/donkey /usr/local/bin/extract-vmlinux
 
+# Diagnostic utilities required by nvidia-bug-report.sh
+RUN yum install -y dmidecode pciutils && rm -rf /var/cache/yum/*
+
 # Install the userspace components and copy the kernel module sources.
 RUN cd /tmp && \
     curl -fSsl -O $BASE_URL/$DRIVER_VERSION/NVIDIA-Linux-x86_64-$DRIVER_VERSION.run && \

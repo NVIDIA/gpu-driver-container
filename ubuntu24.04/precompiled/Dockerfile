@@ -28,7 +28,9 @@ RUN dpkg --add-architecture i386 && \
         file \
         libelf-dev \
         libglvnd-dev \
-        pkg-config && \
+        pkg-config \
+        dmidecode \
+        pciutils && \
     rm -rf /var/lib/apt/lists/*
 
 # Fetch GPG keys for CUDA repo

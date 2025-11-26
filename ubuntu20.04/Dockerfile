@@ -69,6 +69,11 @@ RUN /tmp/install.sh reposetup && /tmp/install.sh depinstall && \
     curl -fsSL -o /usr/local/bin/donkey https://github.com/3XX0/donkey/releases/download/v1.1.0/donkey && \
     chmod +x /usr/local/bin/donkey
 
+# Diagnostic utilities required by nvidia-bug-report.sh
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends dmidecode pciutils && \
+    rm -rf /var/lib/apt/lists/*
+
 COPY nvidia-driver /usr/local/bin
 
 COPY --from=build /work/vgpu-util /usr/local/bin

@@ -12,7 +12,9 @@ RUN dpkg --add-architecture i386 && \
         curl \
         kmod \
         libc6:i386 \
-        libelf-dev && \
+        libelf-dev \
+        dmidecode \
+        pciutils && \
     rm -rf /var/lib/apt/lists/*
 
 RUN echo "deb [arch=amd64] http://archive.ubuntu.com/ubuntu/ xenial main universe" > /etc/apt/sources.list && \

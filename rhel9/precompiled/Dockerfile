@@ -111,7 +111,9 @@ COPY --from=builder --chmod=444 /home/builder/yum-packaging-precompiled-kmod/tmp
 # Kernel packages needed to build drivers / kmod
 RUN echo "${RHEL_VERSION}" > /etc/dnf/vars/releasever \
     && dnf config-manager --best --nodocs --setopt=install_weak_deps=False --save \
-    && dnf -y install kmod binutils
+    && dnf -y install kmod binutils \
+    # Diagnostic utilities required by nvidia-bug-report.sh
+    && dnf -y install dmidecode pciutils
 
 # Prevent modprobe from giving a WARNING about missing files
 RUN rm -rf /lib/modules/${KERNEL_VERSION_NOARCH}.${BUILD_ARCH} \
