@@ -15,6 +15,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         build-essential \
         file \
         kmod \
+        dmidecode \
         pciutils && \
     rm -rf /var/lib/apt/lists/*
 

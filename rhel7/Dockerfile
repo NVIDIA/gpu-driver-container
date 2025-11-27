@@ -10,7 +10,9 @@ RUN yum install -y \
         glibc.i686 \
         make \
         cpio \
-        kmod && \
+        kmod \
+        dmidecode \
+        pciutils && \
     rm -rf /var/cache/yum/*
 
 RUN curl -fsSL -o /usr/local/bin/donkey https://github.com/3XX0/donkey/releases/download/v1.1.0/donkey && \

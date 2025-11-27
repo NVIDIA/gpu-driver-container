@@ -13,7 +13,9 @@ RUN dnf install -y \
         glibc.i686 \
         make \
         dnf-utils \
-        kmod && \
+        kmod \
+        dmidecode \
+        pciutils && \
     rm -rf /var/cache/dnf/*
 
 RUN curl -fsSL -o /usr/local/bin/donkey https://github.com/3XX0/donkey/releases/download/v1.1.0/donkey && \

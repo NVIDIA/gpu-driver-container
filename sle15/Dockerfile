@@ -42,6 +42,9 @@ RUN sh /tmp/install.sh depinstall && \
     chmod +x /usr/local/bin/donkey /usr/local/bin/extract-vmlinux && \
     ln -s /sbin/ldconfig /sbin/ldconfig.real
 
+# Diagnostic utilities required by nvidia-bug-report.sh
+RUN zypper --non-interactive install -y dmidecode pciutils && rm -rf /var/cache/zypp/*
+
 ADD drivers drivers/
 
 # Fetch the installer automatically for passthrough/baremetal types

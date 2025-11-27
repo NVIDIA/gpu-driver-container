@@ -10,7 +10,8 @@ USER root
 
 COPY nvidia-driver /usr/local/bin
 
-RUN tdnf -y install util-linux ca-certificates
+# Diagnostic utilities required by nvidia-bug-report.sh
+RUN tdnf -y install util-linux ca-certificates dmidecode pciutils
 
 RUN curl -fsSL -o /etc/yum.repos.d/mariner-nvidia.repo \
      https://raw.githubusercontent.com/microsoft/azurelinux/${AZURE_LINUX_VERSION}/toolkit/docs/nvidia/mariner-nvidia.repo

@@ -31,7 +31,9 @@ RUN dpkg --add-architecture i386 && \
         file \
         libelf-dev \
         libglvnd-dev \
-        pkg-config && \
+        pkg-config \
+        dmidecode \
+        pciutils && \
     rm -rf /var/lib/apt/lists/*
 
 RUN echo "deb [arch=amd64] http://archive.ubuntu.com/ubuntu/ jammy main universe" > /etc/apt/sources.list && \

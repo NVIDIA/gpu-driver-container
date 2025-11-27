@@ -26,6 +26,8 @@ RUN dpkg --add-architecture i386 && \
         libelf-dev \
         libglvnd-dev \
         pkg-config \
+        dmidecode \
+        pciutils \
         nvidia-fabricmanager-${DRIVER_BRANCH}=${DRIVER_VERSION}-1 \
         libnvidia-nscq-${DRIVER_BRANCH}=${DRIVER_VERSION}-1 && \
     rm -rf /var/lib/apt/lists/*
