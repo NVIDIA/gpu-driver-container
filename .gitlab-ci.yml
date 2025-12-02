@@ -67,6 +67,14 @@ include:
   rules:
     - if: $CI_PIPELINE_SOURCE != "schedule"
 
+# Define the image build targets
+.image-build-rhel10:
+  # Perform for each DRIVER_VERSION
+  extends:
+    - .driver-versions
+    - .image-build-generic
+  rules:
+    - if: $CI_PIPELINE_SOURCE != "schedule"
 
 image-ubuntu20.04:
   extends:
@@ -92,6 +100,11 @@ image-rhel9:
   extends:
     - .image-build-rhel9
     - .dist-rhel9
+
+image-rhel10:
+  extends:
+    - .image-build-rhel10
+    - .dist-rhel10
 
 image-fedora36:
   extends:

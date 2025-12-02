@@ -167,6 +167,7 @@ done
 build "rhel7" "${CONTAINER_VERSION}-rhel7" "$(mk_short_version rhel7)" ""
 build "rhel8" "${CONTAINER_VERSION}-rhel8" "$(mk_short_version rhel8)" ""
 build "rhel9" "${CONTAINER_VERSION}-rhel9" "$(mk_short_version rhel9)" ""
+build "rhel10" "${CONTAINER_VERSION}-rhel10" "$(mk_short_version rhel10)" ""
 
 # Add rhcos tags
 docker pull "${REGISTRY}:${CONTAINER_VERSION}-rhel8"
