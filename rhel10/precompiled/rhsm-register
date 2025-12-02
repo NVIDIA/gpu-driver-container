@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+
+set -e
+
+RHSM_ORG=$(cat /run/secrets/RHSM_ORG)
+RHSM_ACTIVATIONKEY=$(cat /run/secrets/RHSM_ACTIVATIONKEY)
+subscription-manager register --name=rhcos-driver-builder --org=${RHSM_ORG} --activationkey=${RHSM_ACTIVATIONKEY}
