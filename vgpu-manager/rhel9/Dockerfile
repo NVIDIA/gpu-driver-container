@@ -26,6 +26,10 @@ RUN chmod +x NVIDIA-Linux-${DRIVER_ARCH}-${DRIVER_VERSION}-vgpu-kvm.run
 COPY nvidia-driver /usr/local/bin
 COPY ocp_dtk_entrypoint /usr/local/bin
 
+RUN dnf install -y pciutils && \
+    dnf clean all && \
+    rm -rf /var/cache/dnf/*
+
 LABEL io.k8s.display-name="NVIDIA vGPU Manager Container"
 LABEL name="NVIDIA vGPU Manager Container"
 LABEL vendor="NVIDIA"
