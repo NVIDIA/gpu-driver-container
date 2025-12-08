@@ -19,12 +19,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         build-essential \
         ca-certificates \
         curl \
-        git && \
+        git  \
+        wget && \
     rm -rf /var/lib/apt/lists/*
 
 # download appropriate binary based on the target architecture for multi-arch builds
 RUN OS_ARCH=${TARGETARCH/x86_64/amd64} && OS_ARCH=${OS_ARCH/aarch64/arm64} && \
-    curl https://storage.googleapis.com/golang/go${GOLANG_VERSION}.linux-${OS_ARCH}.tar.gz \
+    wget -nv -O - https://go.dev/dl/go${GOLANG_VERSION}.linux-${OS_ARCH}.tar.gz \
     | tar -C /usr/local -xz
 
 ENV PATH /usr/local/go/bin:$PATH
