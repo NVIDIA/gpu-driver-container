@@ -719,52 +719,47 @@ _start_daemons() {
 }
 
 _store_driver_config() {
-	local config_file="/run/nvidia/driver-config.state"
-	echo "Storing driver configuration state..."
-	_build_driver_config > "$config_file"
-	echo "Driver configuration stored at $config_file"
+    local config_file="/run/nvidia/driver-config.state"
+    echo "Storing driver configuration state..."
+    _build_driver_config > "$config_file"
+    echo "Driver configuration stored at $config_file"
+}
+
+_wait_for_signal() {
+    echo "Done, now waiting for signal"
+    sleep infinity &
+    trap "echo 'Caught signal'; _shutdown && { kill $!; exit 0; }" HUP INT QUIT PIPE TERM
+    trap - EXIT
+    while true; do wait $! || continue; done
+    exit 0
 }
 
 _userspace_only_install() {
     echo "Detected matching loaded driver & config (${DRIVER_VERSION}); performing userspace-only install"
-    
     _unmount_rootfs
     _update_package_cache
-    
-    # Skip kernel-related steps for userspace-only install
-    # KERNEL_VERSION is already set from uname -r, no need to resolve from yum
-    # Kernel headers/devel/modules are not needed for userspace-only install
-    
+
     cd /drivers
     [ ! -d "NVIDIA-Linux-${DRIVER_ARCH}-${DRIVER_VERSION}" ] && sh NVIDIA-Linux-${DRIVER_ARCH}-${DRIVER_VERSION}.run -x
     cd NVIDIA-Linux-${DRIVER_ARCH}-${DRIVER_VERSION}
-    
-
-    echo "DEBUG: Current directory: $(pwd)"
-    echo "DEBUG: Checking for ./nvidia-installer:"
-    ls -la ./nvidia-installer 2>&1 || echo "  ./nvidia-installer NOT FOUND"
-    echo "DEBUG: Checking PATH for nvidia-installer:"
-    which nvidia-installer 2>&1 || echo "  nvidia-installer NOT in PATH"
-
 
     echo "Installing userspace components (libraries and binaries)..."
     local install_args="--silent --no-kernel-module --no-nouveau-check --no-nvidia-modprobe --no-drm --no-peermem --ui=none"
     [ "${ACCEPT_LICENSE}" = "yes" ] && install_args="$install_args --accept-license"
     IGNORE_CC_MISMATCH=1 ./nvidia-installer $install_args
-    
-    # Copy kernel module sources if not already present (needed for other containers)
+
+    # Copy kernel module sources if not already present (needed for sidecar containers)
     if [ ! -d "/usr/src/nvidia-${DRIVER_VERSION}" ]; then
         _resolve_kernel_type || exit 1
         mkdir -p /usr/src/nvidia-${DRIVER_VERSION}
         cp -r LICENSE mkprecompiled ${KERNEL_TYPE} /usr/src/nvidia-${DRIVER_VERSION}/
         sed '9,${/^\(kernel\|LICENSE\)/!d}' .manifest > /usr/src/nvidia-${DRIVER_VERSION}/.manifest
     fi
-    
+
     _mount_rootfs
     _start_daemons
     _write_kernel_update_hook
     _store_driver_config
-    
     echo "Userspace-only install complete"
 }
 
@@ -826,13 +821,7 @@ _load() {
     _mount_rootfs
     _write_kernel_update_hook
     _store_driver_config
-
-    echo "Done, now waiting for signal"
-    sleep infinity &
-    trap "echo 'Caught signal'; _shutdown && { kill $!; exit 0; }" HUP INT QUIT PIPE TERM
-    trap - EXIT
-    while true; do wait $! || continue; done
-    exit 0
+    _wait_for_signal
 }
 
 init() {
@@ -855,13 +844,7 @@ init() {
 
     if _should_use_fast_path; then
         _userspace_only_install
-        
-        echo "Userspace-only install complete, now waiting for signal"
-        sleep infinity &
-        trap "echo 'Caught signal'; _shutdown && { kill $!; exit 0; }" HUP INT QUIT PIPE TERM
-        trap - EXIT
-        while true; do wait $! || continue; done
-        exit 0
+        _wait_for_signal
     fi
 
     _unload_driver || exit 1

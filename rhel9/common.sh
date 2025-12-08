@@ -46,44 +46,26 @@ _gdrcopy_enabled() {
     return 1
 }
 
+# Read a config file and convert newlines to spaces
+_read_conf_file() {
+    local file="$1"
+    [ -f "$file" ] && tr '\n' ' ' < "$file"
+}
+
 # Build driver configuration for state comparison
 _build_driver_config() {
-	local nvidia_params="" nvidia_uvm_params="" nvidia_modeset_params="" nvidia_peermem_params=""
-	
-	# Read module parameters from conf files
-	if [ -f "/drivers/nvidia.conf" ]; then
-		nvidia_params=$(cat "/drivers/nvidia.conf" | tr '\n' ' ')
-	fi
-	if [ -f "/drivers/nvidia-uvm.conf" ]; then
-		nvidia_uvm_params=$(cat "/drivers/nvidia-uvm.conf" | tr '\n' ' ')
-	fi
-	if [ -f "/drivers/nvidia-modeset.conf" ]; then
-		nvidia_modeset_params=$(cat "/drivers/nvidia-modeset.conf" | tr '\n' ' ')
-	fi
-	if [ -f "/drivers/nvidia-peermem.conf" ]; then
-		nvidia_peermem_params=$(cat "/drivers/nvidia-peermem.conf" | tr '\n' ' ')
-	fi
-	
-	local config="DRIVER_VERSION=${DRIVER_VERSION}
+    cat <<EOF
+DRIVER_VERSION=${DRIVER_VERSION}
 DRIVER_TYPE=${DRIVER_TYPE:-passthrough}
 KERNEL_VERSION=$(uname -r)
 GPU_DIRECT_RDMA_ENABLED=${GPU_DIRECT_RDMA_ENABLED:-false}
 USE_HOST_MOFED=${USE_HOST_MOFED:-false}
 KERNEL_MODULE_TYPE=${KERNEL_MODULE_TYPE:-auto}
-NVIDIA_MODULE_PARAMS=${nvidia_params}
-NVIDIA_UVM_MODULE_PARAMS=${nvidia_uvm_params}
-NVIDIA_MODESET_MODULE_PARAMS=${nvidia_modeset_params}
-NVIDIA_PEERMEM_MODULE_PARAMS=${nvidia_peermem_params}"
-
-	# Append config file contents directly
-	for conf_file in nvidia.conf nvidia-uvm.conf nvidia-modeset.conf nvidia-peermem.conf; do
-		if [ -f "/drivers/$conf_file" ]; then
-			config="${config}
-$(cat "/drivers/$conf_file")"
-		fi
-	done
-
-	echo "$config"
+NVIDIA_MODULE_PARAMS=$(_read_conf_file /drivers/nvidia.conf)
+NVIDIA_UVM_MODULE_PARAMS=$(_read_conf_file /drivers/nvidia-uvm.conf)
+NVIDIA_MODESET_MODULE_PARAMS=$(_read_conf_file /drivers/nvidia-modeset.conf)
+NVIDIA_PEERMEM_MODULE_PARAMS=$(_read_conf_file /drivers/nvidia-peermem.conf)
+EOF
 }
 
 # Check if fast path should be used (driver already loaded with matching config)
