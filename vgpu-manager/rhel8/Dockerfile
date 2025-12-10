@@ -5,6 +5,9 @@ ENV DRIVER_VERSION=$DRIVER_VERSION
 ARG DRIVER_ARCH=x86_64
 ENV DRIVER_ARCH=$DRIVER_ARCH
 
+# Diagnostic utilities required by nvidia-bug-report.sh
+RUN dnf install -y dmidecode pciutils && rm -rf /var/cache/yum/*
+
 RUN mkdir -p /driver
 WORKDIR /driver
 COPY NVIDIA-Linux-${DRIVER_ARCH}-${DRIVER_VERSION}-vgpu-kvm.run .

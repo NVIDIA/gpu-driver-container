@@ -86,9 +86,12 @@ imex_install() {
 }
 
 extra_pkgs_install() {
-  if [ "$DRIVER_TYPE" != "vgpu" ]; then
-      apt-get update
+  apt-get update
 
+  # Diagnostic utilities required by nvidia-bug-report.sh
+  apt-get install -y --no-install-recommends dmidecode pciutils
+
+  if [ "$DRIVER_TYPE" != "vgpu" ]; then
       fabricmanager_install
       nscq_install
 
@@ -100,9 +103,9 @@ extra_pkgs_install() {
 
       nvlink5_pkgs_install
       imex_install
-
-      rm -rf /var/lib/apt/lists/*
   fi
+
+  rm -rf /var/lib/apt/lists/*
 }
 
 if [ "$1" = "depinstall" ]; then

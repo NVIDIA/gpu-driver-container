@@ -90,7 +90,9 @@ RUN echo "${RHEL_VERSION}" > /etc/dnf/vars/releasever \
     && dnf config-manager --best --nodocs --setopt=install_weak_deps=False --save \
     && DRIVER_STREAM=$(echo ${DRIVER_VERSION} | cut -d '.' -f 1) \
     && dnf -y module enable nvidia-driver:${DRIVER_STREAM}/default \
-    && dnf -y install kmod binutils
+    && dnf -y install kmod binutils \
+    # Diagnostic utilities required by nvidia-bug-report.sh
+    && dnf -y install dmidecode pciutils
 
 # Prevent modprobe from giving a WARNING about missing files
 RUN rm -rf /lib/modules/${KERNEL_VERSION} \

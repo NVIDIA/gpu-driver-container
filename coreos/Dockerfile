@@ -26,7 +26,9 @@ RUN dpkg --add-architecture i386 && \
         libelf-dev \
 	libssl-dev \
 	module-init-tools \
-	software-properties-common && \
+	software-properties-common \
+	dmidecode \
+	pciutils && \
     rm -rf /var/lib/apt/lists/*
 
 RUN echo "deb [arch=amd64] http://archive.ubuntu.com/ubuntu/ bionic main" > /etc/apt/sources.list && \

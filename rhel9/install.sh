@@ -143,6 +143,9 @@ imex_install() {
 }
 
 extra_pkgs_install() {
+  # Diagnostic utilities required by nvidia-bug-report.sh
+  dnf install -y dmidecode pciutils
+
   if [ "$DRIVER_TYPE" != "vgpu" ]; then
       dnf module enable -y nvidia-driver:${DRIVER_BRANCH}-dkms
 
@@ -152,6 +155,8 @@ extra_pkgs_install() {
       nvlink5_pkgs_install
       imex_install
   fi
+
+  rm -rf /var/cache/yum/*
 }
 
 setup_cuda_repo() {
