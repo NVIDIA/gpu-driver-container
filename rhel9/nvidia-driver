@@ -8,6 +8,7 @@ PID_FILE=${RUN_DIR}/${0##*/}.pid
 DRIVER_VERSION=${DRIVER_VERSION:?"Missing DRIVER_VERSION env"}
 KERNEL_UPDATE_HOOK=/run/kernel/postinst.d/update-nvidia-driver
 NUM_VGPU_DEVICES=0
+DRIVER_TYPE="${DRIVER_TYPE:-passthrough}"
 GPU_DIRECT_RDMA_ENABLED="${GPU_DIRECT_RDMA_ENABLED:-false}"
 USE_HOST_MOFED="${USE_HOST_MOFED:-false}"
 NVIDIA_MODULE_PARAMS=()
@@ -212,10 +213,7 @@ _create_driver_package() (
     local nvidia_modeset_sign_args=""
     local nvidia_uvm_sign_args=""
 
-    # Skip cleanup trap for DTK builds - modules are copied after this function returns
-    if [ "${PACKAGE_TAG:-}" != "builtin" ]; then
-        trap "make -s -j ${MAX_THREADS} SYSSRC=/lib/modules/${KERNEL_VERSION}/build clean > /dev/null" EXIT
-    fi
+    trap "make -s -j ${MAX_THREADS} SYSSRC=/lib/modules/${KERNEL_VERSION}/build clean > /dev/null" EXIT
 
     echo "Compiling NVIDIA driver kernel modules..."
     cd /usr/src/nvidia-${DRIVER_VERSION}/${KERNEL_TYPE}
@@ -444,6 +442,21 @@ _unload_driver() {
         fi
     fi
 
+    if [ -f /var/run/nvidia-topologyd/nvidia-topologyd.pid ]; then
+        echo "Stopping NVIDIA topology daemon..."
+        local pid=$(< /var/run/nvidia-topologyd/nvidia-topologyd.pid)
+
+        kill -SIGTERM "${pid}"
+        for i in $(seq 1 50); do
+            kill -0 "${pid}" 2> /dev/null || break
+            sleep 0.1
+        done
+        if [ $i -eq 50 ]; then
+            echo "Could not stop NVIDIA topology daemon" >&2
+            return 1
+        fi
+    fi
+
     if [ -f /var/run/nvidia-fabricmanager/nv-fabricmanager.pid ]; then
         echo "Stopping NVIDIA fabric manager daemon..."
         local pid=$(< /var/run/nvidia-fabricmanager/nv-fabricmanager.pid)
@@ -664,19 +677,6 @@ _start_vgpu_topology_daemon() {
     nvidia-topologyd
 }
 
-_ensure_persistence() {
-    local pid_file=/var/run/nvidia-persistenced/nvidia-persistenced.pid pid
-    if pid=$(<"${pid_file}" 2>/dev/null) && [ -n "${pid}" ] && kill -0 "${pid}" 2>/dev/null; then
-        return 0
-    fi
-
-    if command -v nvidia-persistenced >/dev/null 2>&1; then
-        nvidia-persistenced --persistence-mode || true
-    else
-        echo "nvidia-persistenced not found; continuing without persistence"
-    fi
-}
-
 _start_daemons() {
     echo "Starting NVIDIA persistence daemon..."
     nvidia-persistenced --persistence-mode
@@ -719,7 +719,7 @@ _start_daemons() {
 }
 
 _store_driver_config() {
-    local config_file="/run/nvidia/driver-config.state"
+    local config_file="${RUN_DIR}/nvidia-driver.state"
     echo "Storing driver configuration state..."
     _build_driver_config > "$config_file"
     echo "Driver configuration stored at $config_file"
@@ -737,7 +737,6 @@ _wait_for_signal() {
 _userspace_only_install() {
     echo "Detected matching loaded driver & config (${DRIVER_VERSION}); performing userspace-only install"
     _unmount_rootfs
-    _update_package_cache
 
     cd /drivers
     [ ! -d "NVIDIA-Linux-${DRIVER_ARCH}-${DRIVER_VERSION}" ] && sh NVIDIA-Linux-${DRIVER_ARCH}-${DRIVER_VERSION}.run -x
