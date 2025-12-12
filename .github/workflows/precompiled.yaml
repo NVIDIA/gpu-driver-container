@@ -265,8 +265,10 @@ jobs:
           echo "Collected Kernel Versions: ${kernel_versions[@]}"
           combined_values=$(printf '%s\n' "${kernel_versions[@]}" | jq -R . | jq -s -c .  | tr -d ' \n')
           echo "Combined Kernel Versions JSON: $combined_values"
-          # FIXME -- remove once azure kernel upgrade starts working
+          # TODO -- remove once azure and azure-fde kernel upgrades start working
           exclude_combined_values=$(printf '%s\n' "${kernel_versions[@]}" | jq -R . | jq -s -c 'map(select(test("azure")))')
+          exclude_combined_values=$(echo "$exclude_combined_values" | jq -c '[.[] | {kernel_version: .}]')
+          exclude_combined_values=$(printf '%s\n' "${kernel_versions[@]}" | jq -R . | jq -s -c 'map(select(test("azure-fde")))')
           exclude_combined_values=$(echo "$exclude_combined_values" | jq -c '[.[] | {kernel_version: .}]')
           echo "exclude_combined_values Kernel Versions : $exclude_combined_values"
           echo "matrix_values=$combined_values" >> $GITHUB_OUTPUT
