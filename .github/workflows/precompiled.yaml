@@ -18,6 +18,7 @@ name: Precompiled images
 on:
   schedule:
     - cron: '00 09 * * *'
+  workflow_dispatch:
 
 jobs:
   set-driver-version-matrix:
