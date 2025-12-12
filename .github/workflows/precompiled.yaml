@@ -172,12 +172,9 @@ jobs:
       matrix:
         dist: ${{ fromJson(needs.set-driver-version-matrix.outputs.dist) }}
         lts_kernel: ${{ fromJson(needs.set-driver-version-matrix.outputs.lts_kernel) }}
-        flavor: ${{ fromJson(needs.set-driver-version-matrix.outputs.kernel_flavors) }}
         exclude:
           - lts_kernel: 5.15
             dist: ubuntu24.04
-          - flavor: azure-fde
-            dist: ubuntu22.04
     needs:
       - precompiled-build-image
       - set-driver-version-matrix
