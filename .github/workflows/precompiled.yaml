@@ -175,8 +175,6 @@ jobs:
         exclude:
           - lts_kernel: 5.15
             dist: ubuntu24.04
-          - flavor: azure-fde
-            dist: ubuntu22.04
     needs:
       - precompiled-build-image
       - set-driver-version-matrix
