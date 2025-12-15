@@ -432,7 +432,7 @@ jobs:
         if: ${{ ! (matrix.driver_branch == 535 && contains(matrix.kernel_version, 'ubuntu24.04')) }}
         run: |
           LTS_KERNEL=$(echo "${{ matrix.kernel_version }}" | sed -E 's/^([0-9]+\.[0-9]+)\..*/\1/')
-          KERNEL_FLAVOR=$(echo "${{ matrix.kernel_version }}" | sed -E 's/^.*-[0-9]+-([a-zA-Z]+)-.*/\1/')
+          KERNEL_FLAVOR=$(echo "${{ matrix.kernel_version }}" | sed -E 's/^[0-9]+\.[0-9]+\.[0-9]+-[0-9]+-(.*)-ubuntu[0-9]+\.[0-9]+$/\1/')
           DIST=$(echo "${{ matrix.kernel_version }}" | sed -E 's/^.*-(ubuntu[0-9]+\.[0-9]+)$/\1/')
           if [[ "${DIST}" == "ubuntu22.04" ]]; then
             BASE_TARGET="jammy"
