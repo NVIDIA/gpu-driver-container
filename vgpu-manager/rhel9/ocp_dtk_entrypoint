@@ -31,7 +31,7 @@ nv-ctr-run-with-dtk() {
         cp -r \
            /usr/local/bin/ocp_dtk_entrypoint \
            /usr/local/bin/nvidia-driver \
-           /usr/bin/lspci \
+           /usr/sbin/lspci \
            /driver \
            "$DRIVER_TOOLKIT_SHARED_DIR/"
 
