@@ -1,0 +1,7 @@
+{
+    "extends": ["config:base"],
+    "enabledManagers": ["dockerfile"],
+    "schedule": ["daily"],
+    "labels": ["dependencies", "docker"],
+    "prConcurrentLimit": 15
+}
