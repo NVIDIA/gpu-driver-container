@@ -438,6 +438,20 @@ release:ngc-rhel9.6:
   variables:
     OUT_DIST: "rhel9.6"
 
+release:ngc-rhel9.7:
+  extends:
+    - .release:ngc
+    - .dist-rhel9
+  variables:
+    OUT_DIST: "rhel9.7"
+
+release:ngc-rhel9.8:
+  extends:
+    - .release:ngc
+    - .dist-rhel9
+  variables:
+    OUT_DIST: "rhel9.8"
+
 generate-build-info:
   stage: ngc-publish
   artifacts:
