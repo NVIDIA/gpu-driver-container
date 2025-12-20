@@ -18,10 +18,3 @@ updates:
     directory: "/"
     schedule:
       interval: "daily"
-
-  - package-ecosystem: "docker"
-    directories:
-      - "**/*"
-    open-pull-requests-limit: 15
-    schedule:
-      interval: "daily"
