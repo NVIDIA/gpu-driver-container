@@ -43,7 +43,7 @@ jobs:
             driver: 535.274.02
       fail-fast: false
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
         name: Check out code
       - name: Calculate build vars
         id: vars
@@ -129,7 +129,7 @@ jobs:
           - flavor: azure-fde
             dist: ubuntu22.04
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
         name: Check out code
       - name: Calculate build vars
         id: vars
