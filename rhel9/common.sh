@@ -45,3 +45,34 @@ _gdrcopy_enabled() {
     fi
     return 1
 }
+
+# Read a config file and convert newlines to spaces
+_read_conf_file() {
+    local file="$1"
+    [ -f "$file" ] && tr '\n' ' ' < "$file"
+}
+
+# Build driver configuration for state comparison
+# Note: Variables are expected to be set by the sourcing script (nvidia-driver)
+_build_driver_config() {
+    cat <<EOF
+DRIVER_VERSION=${DRIVER_VERSION}
+DRIVER_TYPE=${DRIVER_TYPE}
+KERNEL_VERSION=$(uname -r)
+GPU_DIRECT_RDMA_ENABLED=${GPU_DIRECT_RDMA_ENABLED}
+USE_HOST_MOFED=${USE_HOST_MOFED}
+KERNEL_MODULE_TYPE=${KERNEL_MODULE_TYPE}
+NVIDIA_MODULE_PARAMS=$(_read_conf_file /drivers/nvidia.conf)
+NVIDIA_UVM_MODULE_PARAMS=$(_read_conf_file /drivers/nvidia-uvm.conf)
+NVIDIA_MODESET_MODULE_PARAMS=$(_read_conf_file /drivers/nvidia-modeset.conf)
+NVIDIA_PEERMEM_MODULE_PARAMS=$(_read_conf_file /drivers/nvidia-peermem.conf)
+EOF
+}
+
+# Check if fast path should be used (driver already loaded with matching config)
+_should_use_fast_path() {
+    [ -f /sys/module/nvidia/refcnt ] && [ -f /run/nvidia/driver-config.state ] || return 1
+    local current_config=$(_build_driver_config)
+    local stored_config=$(cat /run/nvidia/driver-config.state 2>/dev/null || echo "")
+    [ "${current_config}" = "${stored_config}" ]
+}
