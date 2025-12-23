@@ -53,7 +53,9 @@ repo_setup () {
 }
 
 fabricmanager_install() {
-  if [ "$DRIVER_BRANCH" -ge "580" ]; then
+  if [ "$DRIVER_BRANCH" -ge "590" ]; then
+    apt-get install -y --no-install-recommends nvidia-fabricmanager=${DRIVER_VERSION}-0ubuntu1
+  elif [ "$DRIVER_BRANCH" -ge "580" ]; then
     apt-get install -y --no-install-recommends nvidia-fabricmanager=${DRIVER_VERSION}-1
   else
     apt-get install -y --no-install-recommends nvidia-fabricmanager-${DRIVER_BRANCH}=${DRIVER_VERSION}-1
@@ -61,7 +63,9 @@ fabricmanager_install() {
 }
 
 nscq_install() {
-  if [ "$DRIVER_BRANCH" -ge "580" ]; then
+  if [ "$DRIVER_BRANCH" -ge "590" ]; then
+    apt-get install -y --no-install-recommends libnvidia-nscq=${DRIVER_VERSION}-0ubuntu1
+  elif [ "$DRIVER_BRANCH" -ge "580" ]; then
     apt-get install -y --no-install-recommends libnvidia-nscq=${DRIVER_VERSION}-1
   else
     apt-get install -y --no-install-recommends libnvidia-nscq-${DRIVER_BRANCH}=${DRIVER_VERSION}-1
@@ -71,7 +75,9 @@ nscq_install() {
 # libnvsdm packages are not available for arm64
 nvsdm_install() {
   if [ "$TARGETARCH" = "amd64" ]; then
-    if [ "$DRIVER_BRANCH" -ge "580" ]; then
+    if [ "$DRIVER_BRANCH" -ge "590" ]; then
+       apt-get install -y --no-install-recommends libnvsdm=${DRIVER_VERSION}-0ubuntu1
+    elif [ "$DRIVER_BRANCH" -ge "580" ]; then
        apt-get install -y --no-install-recommends libnvsdm=${DRIVER_VERSION}-1
     elif [ "$DRIVER_BRANCH" -ge "570" ]; then
        apt-get install -y --no-install-recommends libnvsdm-${DRIVER_BRANCH}=${DRIVER_VERSION}-1
@@ -86,7 +92,9 @@ nvlink5_pkgs_install() {
 }
 
 imex_install() {
-  if [ "$DRIVER_BRANCH" -ge "580" ]; then
+  if [ "$DRIVER_BRANCH" -ge "590" ]; then
+    apt-get install -y --no-install-recommends nvidia-imex=${DRIVER_VERSION}-0ubuntu1
+  elif [ "$DRIVER_BRANCH" -ge "580" ]; then
     apt-get install -y --no-install-recommends nvidia-imex=${DRIVER_VERSION}-1
   elif [ "$DRIVER_BRANCH" -ge "550" ]; then
     apt-get install -y --no-install-recommends nvidia-imex-${DRIVER_BRANCH}=${DRIVER_VERSION}-1;

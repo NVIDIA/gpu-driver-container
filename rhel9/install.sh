@@ -99,7 +99,9 @@ nvidia_installer () {
 }
 
 fabricmanager_install() {
-  if [ "$DRIVER_BRANCH" -ge "580" ]; then
+  if [ "$DRIVER_BRANCH" -ge "590" ]; then
+    dnf install -y nvidia-fabricmanager-${DRIVER_VERSION}-1.el9
+  elif [ "$DRIVER_BRANCH" -ge "580" ]; then
     dnf install -y nvidia-fabricmanager-${DRIVER_VERSION}-1
   else
     dnf install -y nvidia-fabric-manager-${DRIVER_VERSION}-1
@@ -107,7 +109,9 @@ fabricmanager_install() {
 }
 
 nscq_install() {
-  if [ "$DRIVER_BRANCH" -ge "580" ]; then
+  if [ "$DRIVER_BRANCH" -ge "590" ]; then
+    dnf install -y libnvidia-nscq-${DRIVER_VERSION}-1.el9
+  elif [ "$DRIVER_BRANCH" -ge "580" ]; then
     dnf install -y libnvidia-nscq-${DRIVER_VERSION}-1
   else
     dnf install -y libnvidia-nscq-${DRIVER_BRANCH}-${DRIVER_VERSION}-1
@@ -117,7 +121,10 @@ nscq_install() {
 # libnvsdm packages are not available for arm64
 nvsdm_install() {
   if [ "$TARGETARCH" = "amd64" ]; then
-    if [ "$DRIVER_BRANCH" -ge "580" ]; then
+    if [ "$DRIVER_BRANCH" -ge "590" ]; then
+      dnf install -y libnvsdm-${DRIVER_VERSION}-1.el9
+      return 0
+    elif [ "$DRIVER_BRANCH" -ge "580" ]; then
       dnf install -y libnvsdm-${DRIVER_VERSION}-1
       return 0
     fi
@@ -135,7 +142,9 @@ nvlink5_pkgs_install() {
 }
 
 imex_install() {
-  if [ "$DRIVER_BRANCH" -ge "580" ]; then
+  if [ "$DRIVER_BRANCH" -ge "590" ]; then
+    dnf install -y nvidia-imex-${DRIVER_VERSION}-1.el9
+  elif [ "$DRIVER_BRANCH" -ge "580" ]; then
     dnf install -y nvidia-imex-${DRIVER_VERSION}-1
   elif [ "$DRIVER_BRANCH" -ge "550" ]; then
     dnf install -y nvidia-imex-${DRIVER_BRANCH}-${DRIVER_VERSION}-1
