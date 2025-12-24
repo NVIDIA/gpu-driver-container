@@ -561,6 +561,21 @@ _start_vgpu_topology_daemon() {
     nvidia-topologyd
 }
 
+_build_features_config() {
+    cat <<EOF
+GDRCOPY_ENABLED: ${GDRCOPY_ENABLED:-false}
+GDS_ENABLED: ${GDS_ENABLED:-false}
+GPU_DIRECT_RDMA_ENABLED: ${GPU_DIRECT_RDMA_ENABLED:-false}
+EOF
+}
+
+_store_additional_drivers_flags() {
+    local config_file="${RUN_DIR}/driver/.additional-drivers-flags"
+    echo "Storing additional drivers flags..."
+    _build_features_config > "$config_file"
+    echo "Additional drivers flags stored at $config_file"
+}
+
 init() {
     if [ "${DRIVER_TYPE}" = "vgpu" ]; then
         _find_vgpu_driver_version || exit 1
@@ -621,6 +636,7 @@ init() {
     _load_driver || exit 1
     _mount_rootfs
     _write_kernel_update_hook
+    _store_additional_drivers_flags
 
     echo "Done, now waiting for signal"
     sleep infinity &
