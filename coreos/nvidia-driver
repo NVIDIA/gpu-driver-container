@@ -250,6 +250,21 @@ _shutdown() {
     return 1
 }
 
+_build_features_config() {
+    cat <<EOF
+GDRCOPY_ENABLED: ${GDRCOPY_ENABLED:-false}
+GDS_ENABLED: ${GDS_ENABLED:-false}
+GPU_DIRECT_RDMA_ENABLED: ${GPU_DIRECT_RDMA_ENABLED:-false}
+EOF
+}
+
+_store_additional_drivers_flags() {
+    local config_file="${RUN_DIR}/driver/.additional-drivers-flags"
+    echo "Storing additional drivers flags..."
+    _build_features_config > "$config_file"
+    echo "Additional drivers flags stored at $config_file"
+}
+
 init() {
     echo -e "\n========== NVIDIA Software Installer ==========\n"
     echo -e "Starting installation of NVIDIA driver version ${DRIVER_VERSION} for Linux kernel version ${KERNEL_VERSION}\n"
@@ -275,6 +290,7 @@ init() {
     _install_driver
     _load_driver
     _mount_rootfs
+    _store_additional_drivers_flags
 
     echo "Done, now waiting for signal"
     sleep infinity &
