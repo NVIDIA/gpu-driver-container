@@ -35,6 +35,7 @@ jobs:
         dist:
           - ubuntu22.04
           - ubuntu24.04
+          - debian13
           - rhel8
           - rhel9
         ispr:
@@ -42,6 +43,12 @@ jobs:
         exclude:
           - dist: ubuntu24.04
             driver: 535.274.02
+          - dist: debian13
+            driver: 535.274.02
+          - dist: debian13
+            driver: 570.195.03
+          - dist: debian13
+            driver: 580.105.08
       fail-fast: false
     steps:
       - uses: actions/checkout@v6

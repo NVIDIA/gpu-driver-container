@@ -88,6 +88,16 @@ variables:
       when: never
     - !reference [.image-pull-rules, rules]
 
+.image-pull-debian13:
+  # Perform for each DRIVER_VERSION
+  extends:
+    - .driver-versions-debian13
+    - .image-pull-generic
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "schedule"
+      when: never
+    - !reference [.image-pull-rules, rules]
+
 image-precompiled-ubuntu24.04:
   variables:
     DIST: signed_ubuntu24.04
@@ -135,6 +145,11 @@ image-ubuntu24.04:
   extends:
     - .image-pull-ubuntu24.04
     - .dist-ubuntu24.04
+
+image-debian13:
+  extends:
+    - .image-pull-debian13
+    - .dist-debian13
 
 image-rhel8:
   extends:
@@ -227,6 +242,18 @@ image-rhel9:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
     - !reference [.pipeline-trigger-rules, rules]
 
+.scan-debian13:
+  # Repeat for each DRIVER_VERSION
+  extends:
+    - .driver-versions-debian13
+    - .scan-generic
+  rules:
+    - !reference [.scan-rules-common, rules]
+    - if: $CI_PIPELINE_SOURCE == "schedule"
+      when: never
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - !reference [.pipeline-trigger-rules, rules]
+
 .scan-precompiled-ubuntu24.04:
   variables:
     DIST: signed_ubuntu24.04
@@ -282,6 +309,22 @@ scan-ubuntu24.04-arm64:
     - .platform-arm64
   needs:
     - image-ubuntu24.04
+
+scan-debian13-amd64:
+  extends:
+    - .scan-debian13
+    - .dist-debian13
+    - .platform-amd64
+  needs:
+    - image-debian13
+
+scan-debian13-arm64:
+  extends:
+    - .scan-debian13
+    - .dist-debian13
+    - .platform-arm64
+  needs:
+    - image-debian13
 
 scan-precompiled-ubuntu24.04-amd64:
   variables:
@@ -357,6 +400,12 @@ release:ngc-ubuntu24.04:
     - .release:ngc
     - .dist-ubuntu24.04
     - .driver-versions-ubuntu24.04
+
+release:ngc-debian13:
+  extends:
+    - .release:ngc
+    - .dist-debian13
+    - .driver-versions-debian13
 
 release:ngc-precompiled-ubuntu24.04:
   variables:

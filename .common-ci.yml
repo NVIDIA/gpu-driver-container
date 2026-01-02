@@ -89,6 +89,12 @@ trigger-pipeline:
     matrix:
       - DRIVER_VERSION: [570.195.03, 580.105.08, 590.48.01]
 
+# Define the driver versions for jobs that can be run in parallel
+.driver-versions-debian13:
+  parallel:
+    matrix:
+      - DRIVER_VERSION: [590.48.01]
+
 # Define the matrix of precompiled jobs that can be run in parallel for ubuntu22.04
 .driver-versions-precompiled-ubuntu22.04:
   parallel:
@@ -113,6 +119,10 @@ trigger-pipeline:
 .dist-ubuntu24.04:
   variables:
     DIST: ubuntu24.04
+
+.dist-debian13:
+  variables:
+    DIST: debian13
 
 .dist-rhel8:
   variables:
@@ -199,6 +209,14 @@ trigger-pipeline:
   rules:
     - if: $CI_PIPELINE_SOURCE != "schedule" && $CI_COMMIT_TAG == null
 
+.release-debian13:
+  # Perform for each DRIVER_VERSION
+  extends:
+    - .release-generic
+    - .driver-versions-debian13
+  rules:
+    - if: $CI_PIPELINE_SOURCE != "schedule" && $CI_COMMIT_TAG == null
+
 .release-rhel9:
   # Perform for each DRIVER_VERSION
   extends:
@@ -245,6 +263,15 @@ trigger-pipeline:
     OUT_REGISTRY: "${NGC_REGISTRY}"
     OUT_IMAGE_NAME: "${NGC_STAGING_REGISTRY}/driver"
 
+.release:staging-debian13:
+  extends:
+    - .release-debian13
+  variables:
+    OUT_REGISTRY_USER: "${NGC_REGISTRY_USER}"
+    OUT_REGISTRY_TOKEN: "${NGC_REGISTRY_TOKEN}"
+    OUT_REGISTRY: "${NGC_REGISTRY}"
+    OUT_IMAGE_NAME: "${NGC_STAGING_REGISTRY}/driver"
+
 .release:staging-rhel9:
   extends:
     - .release-rhel9
@@ -281,6 +308,18 @@ trigger-pipeline:
         VERSION: "${RELEASE_DEVEL_TAG}"
         OUT_VERSION: "${DEVEL_RELEASE_IMAGE_VERSION}"
 
+.release:external-debian13:
+  extends:
+    - .release-debian13
+  rules:
+    - if: $CI_COMMIT_TAG
+      variables:
+        #VERSION: "${CI_COMMIT_TAG}"
+        OUT_VERSION: ""
+    - if: $CI_COMMIT_BRANCH == $RELEASE_DEVEL_BRANCH
+      variables:
+        VERSION: "${RELEASE_DEVEL_TAG}"
+        OUT_VERSION: "${DEVEL_RELEASE_IMAGE_VERSION}"
 .release:external-ubuntu22.04:
   extends:
     - .release-ubuntu22.04
@@ -307,6 +346,13 @@ release:staging-ubuntu24.04:
     - .dist-ubuntu24.04
   needs:
     - image-ubuntu24.04
+
+release:staging-debian13:
+  extends:
+    - .release:staging-debian13
+    - .dist-debian13
+  needs:
+    - image-debian13
 
 release:staging-rhel8:
   extends:
