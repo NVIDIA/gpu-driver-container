@@ -76,7 +76,11 @@ download_driver_package_deps () {
   download_apt_with_dep libnvidia-decode-${DRIVER_BRANCH}-server
   download_apt_with_dep libnvidia-extra-${DRIVER_BRANCH}-server
   download_apt_with_dep libnvidia-encode-${DRIVER_BRANCH}-server
-  download_apt_with_dep libnvidia-fbc1-${DRIVER_BRANCH}-server
+  
+  # libnvidia-fbc1 (FrameBuffer Capture) is not available for arm64
+  if [ "$TARGETARCH" = "amd64" ]; then
+    download_apt_with_dep libnvidia-fbc1-${DRIVER_BRANCH}-server
+  fi
 
   fabricmanager_download
   nscq_download
