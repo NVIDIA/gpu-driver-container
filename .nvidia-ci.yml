@@ -34,7 +34,7 @@ variables:
   # Define the public staging registry
   STAGING_REGISTRY: ghcr.io/nvidia
   STAGING_VERSION: "${CI_COMMIT_SHORT_SHA}"
-  PUBLISH_VERSIONS: 535.274.02 570.195.03 580.105.08
+  PUBLISH_VERSIONS: 535.288.01 570.211.01 580.126.09
 
 .image-pull-rules:
   # We delay the job start to allow the public pipeline to generate the required images.
