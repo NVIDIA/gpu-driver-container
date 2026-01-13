@@ -130,6 +130,7 @@ jobs:
           IMAGE_NAME: ghcr.io/nvidia/driver
           PRECOMPILED: "true"
           DIST: signed_${{ matrix.dist }}
+          VERSION: ""
         run: |
           source kernel_version.txt && \
           make DRIVER_VERSIONS=${DRIVER_VERSIONS} DRIVER_BRANCH=${{ matrix.driver_branch }} build-${DIST}-${DRIVER_VERSION}
