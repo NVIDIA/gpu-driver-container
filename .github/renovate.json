@@ -4,8 +4,9 @@
     "docker": {
         "registryUrls": ["https://index.docker.io/v1/"]
     },
-    "schedule": ["before 1:55pm every day"],
-    "timezone": "America/Los_Angeles",
     "labels": ["dependencies", "docker"],
+    "command": {
+        "enabled": true
+    },
     "prConcurrentLimit": 15
 }
