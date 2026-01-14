@@ -1,4 +1,4 @@
-FROM nvcr.io/nvidia/cuda:13.0.2-base-ubuntu24.04
+FROM nvcr.io/nvidia/cuda:13.1.0-base-ubuntu24.04
 
 ENV DEBIAN_FRONTEND=noninteractive
 
@@ -52,7 +52,10 @@ COPY nvidia-driver /usr/local/bin
 
 ADD local-repo.sh /tmp
 
-RUN mkdir -p /usr/local/repos && \
+RUN apt-get clean && \
+    apt-get autoclean && \
+    rm -rf /var/lib/apt/lists/* && \
+    mkdir -p /usr/local/repos && \
     /tmp/local-repo.sh download_driver_package_deps && \
     /tmp/local-repo.sh build_local_apt_repo && \
     /tmp/local-repo.sh fetch_nvidia_installer && \
