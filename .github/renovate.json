@@ -1,7 +1,10 @@
 {
     "extends": ["config:base"],
     "enabledManagers": ["dockerfile"],
-    "schedule": ["before 11am every day"],
+    "docker": {
+        "registryUrls": ["https://index.docker.io/v1/"]
+    },
+    "schedule": ["before 1:20pm every day"],
     "timezone": "America/Los_Angeles",
     "labels": ["dependencies", "docker"],
     "prConcurrentLimit": 15
