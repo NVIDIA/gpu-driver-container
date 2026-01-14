@@ -8,5 +8,6 @@
     "command": {
         "enabled": true
     },
+    "baseBranches": ["main", "test_renovate"],
     "prConcurrentLimit": 15
 }
