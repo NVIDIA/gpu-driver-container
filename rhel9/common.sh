@@ -45,3 +45,13 @@ _gdrcopy_enabled() {
     fi
     return 1
 }
+
+# Check if fast path should be used (driver already loaded with matching config)
+# Compares current digest from DRIVER_CONFIG_DIGEST env var with stored digest
+_should_skip_kernel_module_reload() {
+    [ -f /sys/module/nvidia/refcnt ] && [ -f /run/nvidia/nvidia-driver.state ] || return 1
+    local current_digest="${DRIVER_CONFIG_DIGEST:-}"
+    [ -z "${current_digest}" ] && return 1
+    local stored_digest=$(cat /run/nvidia/nvidia-driver.state 2>/dev/null || echo "")
+    [ "${current_digest}" = "${stored_digest}" ]
+}
