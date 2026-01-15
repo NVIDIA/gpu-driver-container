@@ -418,44 +418,7 @@ _load_driver() {
         set +o xtrace -o nounset
     fi
 
-    echo "Starting NVIDIA persistence daemon..."
-    nvidia-persistenced --persistence-mode
-
-    if [ "${DRIVER_TYPE}" = "vgpu" ]; then
-        echo "Copying gridd.conf..."
-        cp /drivers/gridd.conf /etc/nvidia/gridd.conf
-        if [ "${VGPU_LICENSE_SERVER_TYPE}" = "NLS" ]; then
-            echo "Copying ClientConfigToken..."
-            mkdir -p  /etc/nvidia/ClientConfigToken/
-            cp /drivers/ClientConfigToken/* /etc/nvidia/ClientConfigToken/
-        fi
-
-        echo "Starting nvidia-gridd.."
-        LD_LIBRARY_PATH=/usr/lib64/nvidia/gridd nvidia-gridd
-
-        # Start virtual topology daemon
-        _start_vgpu_topology_daemon
-    fi
-
-    if _assert_nvlink5_system; then
-        _ensure_nvlink5_prerequisites || return 1
-        echo "Starting NVIDIA fabric manager daemon for NVLink5+..."
-
-        fm_config_file=/usr/share/nvidia/nvswitch/fabricmanager.cfg
-        fm_pid_file=/var/run/nvidia-fabricmanager/nv-fabricmanager.pid
-        nvlsm_config_file=/usr/share/nvidia/nvlsm/nvlsm.conf
-        nvlsm_pid_file=/var/run/nvidia-fabricmanager/nvlsm.pid
-        /usr/bin/nvidia-fabricmanager-start.sh --mode start \
-                                               --fm-config-file $fm_config_file \
-                                               --fm-pid-file $fm_pid_file \
-                                               --nvlsm-config-file $nvlsm_config_file \
-                                               --nvlsm-pid-file $nvlsm_pid_file
-
-    # If not a NVLink5+ switch, check for the presence of NVLink4 (or below) switches
-    elif _assert_nvswitch_system; then
-        echo "Starting NVIDIA fabric manager daemon..."
-        nv-fabricmanager -c /usr/share/nvidia/nvswitch/fabricmanager.cfg
-    fi
+    _start_daemons
 }
 
 # Stop persistenced and unload the kernel modules if they are currently loaded.
@@ -493,6 +456,21 @@ _unload_driver() {
         done
         if [ $i -eq 50 ]; then
             echo "Could not stop NVIDIA Grid daemon" >&2
+            return 1
+        fi
+    fi
+
+    if [ -f /var/run/nvidia-topologyd/nvidia-topologyd.pid ]; then
+        echo "Stopping NVIDIA topology daemon..."
+        local pid=$(< /var/run/nvidia-topologyd/nvidia-topologyd.pid)
+
+        kill -SIGTERM "${pid}"
+        for i in $(seq 1 50); do
+            kill -0 "${pid}" 2> /dev/null || break
+            sleep 0.1
+        done
+        if [ $i -eq 50 ]; then
+            echo "Could not stop NVIDIA topology daemon" >&2
             return 1
         fi
     fi
@@ -587,10 +565,6 @@ _install_driver() {
     fi
 
     IGNORE_CC_MISMATCH=1 nvidia-installer --kernel-module-only --no-drm --ui=none --no-nouveau-check -m=${KERNEL_TYPE} ${install_args[@]+"${install_args[@]}"}
-    # May need to add no-cc-check for Rhel, otherwise it complains about cc missing in path
-    # /proc/version and lib/modules/KERNEL_VERSION/proc are different, by default installer looks at /proc/ so, added the proc-mount-point
-    # TODO: remove the -a flag. its not needed. in the new driver version, license-acceptance is implicit
-    #nvidia-installer --kernel-module-only --no-drm --ui=none --no-nouveau-check --no-cc-version-check --proc-mount-point /lib/modules/${KERNEL_VERSION}/proc ${install_args[@]+"${install_args[@]}"}
 }
 
 # Mount the driver rootfs into the run directory with the exception of sysfs.
@@ -721,6 +695,74 @@ _start_vgpu_topology_daemon() {
     nvidia-topologyd
 }
 
+_start_daemons() {
+    echo "Starting NVIDIA persistence daemon..."
+    nvidia-persistenced --persistence-mode
+
+    if [ "${DRIVER_TYPE}" = "vgpu" ]; then
+        echo "Copying gridd.conf..."
+        cp /drivers/gridd.conf /etc/nvidia/gridd.conf
+        if [ "${VGPU_LICENSE_SERVER_TYPE}" = "NLS" ]; then
+            echo "Copying ClientConfigToken..."
+            mkdir -p  /etc/nvidia/ClientConfigToken/
+            cp /drivers/ClientConfigToken/* /etc/nvidia/ClientConfigToken/
+        fi
+
+        echo "Starting nvidia-gridd.."
+        LD_LIBRARY_PATH=/usr/lib64/nvidia/gridd nvidia-gridd
+
+        # Start virtual topology daemon
+        _start_vgpu_topology_daemon
+    fi
+
+    if _assert_nvlink5_system; then
+        _ensure_nvlink5_prerequisites || return 1
+        echo "Starting NVIDIA fabric manager daemon for NVLink5+..."
+
+        fm_config_file=/usr/share/nvidia/nvswitch/fabricmanager.cfg
+        fm_pid_file=/var/run/nvidia-fabricmanager/nv-fabricmanager.pid
+        nvlsm_config_file=/usr/share/nvidia/nvlsm/nvlsm.conf
+        nvlsm_pid_file=/var/run/nvidia-fabricmanager/nvlsm.pid
+        /usr/bin/nvidia-fabricmanager-start.sh --mode start \
+                                               --fm-config-file $fm_config_file \
+                                               --fm-pid-file $fm_pid_file \
+                                               --nvlsm-config-file $nvlsm_config_file \
+                                               --nvlsm-pid-file $nvlsm_pid_file
+
+    # If not a NVLink5+ switch, check for the presence of NVLink4 (or below) switches
+    elif _assert_nvswitch_system; then
+        echo "Starting NVIDIA fabric manager daemon..."
+        nv-fabricmanager -c /usr/share/nvidia/nvswitch/fabricmanager.cfg
+    fi
+}
+
+_store_driver_digest() {
+    local digest_file="${RUN_DIR}/nvidia-driver.state"
+    local current_digest="${DRIVER_CONFIG_DIGEST:-}"
+    echo "Storing driver configuration digest..."
+    echo "${current_digest}" > "$digest_file"
+    echo "Driver configuration digest stored at $digest_file"
+}
+
+_wait_for_signal() {
+    echo "Done, now waiting for signal"
+    sleep infinity &
+    trap "echo 'Caught signal'; _shutdown && { kill $!; exit 0; }" HUP INT QUIT PIPE TERM
+    trap - EXIT
+    while true; do wait $! || continue; done
+    exit 0
+}
+
+_userspace_install() {
+    echo "The NVIDIA driver is already loaded with the desired configuration, performing userspace-only install"
+    _unmount_rootfs
+    _start_daemons
+    _mount_rootfs
+    _write_kernel_update_hook
+    _store_driver_digest
+    echo "Userspace-only install complete"
+}
+
 _prepare() {
     if [ "${DRIVER_TYPE}" = "vgpu" ]; then
         _find_vgpu_driver_version || exit 1
@@ -757,9 +799,6 @@ _prepare_exclusive() {
 
     trap "echo 'Caught signal'; exit 1" HUP INT QUIT PIPE TERM
     trap "_shutdown" EXIT
-
-    _unload_driver || exit 1
-    _unmount_rootfs
 }
 
 _build() {
@@ -780,17 +819,20 @@ _load() {
     _load_driver
     _mount_rootfs
     _write_kernel_update_hook
-
-    echo "Done, now waiting for signal"
-    sleep infinity &
-    trap "echo 'Caught signal'; _shutdown && { kill $!; exit 0; }" HUP INT QUIT PIPE TERM
-    trap - EXIT
-    while true; do wait $! || continue; done
-    exit 0
+    _store_driver_digest
+    _wait_for_signal
 }
 
 init() {
     _prepare_exclusive
+
+    if _should_skip_kernel_module_reload; then
+        _userspace_install
+        _wait_for_signal
+    fi
+
+    _unload_driver || exit 1
+    _unmount_rootfs
 
     _build
 
@@ -805,6 +847,9 @@ build() {
 
 load() {
     _prepare_exclusive
+
+    _unload_driver || exit 1
+    _unmount_rootfs
 
     _load
 }

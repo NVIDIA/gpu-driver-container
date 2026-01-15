@@ -18,6 +18,13 @@ nv-ctr-run-with-dtk() {
         exec bash -x nvidia-driver init
     fi
 
+    if _should_skip_kernel_module_reload; then
+        echo "The NVIDIA driver is already loaded with the desired configuration, skipping kernel module build and proceeding with userspace-only install"
+        exec bash -x nvidia-driver init
+    fi
+
+    echo "Fast path not detected: building driver and modules"
+
     if [[ ! -f "$DRIVER_TOOLKIT_SHARED_DIR/dir_prepared" ]]; then
         cp -r \
            /tmp/install.sh \
@@ -79,6 +86,19 @@ dtk-build-driver() {
         sleep inf
     fi
 
+    # Check if fast path is being used - if so, skip building and signal completion
+    if _should_skip_kernel_module_reload; then
+        echo "The NVIDIA driver is already loaded with the desired configuration, skipping build"
+        echo "Signaling driver_built to the main container and sleeping forever..."
+        touch "$DRIVER_TOOLKIT_SHARED_DIR/driver_build_started"
+        touch "$DRIVER_TOOLKIT_SHARED_DIR/driver_built"
+        while [ -f "$DRIVER_TOOLKIT_SHARED_DIR/driver_built" ]; do
+            sleep 5
+        done
+        echo "WARNING: driver_built flag disappeared"
+        exit 0
+    fi
+
     if ! [[ -f "/lib/modules/$(uname -r)/vmlinuz" ]]; then
         echo "WARNING: broken Driver Toolkit image detected:"
         echo "- Node kernel:    $(uname -r)"
@@ -99,7 +119,7 @@ dtk-build-driver() {
         echo "NVIDIA drivers already generated, nothing to do ..."
 
         while [ -f "$DRIVER_TOOLKIT_SHARED_DIR/driver_built" ]; do
-            sleep 30
+            sleep 5
         done
         echo "WARNING: driver_built flag disappeared, rebuilding the drivers ..."
     else
@@ -249,7 +269,7 @@ dtk-build-driver() {
     fi
 
     while [ -f "$DRIVER_TOOLKIT_SHARED_DIR/driver_built" ]; do
-        sleep 30
+        sleep 5
     done
 
     echo "WARNING: driver_built flag disappeared, restart this container"
