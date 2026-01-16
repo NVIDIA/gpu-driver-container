@@ -1,0 +1,20 @@
+{
+    "extends": ["config:base"],
+    "enabledManagers": ["dockerfile", "custom.regex"],
+    "labels": ["dependencies", "docker"],
+    "prConcurrentLimit": 15,
+    "prHourlyLimit": 0,
+    "additionalBranchPrefix": "{{packageFileDir}}-",
+    "commitMessageSuffix": "[{{packageFileDir}}]",
+    "customManagers": [
+        {
+            "customType": "regex",
+            "fileMatch": ["(^|/)Dockerfile[^/]*$"],
+            "matchStrings": [
+                "ARG BASE_IMAGE=(?<depName>[^:]+):(?<currentValue>\\S+)"
+            ],
+            "datasourceTemplate": "docker",
+            "versioningTemplate": "ubuntu"
+        }
+    ]
+}
