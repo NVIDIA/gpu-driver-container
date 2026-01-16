@@ -24,7 +24,7 @@ RUN git clone https://github.com/NVIDIA/gpu-driver-container driver && \
     go build -o vgpu-util && \
     mv vgpu-util /work
 
-ARG FEDORA_VERSION=36
+ARG FEDORA_VERSION=44
 
 FROM fedora:${FEDORA_VERSION}
 
