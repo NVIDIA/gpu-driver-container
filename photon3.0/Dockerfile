@@ -1,6 +1,6 @@
 FROM nvcr.io/nvidia/cuda:13.1.0-base-ubi8 as license
 
-FROM photon:3.0
+FROM photon:5.0
 
 RUN tdnf install -y \
 	build-essential \
