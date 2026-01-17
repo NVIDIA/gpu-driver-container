@@ -59,6 +59,15 @@ include:
     - if: $CI_PIPELINE_SOURCE != "schedule"
 
 # Define the image build targets
+.image-build-debian13:
+  # Perform for each DRIVER_VERSION
+  extends:
+    - .driver-versions-debian13
+    - .image-build-generic
+  rules:
+    - if: $CI_PIPELINE_SOURCE != "schedule"
+
+# Define the image build targets
 .image-build-rhel9:
   # Perform for each DRIVER_VERSION
   extends:
@@ -82,6 +91,11 @@ image-ubuntu24.04:
   extends:
     - .image-build-ubuntu24.04
     - .dist-ubuntu24.04
+
+image-debian13:
+  extends:
+    - .image-build-debian13
+    - .dist-debian13
 
 image-rhel8:
   extends:
