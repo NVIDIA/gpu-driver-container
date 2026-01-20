@@ -1,4 +1,4 @@
-FROM nvcr.io/nvidia/cuda:11.3.0-base-ubuntu16.04
+FROM nvcr.io/nvidia/cuda:11.3.1-base-ubuntu16.04
 
 ENV NVIDIA_VISIBLE_DEVICES=void
 
