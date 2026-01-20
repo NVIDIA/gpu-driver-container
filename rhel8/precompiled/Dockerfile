@@ -115,7 +115,8 @@ RUN --mount=type=secret,id=RHSM_ORG,target=/run/secrets/RHSM_ORG \
 	    nvidia-driver-libs-${DRIVER_VERSION} \
 	    nvidia-driver-NVML-${DRIVER_VERSION} \
         cuda-compat-${CUDA_DASHED_VERSION} \
-        cuda-cudart-${CUDA_DASHED_VERSION}
+        cuda-cudart-${CUDA_DASHED_VERSION} \
+        nvidia-persistenced-${DRIVER_VERSION} 
 
 RUN if [ "$DRIVER_TYPE" != "vgpu" ]; then \
         VERSION_ARRAY=(${DRIVER_VERSION//./ }) \
