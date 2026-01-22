@@ -66,7 +66,9 @@ jobs:
           echo "BUILD_MULTI_ARCH_IMAGES=${GENERATE_ARTIFACTS}" >> $GITHUB_ENV
           
           if [[ "${{ matrix.dist }}" =~ "rhel" ]]; then
-             echo "CVE_UPDATES=libarchive libxml2 pam python3 sqlite-libs" >> $GITHUB_ENV
+             echo "CVE_UPDATES=libarchive libxml2 pam python3 sqlite-libs gnupg2" >> $GITHUB_ENV
+          elif [[ "${{ matrix.dist }}" =~ "ubuntu" ]]; then
+             echo "CVE_UPDATES=gnupg2" >> $GITHUB_ENV
           fi
 
       - name: Set up QEMU
