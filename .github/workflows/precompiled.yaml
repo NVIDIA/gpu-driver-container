@@ -188,6 +188,13 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Download all kernel-version artifacts
+        uses: actions/download-artifact@v7
+        with:
+          pattern: kernel-version-*
+          path: ./kernel-version-artifacts
+          merge-multiple: false
+  
       - name: Set kernel version
         env:
           DIST: ${{ matrix.dist }}
@@ -235,13 +242,18 @@ jobs:
     steps:
       - name: Check out code
         uses: actions/checkout@v6
+      - name: Download all matrix artifacts
+        uses: actions/download-artifact@v7
+        with:
+          pattern: matrix-values-*
+          path: ./matrix-values-artifacts
+          merge-multiple: false
       - name: Set and append matrix values for ubuntu
         id: set_kernel_version
         env:
           GH_TOKEN:  ${{ secrets.GITHUB_TOKEN }}
         run: |
           echo "matrix_values_not_empty=0" >> $GITHUB_OUTPUT
-          # combined_values="[]"
           kernel_versions=()
 
           # Read and merge kernel_version values from dist files
@@ -252,13 +264,14 @@ jobs:
           for dist in "${DIST[@]}"; do
             for kernel in "${LTS_KERNEL[@]}"; do
               artifact_name="matrix-values-${dist}-${kernel}"
-              file_path="./matrix_values_${dist}_${kernel}.json"
-              echo "Attempting to download artifact: $artifact_name"
-              if gh run download ${GITHUB_RUN_ID} --name "$artifact_name" --dir ./; then
-                echo "Successfully downloaded artifact: $artifact_name"
+              file_path="./matrix-values-artifacts/${artifact_name}/matrix_values_${dist}_${kernel}.json"
+              if [ -f "$file_path" ]; then
+                echo "Successfully found artifact: $artifact_name at $file_path"
                 value=$(jq -r '.[]' "$file_path")
                 kernel_versions+=($value)
                 echo "matrix_values_not_empty=1" >> $GITHUB_OUTPUT
+              else
+                echo "Artifact not found: $artifact_name"
               fi
             done
           done
@@ -309,6 +322,12 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Download all driver image artifacts
+        uses: actions/download-artifact@v7
+        with:
+          pattern: driver-images-*-${{ matrix.kernel_version }}
+          path: ./tests/
+          merge-multiple: true
       - name:  Set and Calculate test vars
         run: |
           echo "private_key=${{ github.workspace }}/key.pem" >> $GITHUB_ENV
@@ -371,9 +390,6 @@ jobs:
           fi
           for DRIVER_VERSION in "${DRIVER_BRANCHES[@]}"; do
             echo "Running e2e for DRIVER_VERSION=$DRIVER_VERSION"
-            image="driver-images-${DRIVER_VERSION}-${KERNEL_VERSION}-${DIST}"
-            echo "Downloading  $image in tests directory"
-            gh run download ${GITHUB_RUN_ID} --name $image --dir ./tests/
             status=0
             TEST_CASE_ARGS="${GPU_OPERATOR_OPTIONS} --set driver.version=${DRIVER_VERSION}"
             # add escape character for space
