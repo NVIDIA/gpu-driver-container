@@ -1,4 +1,4 @@
-FROM nvcr.io/nvidia/cuda:13.1.0-base-ubuntu22.04 as build
+FROM nvcr.io/nvidia/cuda:13.1.1-base-ubuntu22.04 as build
 
 ARG TARGETARCH
 ARG GOLANG_VERSION
@@ -38,7 +38,7 @@ RUN if [ "$DRIVER_TYPE" = "vgpu" ]; then \
     go build -o vgpu-util && \
     mv vgpu-util /work; fi
 
-FROM nvcr.io/nvidia/cuda:13.1.0-base-ubuntu22.04
+FROM nvcr.io/nvidia/cuda:13.1.1-base-ubuntu22.04
 
 SHELL ["/bin/bash", "-c"]
 
