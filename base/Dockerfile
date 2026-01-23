@@ -1,5 +1,5 @@
 # Ubuntu 24.04
-FROM nvcr.io/nvidia/cuda:13.1.0-base-ubuntu24.04 AS noble
+FROM nvcr.io/nvidia/cuda:13.1.1-base-ubuntu24.04 AS noble
 
 SHELL ["/bin/bash", "-c"]
 
