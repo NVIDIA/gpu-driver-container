@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-FROM nvcr.io/nvidia/cuda:13.1.0-base-ubi9
+FROM nvcr.io/nvidia/cuda:13.1.1-base-ubi9
 
 ARG DRIVER_VERSION
 ENV DRIVER_VERSION=$DRIVER_VERSION
