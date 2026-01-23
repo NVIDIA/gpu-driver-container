@@ -18,9 +18,7 @@ name: image
 on:
   push:
     branches:
-      - main
-      - "pull-request/[0-9]+"
-      - release-*
+      - precompiled-arm-support-no
 
 jobs:
   image:
