@@ -1,4 +1,4 @@
-FROM nvcr.io/nvidia/cuda:13.1.0-base-ubuntu24.04
+FROM nvcr.io/nvidia/cuda:13.1.1-base-ubuntu24.04
 
 ENV DEBIAN_FRONTEND=noninteractive
 
