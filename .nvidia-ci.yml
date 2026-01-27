@@ -146,6 +146,11 @@ image-rhel9:
     - .image-pull
     - .dist-rhel9
 
+image-rhel10:
+  extends:
+    - .image-pull
+    - .dist-rhel10
+
 # The .scan step forms the base of the image scan operation performed before releasing
 # images.
 .scan-generic:
@@ -333,6 +338,22 @@ scan-rhel9-arm64:
   needs:
     - image-rhel9
 
+scan-rhel10-amd64:
+  extends:
+    - .scan
+    - .dist-rhel10
+    - .platform-amd64
+  needs:
+    - image-rhel10
+
+scan-rhel10-arm64:
+  extends:
+    - .scan
+    - .dist-rhel10
+    - .platform-arm64
+  needs:
+    - image-rhel10
+
 .release:ngc-variables:
   variables:
     OUT_REGISTRY_USER: "${NGC_REGISTRY_USER}"
@@ -451,6 +472,19 @@ release:ngc-rhel9.8:
     - .dist-rhel9
   variables:
     OUT_DIST: "rhel9.8"
+release:ngc-rhel10.0:
+  extends:
+    - .release:ngc
+    - .dist-rhel10
+  variables:
+    OUT_DIST: "rhel10.0"
+
+release:ngc-rhel10.1:
+  extends:
+    - .release:ngc
+    - .dist-rhel10
+  variables:
+    OUT_DIST: "rhel10.1"
 
 generate-build-info:
   stage: ngc-publish

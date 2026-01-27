@@ -36,11 +36,16 @@ jobs:
           - ubuntu24.04
           - rhel8
           - rhel9
+          - rhel10
         ispr:
           - ${{github.event_name == 'pull_request'}}
         exclude:
           - dist: ubuntu24.04
             driver: 535.288.01
+          - dist: rhel10
+            driver: 535.288.01
+          - dist: rhel10
+            driver: 570.211.01
       fail-fast: false
     steps:
       - uses: actions/checkout@v6
@@ -130,6 +135,10 @@ jobs:
             dist: ubuntu24.04
           - flavor: azure-fde
             dist: ubuntu22.04
+          - dist: rhel10
+            driver: 535
+          - dist: rhel10
+            driver: 570
     steps:
       - uses: actions/checkout@v6
         name: Check out code
