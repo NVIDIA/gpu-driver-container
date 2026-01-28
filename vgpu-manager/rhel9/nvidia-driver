@@ -19,6 +19,8 @@ DRIVER_VERSION=${DRIVER_VERSION:?"Missing driver version"}
 DRIVER_RESET_RETRIES=10
 DELAY_BEFORE_VF_CREATION=${DELAY_BEFORE_VF_CREATION:-15}
 RUN_DIR=/run/nvidia
+NVIDIA_MODULE_PARAMS=()
+MODPROBE_CONFIG_DIR="/etc/modprobe.d"
 
 # Mount the driver rootfs into the run directory with the exception of sysfs.
 _mount_rootfs() {
@@ -64,14 +66,69 @@ _set_fw_search_path() {
     echo -n "$nv_fw_search_path" > $fw_path_config_file
 }
 
-_install_driver() {
-    local tmp_dir=$(mktemp -d)
-
-    sh NVIDIA-Linux-${DRIVER_ARCH}-${DRIVER_VERSION}-vgpu-kvm.run --ui=none --no-questions --tmpdir ${tmp_dir} --no-systemd
+# For each kernel module configuration file mounted into the container,
+# parse the file contents and extract the custom module parameters that
+# are to be passed as input to 'modprobe'.
+#
+# Assumptions:
+# - Configuration file is named nvidia.conf
+# - Configuration file is mounted inside the container at /drivers.
+# - Each line in the file contains at least one parameter, where parameters on the same line
+#   are space delimited. It is up to the user to properly format the file to ensure
+#   the correct set of parameters are passed to 'modprobe'.
+_get_module_params() {
+    local base_path="/drivers"
+    # nvidia
+    if [ -f "${base_path}/nvidia.conf" ]; then
+       while IFS="" read -r param || [ -n "$param" ]; do
+           NVIDIA_MODULE_PARAMS+=("$param")
+       done <"${base_path}/nvidia.conf"
+       echo "Module parameters provided for nvidia: ${NVIDIA_MODULE_PARAMS[@]}"
+    fi
 }
 
-# Currently _install_driver() takes care of loading nvidia modules. Just need to start necessary vgpu daemons
+_install_driver() {
+    local tmp_dir=$(mktemp -d)
+    local install_args=()
+
+    # Specify the --skip-module-load flag for versions of the nvidia-installer that
+    # support it. From the nvidia-installer help output:
+    #
+    #    --skip-module-load
+    #         Skip the test load of the NVIDIA kernel modules after the modules are built,
+    #         and skip loading them after installation is complete.
+    #
+    # Without this flag, a subtle bug can occur if the nvidia-installer fails to unload
+    # the NVIDIA kernel modules after the test load. The modules will remain loaded and
+    # any custom NVIDIA module parameters configured as input to the driver container
+    # will not be applied.
+    #
+    DRIVER_BRANCH=$(echo ${DRIVER_VERSION} | cut -d. -f1)
+    if [ "${DRIVER_BRANCH}" -ge "550" ]; then
+        install_args+=("--skip-module-load")
+    fi
+    sh NVIDIA-Linux-${DRIVER_ARCH}-${DRIVER_VERSION}-vgpu-kvm.run --ui=none --no-questions --tmpdir ${tmp_dir} --no-systemd ${install_args[@]+"${install_args[@]}"}
+}
+
+_create_module_params_conf() {
+    echo "Parsing kernel module parameters..."
+    _get_module_params
+
+    if [ ${#NVIDIA_MODULE_PARAMS[@]} -gt 0 ]; then
+        echo "Configuring nvidia module parameters in ${MODPROBE_CONFIG_DIR}/nvidia.conf"
+        echo "options nvidia ${NVIDIA_MODULE_PARAMS[@]}" > ${MODPROBE_CONFIG_DIR}/nvidia.conf
+    fi
+}
+
+# Load NVIDIA driver kernel modules with custom parameters and start vGPU daemons
 _load_driver() {
+    echo "Loading NVIDIA driver kernel modules..."
+    set -o xtrace +o nounset
+    modprobe nvidia
+    modprobe nvidia_vgpu_vfio
+    set +o xtrace -o nounset
+
+    # Start vGPU daemons
     /usr/bin/nvidia-vgpud
     /usr/bin/nvidia-vgpu-mgr &
 
@@ -193,6 +250,7 @@ init() {
   _unmount_rootfs
   _create_dev_char_directory
   _set_fw_search_path
+  _create_module_params_conf
   _install_driver
   _load_driver || exit 1
   _mount_rootfs
