@@ -54,17 +54,17 @@ repo_setup () {
 
 fabricmanager_install() {
   if [ "$DRIVER_BRANCH" -ge "580" ]; then
-    apt-get install -y --no-install-recommends nvidia-fabricmanager=${DRIVER_VERSION}-1
+    apt-get install -y --no-install-recommends nvidia-fabricmanager=${DRIVER_VERSION}*
   else
-    apt-get install -y --no-install-recommends nvidia-fabricmanager-${DRIVER_BRANCH}=${DRIVER_VERSION}-1
+    apt-get install -y --no-install-recommends nvidia-fabricmanager-${DRIVER_BRANCH}=${DRIVER_VERSION}*
   fi
 }
 
 nscq_install() {
   if [ "$DRIVER_BRANCH" -ge "580" ]; then
-    apt-get install -y --no-install-recommends libnvidia-nscq=${DRIVER_VERSION}-1
+    apt-get install -y --no-install-recommends libnvidia-nscq=${DRIVER_VERSION}*
   else
-    apt-get install -y --no-install-recommends libnvidia-nscq-${DRIVER_BRANCH}=${DRIVER_VERSION}-1
+    apt-get install -y --no-install-recommends libnvidia-nscq-${DRIVER_BRANCH}=${DRIVER_VERSION}*
   fi
 }
 
@@ -72,9 +72,9 @@ nscq_install() {
 nvsdm_install() {
   if [ "$TARGETARCH" = "amd64" ]; then
     if [ "$DRIVER_BRANCH" -ge "580" ]; then
-       apt-get install -y --no-install-recommends libnvsdm=${DRIVER_VERSION}-1
+       apt-get install -y --no-install-recommends libnvsdm=${DRIVER_VERSION}*
     elif [ "$DRIVER_BRANCH" -ge "570" ]; then
-       apt-get install -y --no-install-recommends libnvsdm-${DRIVER_BRANCH}=${DRIVER_VERSION}-1
+       apt-get install -y --no-install-recommends libnvsdm-${DRIVER_BRANCH}=${DRIVER_VERSION}*
     fi
   fi
 }
@@ -87,9 +87,9 @@ nvlink5_pkgs_install() {
 
 imex_install() {
   if [ "$DRIVER_BRANCH" -ge "580" ]; then
-    apt-get install -y --no-install-recommends nvidia-imex=${DRIVER_VERSION}-1
+    apt-get install -y --no-install-recommends nvidia-imex=${DRIVER_VERSION}*
   elif [ "$DRIVER_BRANCH" -ge "550" ]; then
-    apt-get install -y --no-install-recommends nvidia-imex-${DRIVER_BRANCH}=${DRIVER_VERSION}-1;
+    apt-get install -y --no-install-recommends nvidia-imex-${DRIVER_BRANCH}=${DRIVER_VERSION}*
   fi
 }
 

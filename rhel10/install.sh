@@ -119,18 +119,17 @@ nvidia_installer () {
 }
 
 fabricmanager_install() {
-    dnf install -y nvidia-fabricmanager-${DRIVER_VERSION}-1
+  dnf install -y nvidia-fabricmanager-${DRIVER_VERSION}
 }
 
 nscq_install() {
-    dnf install -y libnvidia-nscq-${DRIVER_VERSION}-1
+  dnf install -y libnvidia-nscq-${DRIVER_VERSION}
 }
 
 # libnvsdm packages are not available for arm64
 nvsdm_install() {
   if [ "$TARGETARCH" = "amd64" ]; then
-      dnf install -y libnvsdm-${DRIVER_VERSION}-1
-      return 0
+    dnf install -y libnvsdm-${DRIVER_VERSION}
   fi
 }
 
@@ -139,7 +138,7 @@ nvlink5_pkgs_install() {
 }
 
 imex_install() {
-  dnf install -y nvidia-imex-${DRIVER_VERSION}-1
+  dnf install -y nvidia-imex-${DRIVER_VERSION}
 }
 
 extra_pkgs_install() {
