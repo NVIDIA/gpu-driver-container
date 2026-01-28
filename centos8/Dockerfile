@@ -1,4 +1,4 @@
-FROM nvcr.io/nvidia/cuda:11.4.1-base-centos8
+FROM nvcr.io/nvidia/cuda:11.6.0-base-centos8
 
 ENV NVIDIA_VISIBLE_DEVICES=void
 
