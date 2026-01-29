@@ -88,6 +88,16 @@ variables:
       when: never
     - !reference [.image-pull-rules, rules]
 
+.image-pull-rhel10:
+  # Perform for each DRIVER_VERSION
+  extends:
+    - .driver-versions-rhel10
+    - .image-pull-generic
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "schedule"
+      when: never
+    - !reference [.image-pull-rules, rules]
+
 image-precompiled-ubuntu24.04:
   variables:
     DIST: signed_ubuntu24.04
@@ -148,7 +158,7 @@ image-rhel9:
 
 image-rhel10:
   extends:
-    - .image-pull
+    - .image-pull-rhel10
     - .dist-rhel10
 
 # The .scan step forms the base of the image scan operation performed before releasing
