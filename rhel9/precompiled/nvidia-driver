@@ -17,6 +17,7 @@ USE_HOST_MOFED="${USE_HOST_MOFED:-false}"
 DNF_RELEASEVER=${DNF_RELEASEVER:-""}
 RHEL_VERSION=${RHEL_VERSION:-""}
 RHEL_MAJOR_VERSION=9
+RHEL_MINOR_VERSION=${RHEL_MINOR_VERSION:-""}
 MODPROBE_CONFIG_DIR="/etc/modprobe.d"
 
 DRIVER_ARCH=${TARGETARCH/amd64/x86_64} && DRIVER_ARCH=${DRIVER_ARCH/arm64/aarch64}
@@ -57,6 +58,7 @@ _get_rhel_version_from_kernel() {
         return 1
     fi
     RHEL_VERSION="${rhel_version_arr[0]}.${rhel_version_arr[1]}"
+    RHEL_MINOR_VERSION=${rhel_version_arr[1]}
     echo "RHEL VERSION successfully resolved from kernel: ${RHEL_VERSION}"
     return 0
 }
@@ -208,6 +210,11 @@ _load_driver() {
             mkdir -p $nv_fw_search_path/nvidia/${DRIVER_VERSION}
             cp /opt/lib/firmware/nvidia/${DRIVER_VERSION}/gsp_*.bin $nv_fw_search_path/nvidia/${DRIVER_VERSION}
         fi
+    fi
+
+    if [[ "$RHEL_MINOR_VERSION" -ge "3" ]]; then
+        echo "Loading the video kernel module..."
+        modprobe video
     fi
 
     echo "Loading NVIDIA driver kernel modules..."
