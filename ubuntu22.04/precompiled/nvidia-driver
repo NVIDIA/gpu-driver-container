@@ -62,7 +62,11 @@ nvsdm_install() {
 _update_package_cache() {
     if [ "${PACKAGE_TAG:-}" != "builtin" ]; then
         echo "Updating the package cache..."
-        apt-get -qq update
+        if ! apt-get -qq update; then
+            echo "ERROR: Failed to update package cache. "\
+                 "Ensure that the cluster can access the proper networks."
+            exit 1
+        fi
     fi
 }
 
@@ -449,6 +453,8 @@ init() {
 
     _unload_driver || exit 1
     _unmount_rootfs
+
+    _update_package_cache
 
     _create_module_params_conf
     _install_driver
