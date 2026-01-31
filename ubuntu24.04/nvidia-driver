@@ -49,7 +49,11 @@ _enable_fips_if_required() {
 _update_package_cache() {
     if [ "${PACKAGE_TAG:-}" != "builtin" ]; then
         echo "Updating the package cache..."
-        apt-get -qq update
+        if ! apt-get -qq update; then
+            echo "ERROR: Failed to update package cache. "\
+                 "Ensure that the cluster can access the proper networks."
+            exit 1
+        fi
     fi
 }
 
