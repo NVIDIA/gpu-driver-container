@@ -52,6 +52,9 @@ ARG DISABLE_VGPU_VERSION_CHECK=true
 ENV DISABLE_VGPU_VERSION_CHECK=$DISABLE_VGPU_VERSION_CHECK
 # Avoid dependency of container-toolkit for driver container
 ENV NVIDIA_VISIBLE_DEVICES=void
+# Fabric manager fabric mode, default is 0 (full-passthrough)
+ARG FABRIC_MANAGER_FABRIC_MODE=0
+ENV FABRIC_MANAGER_FABRIC_MODE=$FABRIC_MANAGER_FABRIC_MODE
 
 ADD install.sh /tmp/
 
@@ -69,15 +72,14 @@ RUN sh /tmp/install.sh depinstall && \
 
 ADD drivers drivers/
 
-# Fetch the installer, fabricmanager and libnvidia-nscq automatically for passthrough/baremetal types
+# Fetch the installer, fabricmanager, libnvidia-nscq, libnvsdm, imex packages
+RUN sh /tmp/install.sh extrapkgsinstall
+
 RUN if [ "$DRIVER_TYPE" != "vgpu" ]; then \
     cd drivers && \
     DRIVER_ARCH=${TARGETARCH/amd64/x86_64} && DRIVER_ARCH=${DRIVER_ARCH/arm64/aarch64} && \
     curl -fSsl -O $BASE_URL/$DRIVER_VERSION/NVIDIA-Linux-$DRIVER_ARCH-$DRIVER_VERSION.run && \
     chmod +x  NVIDIA-Linux-$DRIVER_ARCH-$DRIVER_VERSION.run; fi
-
-# Fetch the installer, fabricmanager, libnvidia-nscq, libnvsdm, imex packages
-RUN sh /tmp/install.sh extrapkgsinstall
 
 COPY nvidia-driver /usr/local/bin
 COPY ocp_dtk_entrypoint /usr/local/bin
