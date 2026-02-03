@@ -54,7 +54,7 @@ OUT_IMAGE_TAG = $(OUT_IMAGE_VERSION)-$(OUT_DIST)
 OUT_IMAGE = $(OUT_IMAGE_NAME):$(OUT_IMAGE_TAG)
 
 ##### Public rules #####
-DISTRIBUTIONS := ubuntu18.04 ubuntu20.04 ubuntu22.04 ubuntu24.04 signed_ubuntu20.04 signed_ubuntu22.04 signed_ubuntu24.04 rhel8 rhel9 rhel10 flatcar fedora36 sles15.3 precompiled_rhcos
+DISTRIBUTIONS := ubuntu18.04 ubuntu20.04 ubuntu22.04 ubuntu24.04 signed_ubuntu20.04 signed_ubuntu22.04 signed_ubuntu24.04 rhel8 rhel9 rhel10 rocky9 flatcar fedora36 sles15.3 precompiled_rhcos
 RHCOS_VERSIONS := rhcos4.14 rhcos4.15 rhcos4.16 rhcos4.17 rhcos4.18 rhel9.6
 PUSH_TARGETS := $(patsubst %, push-%, $(DISTRIBUTIONS))
 BASE_FROM := noble jammy focal
@@ -176,6 +176,9 @@ $(DRIVER_BUILD_TARGETS):
 				$(CURDIR)/$(SUBDIR)
 
 build-rhcos%: SUBDIR = rhel9
+
+build-rocky9%: SUBDIR = rhel9
+build-rocky9%: DOCKER_BUILD_ARGS = --build-arg BASE_IMAGE=nvcr.io/nvidia/cuda:13.1.1-base-rockylinux9
 
 build-fedora%: SUBDIR = fedora
 

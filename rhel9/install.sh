@@ -146,6 +146,12 @@ extra_pkgs_install() {
   if [ "$DRIVER_TYPE" != "vgpu" ]; then
       dnf module enable -y nvidia-driver:${DRIVER_BRANCH}-dkms
 
+      # If running on a RockyLinux base image, we enable the Code Ready Builder RPM repo (crb)
+      OS_RELEASE_ID=$(grep -oP '(?<=^ID=).+' /etc/os-release | tr -d '"')
+      if [ "$OS_RELEASE_ID" = "rocky" ]; then
+        dnf config-manager --set-enabled crb
+      fi
+
       fabricmanager_install
       nscq_install
       nvsdm_install

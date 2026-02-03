@@ -131,6 +131,10 @@ trigger-pipeline:
   variables:
     DIST: rhel10
 
+.dist-rocky9:
+  variables:
+    DIST: rocky9
+
 .dist-fedora36:
   variables:
     DIST: fedora36
@@ -216,6 +220,14 @@ trigger-pipeline:
   rules:
     - if: $CI_PIPELINE_SOURCE != "schedule" && $CI_COMMIT_TAG == null
 
+.release-rocky9:
+  # Perform for each DRIVER_VERSION
+  extends:
+    - .release-generic
+    - .driver-versions
+  rules:
+    - if: $CI_PIPELINE_SOURCE != "schedule" && $CI_COMMIT_TAG == null
+
 .release-rhel10:
   # Perform for each DRIVER_VERSION
   extends:
@@ -274,6 +286,15 @@ trigger-pipeline:
 .release:staging-rhel10:
   extends:
     - .release-rhel10
+  variables:
+    OUT_REGISTRY_USER: "${NGC_REGISTRY_USER}"
+    OUT_REGISTRY_TOKEN: "${NGC_REGISTRY_TOKEN}"
+    OUT_REGISTRY: "${NGC_REGISTRY}"
+    OUT_IMAGE_NAME: "${NGC_STAGING_REGISTRY}/driver"
+
+.release:staging-rocky9:
+  extends:
+    - .release-rocky9
   variables:
     OUT_REGISTRY_USER: "${NGC_REGISTRY_USER}"
     OUT_REGISTRY_TOKEN: "${NGC_REGISTRY_TOKEN}"
@@ -354,6 +375,13 @@ release:staging-rhel9:
 #    - .dist-rhel10
 #  needs:
 #    - image-rhel10
+
+release:staging-rocky9:
+  extends:
+    - .release:staging
+    - .dist-rocky9
+  needs:
+    - image-rocky9
 
 .release:staging-precompiled:
   stage: release
