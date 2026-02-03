@@ -81,18 +81,18 @@ trigger-pipeline:
 .driver-versions:
   parallel:
     matrix:
-      - DRIVER_VERSION: [535.288.01, 570.211.01, 580.126.09]
+      - DRIVER_VERSION: [535.288.01, 570.211.01, 580.126.09, 590.48.01]
 
 # Define the driver versions for jobs that can be run in parallel
 .driver-versions-ubuntu24.04:
   parallel:
     matrix:
-      - DRIVER_VERSION: [570.211.01, 580.126.09]
+      - DRIVER_VERSION: [570.211.01, 580.126.09, 590.48.01]
 
 .driver-versions-rhel10:
   parallel:
     matrix:
-      - DRIVER_VERSION: [580.126.09]
+      - DRIVER_VERSION: [580.126.09, 590.48.01]
 
 # Define the matrix of precompiled jobs that can be run in parallel for ubuntu22.04
 .driver-versions-precompiled-ubuntu22.04:
