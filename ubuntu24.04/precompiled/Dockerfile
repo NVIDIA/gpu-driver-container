@@ -42,7 +42,7 @@ RUN usermod -o -u 0 -g 0 _apt
 # Install / upgrade packages here that are required to resolve CVEs
 ARG CVE_UPDATES
 RUN if [ -n "${CVE_UPDATES}" ]; then \
-        apt-get update && apt-get upgrade -y ${CVE_UPDATES} && \
+        apt-get update && apt-get --only-upgrade -y install ${CVE_UPDATES} && \
         rm -rf /var/lib/apt/lists/*; \
     fi
 

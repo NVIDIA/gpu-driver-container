@@ -40,7 +40,7 @@ COPY nvidia-driver /usr/local/bin
 # Install / upgrade packages here that are required to resolve CVEs
 ARG CVE_UPDATES
 RUN if [ -n "${CVE_UPDATES}" ]; then \
-        apt-get update && apt-get upgrade -y ${CVE_UPDATES} && \
+        apt-get update && apt-get --only-upgrade -y install ${CVE_UPDATES} && \
         rm -rf /var/lib/apt/lists/*; \
     fi
 
