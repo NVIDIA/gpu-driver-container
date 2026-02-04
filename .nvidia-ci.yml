@@ -161,6 +161,11 @@ image-rhel9:
 #    - .image-pull-rhel10
 #    - .dist-rhel10
 
+image-rocky9:
+  extends:
+    - .image-pull
+    - .dist-rocky9
+
 # The .scan step forms the base of the image scan operation performed before releasing
 # images.
 .scan-generic:
@@ -376,6 +381,22 @@ scan-rhel9-arm64:
 #  needs:
 #    - image-rhel10
 
+scan-rocky9-amd64:
+  extends:
+    - .scan
+    - .dist-rocky9
+    - .platform-amd64
+  needs:
+    - image-rocky9
+
+scan-rocky9-arm64:
+  extends:
+    - .scan
+    - .dist-rocky9
+    - .platform-arm64
+  needs:
+    - image-rocky9
+
 .release:ngc-variables:
   variables:
     OUT_REGISTRY_USER: "${NGC_REGISTRY_USER}"
@@ -494,6 +515,11 @@ release:ngc-rhel9.8:
     - .dist-rhel9
   variables:
     OUT_DIST: "rhel9.8"
+
+release:ngc-rocky9:
+  extends:
+    - .release:ngc
+    - .dist-rocky9
 
 #release:ngc-rhel10.0:
 #  extends:
