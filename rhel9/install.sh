@@ -99,32 +99,40 @@ nvidia_installer () {
 }
 
 fabricmanager_install() {
+  local fabricmanager_package_name
   if [ "$DRIVER_BRANCH" -ge "580" ]; then
-    dnf install -y nvidia-fabricmanager-${DRIVER_VERSION}
+    fabricmanager_package_name=nvidia-fabricmanager
   else
-    dnf install -y nvidia-fabric-manager-${DRIVER_VERSION}
+    fabricmanager_package_name=nvidia-fabric-manager
   fi
+  dnf install -y ${fabricmanager_package_name}-${DRIVER_VERSION}
+  dnf versionlock add ${fabricmanager_package_name}
 }
 
 nscq_install() {
+  local nscq_package_name
   if [ "$DRIVER_BRANCH" -ge "580" ]; then
-    dnf install -y libnvidia-nscq-${DRIVER_VERSION}
+    nscq_package_name=libnvidia-nscq
   else
-    dnf install -y libnvidia-nscq-${DRIVER_BRANCH}-${DRIVER_VERSION}
+    nscq_package_name=libnvidia-nscq-${DRIVER_BRANCH}
   fi
+  dnf install -y ${nscq_package_name}-${DRIVER_VERSION}
+  dnf versionlock add ${nscq_package_name}
 }
 
 # libnvsdm packages are not available for arm64
 nvsdm_install() {
+  local nvsdm_package_name
   if [ "$TARGETARCH" = "amd64" ]; then
     if [ "$DRIVER_BRANCH" -ge "580" ]; then
-      dnf install -y libnvsdm-${DRIVER_VERSION}
+      nvsdm_package_name=libnvsdm
+    elif [ "$DRIVER_BRANCH" -ge "570" ]; then
+      nvsdm_package_name=libnvsdm-${DRIVER_BRANCH}
+    else
       return 0
     fi
-    if [ "$DRIVER_BRANCH" -ge "570" ]; then
-      dnf install -y libnvsdm-${DRIVER_BRANCH}-${DRIVER_VERSION}
-      return 0
-    fi
+    dnf install -y ${nvsdm_package_name}-${DRIVER_VERSION}
+    dnf versionlock add ${nvsdm_package_name}
   fi
 }
 
@@ -135,16 +143,21 @@ nvlink5_pkgs_install() {
 }
 
 imex_install() {
+  local imex_package_name
   if [ "$DRIVER_BRANCH" -ge "580" ]; then
-    dnf install -y nvidia-imex-${DRIVER_VERSION}
+    imex_package_name=nvidia-imex
   elif [ "$DRIVER_BRANCH" -ge "550" ]; then
-    dnf install -y nvidia-imex-${DRIVER_BRANCH}-${DRIVER_VERSION}
+    imex_package_name=nvidia-imex-${DRIVER_BRANCH}
+  else
+    return 0
   fi
+  dnf install -y ${imex_package_name}-${DRIVER_VERSION}
+  dnf versionlock add ${imex_package_name}
 }
-
 extra_pkgs_install() {
   if [ "$DRIVER_TYPE" != "vgpu" ]; then
       dnf module enable -y nvidia-driver:${DRIVER_BRANCH}-dkms
+      dnf install -y 'dnf-command(versionlock)'
 
       # If running on a RockyLinux base image, we enable the Code Ready Builder RPM repo (crb)
       OS_RELEASE_ID=$(grep -oP '(?<=^ID=).+' /etc/os-release | tr -d '"')
