@@ -15,4 +15,4 @@
 # DRIVER_VERSIONS contains latest version in all active datacenter branches
 DRIVER_VERSIONS ?= 535.288.01 570.211.01 580.126.09 590.48.01
 
-GOLANG_VERSION := 1.25.6
+GOLANG_VERSION := 1.25.7
