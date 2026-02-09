@@ -30,7 +30,16 @@ if [ -n "$artifact" ]; then
         tar -xf "$artifact/${artifact_name}.tar" -C ./
         ls -la ./
         echo "kernel_version.txt: $(cat kernel_version.txt)"
-        export $(grep -oP 'KERNEL_VERSION=[^ ]+' ./kernel_version.txt)
+        export $(grep -oE 'KERNEL_VERSION=[^ ]+' ./kernel_version.txt)
+        rm -f kernel_version.txt
+    fi
+else
+    artifact_file=$(find "$artifact_dir" -maxdepth 1 -type f -name "${prefix}*-${suffix}.tar" | head -1)
+    if [ -n "$artifact_file" ]; then
+        tar -xf "$artifact_file" -C ./
+        ls -la ./
+        echo "kernel_version.txt: $(cat kernel_version.txt)"
+        export $(grep -oE 'KERNEL_VERSION=[^ ]+' ./kernel_version.txt)
         rm -f kernel_version.txt
     fi
 fi
