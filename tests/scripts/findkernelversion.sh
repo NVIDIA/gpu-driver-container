@@ -21,11 +21,15 @@ prefix="kernel-version-${DRIVER_BRANCH}-${LTS_KERNEL}"
 suffix="${kernel_flavor}-${DIST}"
 
 artifact_dir="./kernel-version-artifacts"
+ls -la $artifact_dir
 artifact=$(find "$artifact_dir" -maxdepth 1 -type d -name "${prefix}*-${suffix}" | head -1)
+echo "artifact: $artifact"
 if [ -n "$artifact" ]; then
     artifact_name=$(basename "$artifact")
     if [ -f "$artifact/${artifact_name}.tar" ]; then
         tar -xf "$artifact/${artifact_name}.tar" -C ./
+        ls -la ./
+        echo "kernel_version.txt: $(cat kernel_version.txt)"
         export $(grep -oP 'KERNEL_VERSION=[^ ]+' ./kernel_version.txt)
         rm -f kernel_version.txt
     fi
