@@ -271,6 +271,9 @@ jobs:
           LTS_KERNEL=($(echo "$lts_kernel_json" | jq -r '.[]'))
           for dist in "${DIST[@]}"; do
             for kernel in "${LTS_KERNEL[@]}"; do
+              echo "dist: $dist, kernel: $kernel"
+              echo "artifacts: $(ls -la ./matrix-values-artifacts)"
+              echo "artifact_name: matrix-values-${dist}-${kernel}"
               artifact_name="matrix-values-${dist}-${kernel}"
               file_path="./matrix-values-artifacts/${artifact_name}/matrix_values_${dist}_${kernel}.json"
               if [ -f "$file_path" ]; then
