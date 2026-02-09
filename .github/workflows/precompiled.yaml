@@ -89,13 +89,7 @@ jobs:
 
           GENERATE_ARTIFACTS="false"
           echo "PUSH_ON_BUILD=${GENERATE_ARTIFACTS}" >> $GITHUB_ENV
-          
-          # Enable multi-arch builds only for Ubuntu 24.04 when generating artifacts
-          if [[ "${{ matrix.dist }}" == "ubuntu24.04" ]]; then
-            echo "BUILD_MULTI_ARCH_IMAGES=true" >> $GITHUB_ENV
-          else
-            echo "BUILD_MULTI_ARCH_IMAGES=false" >> $GITHUB_ENV
-          fi
+          echo "BUILD_MULTI_ARCH_IMAGES=${GENERATE_ARTIFACTS}" >> $GITHUB_ENV
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
