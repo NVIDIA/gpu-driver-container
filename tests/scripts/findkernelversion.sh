@@ -29,13 +29,13 @@ if [ -n "$artifact" ]; then
         export $(grep -oE 'KERNEL_VERSION=[^ ]+' ./kernel_version.txt)
         rm -f kernel_version.txt
     fi
-else
-    artifact_file=$(find "$artifact_dir" -maxdepth 1 -type f -name "${prefix}*-${suffix}.tar" | head -1)
-    if [ -n "$artifact_file" ]; then
-        tar -xf "$artifact_file" -C ./
-        export $(grep -oE 'KERNEL_VERSION=[^ ]+' ./kernel_version.txt)
-        rm -f kernel_version.txt
-    fi
+# else
+#     artifact_file=$(find "$artifact_dir" -maxdepth 1 -type f -name "${prefix}*-${suffix}.tar" | head -1)
+#     if [ -n "$artifact_file" ]; then
+#         tar -xf "$artifact_file" -C ./
+#         export $(grep -oE 'KERNEL_VERSION=[^ ]+' ./kernel_version.txt)
+#         rm -f kernel_version.txt
+#     fi
 fi
 
 # calculate driver tag
