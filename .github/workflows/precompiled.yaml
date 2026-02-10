@@ -31,6 +31,7 @@ jobs:
       kernel_flavors: ${{ steps.extract_driver_branch.outputs.kernel_flavors }}
       dist: ${{ steps.extract_driver_branch.outputs.dist }}
       lts_kernel: ${{ steps.extract_driver_branch.outputs.lts_kernel }}
+      platforms: ${{ steps.extract_driver_branch.outputs.platforms }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
@@ -61,6 +62,11 @@ jobs:
           lts_kernel_json=$(printf '%s\n' "${LTS_KERNEL[@]}" | jq -R . | jq -cs .)
           echo "lts_kernel=$lts_kernel_json" >> $GITHUB_OUTPUT
 
+          # platforms for precompiled build (amd64 always; arm64 for ubuntu24.04)
+          PLATFORMS=("amd64" "arm64")
+          platforms_json=$(printf '%s\n' "${PLATFORMS[@]}" | jq -R . | jq -cs .)
+          echo "platforms=$platforms_json" >> $GITHUB_OUTPUT
+
   precompiled-build-image:
     needs: set-driver-version-matrix
     runs-on: linux-amd64-cpu4
@@ -70,6 +76,7 @@ jobs:
         flavor: ${{ fromJson(needs.set-driver-version-matrix.outputs.kernel_flavors) }}
         dist: ${{ fromJson(needs.set-driver-version-matrix.outputs.dist) }}
         lts_kernel: ${{ fromJson(needs.set-driver-version-matrix.outputs.lts_kernel) }}
+        platform: ${{ fromJson(needs.set-driver-version-matrix.outputs.platforms) }}
         exclude:
           - dist: ubuntu24.04
             driver_branch: 535
@@ -77,6 +84,9 @@ jobs:
             dist: ubuntu24.04
           - flavor: azure-fde
             dist: ubuntu22.04
+          # Only ubuntu24.04 builds for arm64
+          - dist: ubuntu22.04
+            platform: arm64
     steps:
       - uses: actions/checkout@v6
         name: Check out code
@@ -89,7 +99,8 @@ jobs:
 
           GENERATE_ARTIFACTS="false"
           echo "PUSH_ON_BUILD=${GENERATE_ARTIFACTS}" >> $GITHUB_ENV
-          echo "BUILD_MULTI_ARCH_IMAGES=${GENERATE_ARTIFACTS}" >> $GITHUB_ENV
+          echo "BUILD_MULTI_ARCH_IMAGES=false" >> $GITHUB_ENV
+          echo "DOCKER_BUILD_PLATFORM_OPTIONS=--platform=linux/${{ matrix.platform }}" >> $GITHUB_ENV
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
@@ -107,6 +118,7 @@ jobs:
         env:
           IMAGE_NAME: ghcr.io/nvidia/driver
           LTS_KERNEL: ${{ matrix.lts_kernel }}
+          DOCKER_BUILD_PLATFORM_OPTIONS: --platform=linux/${{ matrix.platform }}
         run: |
           if [[ "${{ matrix.dist }}" == "ubuntu22.04" ]]; then
             BASE_TARGET="jammy"
@@ -128,6 +140,7 @@ jobs:
           PRECOMPILED: "true"
           DIST: signed_${{ matrix.dist }}
           VERSION: ""
+          DOCKER_BUILD_PLATFORM_OPTIONS: --platform=linux/${{ matrix.platform }}
         run: |
           source kernel_version.txt && \
           make DRIVER_VERSIONS=${DRIVER_VERSIONS} DRIVER_BRANCH=${{ matrix.driver_branch }} build-${DIST}-${DRIVER_VERSION}
@@ -144,30 +157,36 @@ jobs:
           elif [[ "${{ matrix.dist }}" == "ubuntu24.04" ]]; then
             BASE_TARGET="noble"
           fi
+          # Artifact name suffix: amd64 has no suffix (e2e uses these), arm64 uses -arm64
+          if [[ "${{ matrix.platform }}" == "amd64" ]]; then
+            echo "PLATFORM_SUFFIX=" >> $GITHUB_ENV
+          else
+            echo "PLATFORM_SUFFIX=-${{ matrix.platform }}" >> $GITHUB_ENV
+          fi
           tar -cvf kernel-version-${{ matrix.driver_branch }}-${KERNEL_VERSION}-${DIST}.tar kernel_version.txt
           docker save "${PRIVATE_REGISTRY}/nvidia/driver:base-${BASE_TARGET}-${LTS_KERNEL}-${{ matrix.flavor }}-${{ matrix.driver_branch }}" \
-            -o  ./base-images-${{ matrix.driver_branch }}-${KERNEL_VERSION}-${DIST}.tar
+            -o  ./base-images-${{ matrix.driver_branch }}-${KERNEL_VERSION}-${DIST}${PLATFORM_SUFFIX}.tar
           docker save "${PRIVATE_REGISTRY}/nvidia/driver:${{ matrix.driver_branch }}-${KERNEL_VERSION}-${DIST}" \
-            -o  ./driver-images-${{ matrix.driver_branch }}-${KERNEL_VERSION}-${DIST}.tar
-          # set env for artifacts upload
+            -o  ./driver-images-${{ matrix.driver_branch }}-${KERNEL_VERSION}-${DIST}${PLATFORM_SUFFIX}.tar
           echo "KERNEL_VERSION=$KERNEL_VERSION" >> $GITHUB_ENV
           echo "DIST=$DIST" >> $GITHUB_ENV
 
       - name: Upload base image as an artifact
         uses: actions/upload-artifact@v6
         with:
-           name: base-images-${{ matrix.driver_branch }}-${{ env.KERNEL_VERSION }}-${{ env.DIST }}
-           path: ./base-images-${{ matrix.driver_branch }}-${{ env.KERNEL_VERSION }}-${{ env.DIST }}.tar
+           name: base-images-${{ matrix.driver_branch }}-${{ env.KERNEL_VERSION }}-${{ env.DIST }}${{ env.PLATFORM_SUFFIX }}
+           path: ./base-images-${{ matrix.driver_branch }}-${{ env.KERNEL_VERSION }}-${{ env.DIST }}${{ env.PLATFORM_SUFFIX }}.tar
            retention-days: 1
 
       - name: Upload build image as an artifact
         uses: actions/upload-artifact@v6
         with:
-           name: driver-images-${{ matrix.driver_branch }}-${{ env.KERNEL_VERSION }}-${{ env.DIST }}
-           path: ./driver-images-${{ matrix.driver_branch }}-${{ env.KERNEL_VERSION }}-${{ env.DIST }}.tar
+           name: driver-images-${{ matrix.driver_branch }}-${{ env.KERNEL_VERSION }}-${{ env.DIST }}${{ env.PLATFORM_SUFFIX }}
+           path: ./driver-images-${{ matrix.driver_branch }}-${{ env.KERNEL_VERSION }}-${{ env.DIST }}${{ env.PLATFORM_SUFFIX }}.tar
            retention-days: 1
       
       - name: Upload kernel version as an artifact
+        if: matrix.platform == 'amd64'
         uses: actions/upload-artifact@v6
         with:
            name: kernel-version-${{ matrix.driver_branch }}-${{ env.KERNEL_VERSION }}-${{ env.DIST }}
@@ -220,11 +239,6 @@ jobs:
             [[ $branch != "535" ]] && echo "$branch"
           done))
           fi
-          echo "DRIVER_BRANCHES: ${DRIVER_BRANCHES[@]}"
-          echo "KERNEL_FLAVORS: ${KERNEL_FLAVORS[@]}"
-          echo "DIST: $DIST"
-          echo "LTS_KERNEL: $LTS_KERNEL"
-          # find ./  -type f
           source ./tests/scripts/ci-precompiled-helpers.sh
           KERNEL_VERSIONS=($(get_kernel_versions_to_test KERNEL_FLAVORS[@] DRIVER_BRANCHES[@] $DIST $LTS_KERNEL))
           if [ -z "$KERNEL_VERSIONS" ]; then
