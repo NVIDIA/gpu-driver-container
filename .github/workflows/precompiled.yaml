@@ -84,7 +84,6 @@ jobs:
             dist: ubuntu24.04
           - flavor: azure-fde
             dist: ubuntu22.04
-          # Only ubuntu24.04 builds for arm64
           - dist: ubuntu22.04
             platform: arm64
     steps:
