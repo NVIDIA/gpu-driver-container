@@ -224,7 +224,7 @@ jobs:
           echo "KERNEL_FLAVORS: ${KERNEL_FLAVORS[@]}"
           echo "DIST: $DIST"
           echo "LTS_KERNEL: $LTS_KERNEL"
-          find ./  -type f
+          # find ./  -type f
           source ./tests/scripts/ci-precompiled-helpers.sh
           KERNEL_VERSIONS=($(get_kernel_versions_to_test KERNEL_FLAVORS[@] DRIVER_BRANCHES[@] $DIST $LTS_KERNEL))
           if [ -z "$KERNEL_VERSIONS" ]; then
