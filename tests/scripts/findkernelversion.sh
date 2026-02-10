@@ -21,7 +21,7 @@ prefix="kernel-version-${DRIVER_BRANCH}-${LTS_KERNEL}"
 suffix="${KERNEL_FLAVOR}-${DIST}"
 
 # find ./  -type f
-# artifact_dir="./kernel-version-artifacts"
+artifact_dir="./kernel-version-artifacts"
 # echo "artifact_dir $artifact_dir"
 # echo "KERNEL_FLAVOR $KERNEL_FLAVOR"
 # echo "DRIVER_BRANCH $DRIVER_BRANCH"
