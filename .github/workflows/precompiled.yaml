@@ -133,6 +133,7 @@ jobs:
               docker cp base-${BASE_TARGET}-${{ matrix.flavor }}:/var/kernel_version.txt kernel_version.txt && break
               sleep 10
           done
+          docker image ls
       - name: Build image
         env:
           IMAGE_NAME: ghcr.io/nvidia/driver
@@ -143,13 +144,15 @@ jobs:
         run: |
           source kernel_version.txt && \
           make DRIVER_VERSIONS=${DRIVER_VERSIONS} DRIVER_BRANCH=${{ matrix.driver_branch }} build-${DIST}-${DRIVER_VERSION}
-
+          docker image ls
+      
       - name: Save base image, build image and kernel version file
         env:
           DIST: ${{ matrix.dist }}
           PRIVATE_REGISTRY: "ghcr.io"
           LTS_KERNEL: ${{ matrix.lts_kernel }}
         run: |
+          cat kernel_version.txt
           source kernel_version.txt
           if [[ "${{ matrix.dist }}" == "ubuntu22.04" ]]; then
             BASE_TARGET="jammy"
@@ -162,13 +165,17 @@ jobs:
           else
             echo "PLATFORM_SUFFIX=-${{ matrix.platform }}" >> $GITHUB_ENV
           fi
-          tar -cvf kernel-version-${{ matrix.driver_branch }}-${KERNEL_VERSION}-${DIST}.tar kernel_version.txt
+          ls -la
+          docker image ls
+          tar -cvf kernel-version-${{ matrix.driver_branch }}-${KERNEL_VERSION}-${DIST}${PLATFORM_SUFFIX}.tar kernel_version.txt
           docker save "${PRIVATE_REGISTRY}/nvidia/driver:base-${BASE_TARGET}-${LTS_KERNEL}-${{ matrix.flavor }}-${{ matrix.driver_branch }}" \
             -o  ./base-images-${{ matrix.driver_branch }}-${KERNEL_VERSION}-${DIST}${PLATFORM_SUFFIX}.tar
           docker save "${PRIVATE_REGISTRY}/nvidia/driver:${{ matrix.driver_branch }}-${KERNEL_VERSION}-${DIST}" \
             -o  ./driver-images-${{ matrix.driver_branch }}-${KERNEL_VERSION}-${DIST}${PLATFORM_SUFFIX}.tar
           echo "KERNEL_VERSION=$KERNEL_VERSION" >> $GITHUB_ENV
           echo "DIST=$DIST" >> $GITHUB_ENV
+          ls -la
+          docker image ls
 
       - name: Upload base image as an artifact
         uses: actions/upload-artifact@v6
