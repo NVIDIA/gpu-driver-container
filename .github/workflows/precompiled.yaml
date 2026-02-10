@@ -273,8 +273,8 @@ jobs:
             for kernel in "${LTS_KERNEL[@]}"; do
               echo "dist: $dist, kernel: $kernel"
               echo "artifacts: $(ls -la ./matrix-values-artifacts)"
-              echo "artifact_name: matrix-values-${dist}-${kernel}.json"
-              artifact_name="matrix-values-${dist}-${kernel}.json"
+              echo "artifact_name: matrix_values_${dist}_${kernel}.json"
+              artifact_name="matrix_values_${dist}_${kernel}.json"
               file_path="./matrix-values-artifacts/${artifact_name}"
               if [ -f "$file_path" ]; then
                 echo "Successfully found artifact: $artifact_name at $file_path"
