@@ -20,33 +20,38 @@ export PATH=$(pwd)/bin:${PATH}
 prefix="kernel-version-${DRIVER_BRANCH}-${LTS_KERNEL}"
 suffix="${KERNEL_FLAVOR}-${DIST}"
 
-find ./  -type f
-artifact_dir="./kernel-version-artifacts"
-echo "artifact_dir $artifact_dir"
-echo "KERNEL_FLAVOR $KERNEL_FLAVOR"
-echo "DRIVER_BRANCH $DRIVER_BRANCH"
-echo "DIST $DIST"
-echo "LTS_KERNEL $LTS_KERNEL"
-echo "prefix $prefix"
-echo "suffix $suffix"
-find   $artifact_dir  -type f
-artifact=$(find "$artifact_dir" -maxdepth 1 -type d -name "${prefix}*-${suffix}" | head -1)
-if [ -n "$artifact" ]; then
-    artifact_name=$(basename "$artifact")
-    if [ -f "$artifact/${artifact_name}.tar" ]; then
-        tar -xf "$artifact/${artifact_name}.tar" -C ./
-        export $(grep -oE 'KERNEL_VERSION=[^ ]+' ./kernel_version.txt)
-        rm -f kernel_version.txt
-    fi
-# else
-#     artifact_file=$(find "$artifact_dir" -maxdepth 1 -type f -name "${prefix}*-${suffix}.tar" | head -1)
-#     if [ -n "$artifact_file" ]; then
-#         tar -xf "$artifact_file" -C ./
+# find ./  -type f
+# artifact_dir="./kernel-version-artifacts"
+# echo "artifact_dir $artifact_dir"
+# echo "KERNEL_FLAVOR $KERNEL_FLAVOR"
+# echo "DRIVER_BRANCH $DRIVER_BRANCH"
+# echo "DIST $DIST"
+# echo "LTS_KERNEL $LTS_KERNEL"
+# echo "prefix $prefix"
+# echo "suffix $suffix"
+# find   $artifact_dir  -type f
+# artifact=$(find "$artifact_dir" -maxdepth 1 -type d -name "${prefix}*-${suffix}" | head -1)
+# if [ -n "$artifact" ]; then
+#     artifact_name=$(basename "$artifact")
+#     if [ -f "$artifact/${artifact_name}.tar" ]; then
+#         tar -xf "$artifact/${artifact_name}.tar" -C ./
 #         export $(grep -oE 'KERNEL_VERSION=[^ ]+' ./kernel_version.txt)
 #         rm -f kernel_version.txt
 #     fi
+# # else
+# #     artifact_file=$(find "$artifact_dir" -maxdepth 1 -type f -name "${prefix}*-${suffix}.tar" | head -1)
+# #     if [ -n "$artifact_file" ]; then
+# #         tar -xf "$artifact_file" -C ./
+# #         export $(grep -oE 'KERNEL_VERSION=[^ ]+' ./kernel_version.txt)
+# #         rm -f kernel_version.txt
+# #     fi
+# fi
+artifact_file=$(find "$artifact_dir" -maxdepth 1 -type f -name "${prefix}*-${suffix}.tar" | head -1)
+if [ -n "$artifact_file" ]; then
+    tar -xf "$artifact_file" -C ./
+    export $(grep -oE 'KERNEL_VERSION=[^ ]+' ./kernel_version.txt)
+    rm -f kernel_version.txt
 fi
-
 # calculate driver tag
 status_nvcr=0
 status_ghcr=0
