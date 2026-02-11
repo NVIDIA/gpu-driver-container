@@ -9,6 +9,7 @@ export KERNEL_FLAVOR="${1}"
 export DRIVER_BRANCH="${2}"
 export DIST="${3}"
 export LTS_KERNEL="${4}"
+export PLATFORM="${5}"
 
 export REGCTL_VERSION=v0.7.1
 mkdir -p bin
@@ -18,7 +19,7 @@ export PATH=$(pwd)/bin:${PATH}
 
 # calculate kernel version of latest image
 prefix="kernel-version-${DRIVER_BRANCH}-${LTS_KERNEL}"
-suffix="${KERNEL_FLAVOR}-${DIST}"
+suffix="${KERNEL_FLAVOR}-${DIST}-${PLATFORM}"
 
 artifact_dir="./kernel-version-artifacts"
 artifact_file=$(find "$artifact_dir" -maxdepth 1 -type f -name "${prefix}*-${suffix}.tar" | head -1)

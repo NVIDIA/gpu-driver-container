@@ -202,9 +202,12 @@ jobs:
       matrix:
         dist: ${{ fromJson(needs.set-driver-version-matrix.outputs.dist) }}
         lts_kernel: ${{ fromJson(needs.set-driver-version-matrix.outputs.lts_kernel) }}
+        platform: ${{ fromJson(needs.set-driver-version-matrix.outputs.platforms) }}
         exclude:
           - lts_kernel: 5.15
             dist: ubuntu24.04
+          - platform: arm64
+            dist: ubuntu22.04
     needs:
       - precompiled-build-image
       - set-driver-version-matrix
@@ -236,9 +239,6 @@ jobs:
           driver_branch_json='${{ needs.set-driver-version-matrix.outputs.driver_branch }}'
           DRIVER_BRANCHES=($(echo "$driver_branch_json" | jq -r '.[]'))
 
-          echo "SHIVA1"
-          ls -la ./kernel-version-artifacts
-          echo "SHIVA2"
           # remove 535 driver branch for ubuntu24.04
           if [ "$DIST" == "ubuntu24.04" ]; then
             DRIVER_BRANCHES=($(for branch in "${DRIVER_BRANCHES[@]}"; do
@@ -246,7 +246,7 @@ jobs:
           done))
           fi
           source ./tests/scripts/ci-precompiled-helpers.sh
-          KERNEL_VERSIONS=($(get_kernel_versions_to_test KERNEL_FLAVORS[@] DRIVER_BRANCHES[@] $DIST $LTS_KERNEL))
+          KERNEL_VERSIONS=($(get_kernel_versions_to_test KERNEL_FLAVORS[@] DRIVER_BRANCHES[@] $DIST $LTS_KERNEL ${{ matrix.platform }}))
           if [ -z "$KERNEL_VERSIONS" ]; then
             # no new kernel release
             echo "Skipping e2e tests"
