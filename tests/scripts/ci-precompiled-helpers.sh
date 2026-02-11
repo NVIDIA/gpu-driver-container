@@ -1,6 +1,6 @@
 get_kernel_versions_to_test() {
-    if [[ "$#" -ne 4 ]]; then
-	    echo " Error:$0 must be called with KERNEL_FLAVORS DRIVER_BRANCHES DIST LTS_KERNEL" >&2
+    if [[ "$#" -ne 5 ]]; then
+	    echo " Error:$0 must be called with KERNEL_FLAVORS DRIVER_BRANCHES DIST LTS_KERNEL PLATFORM" >&2
 	    exit 1
     fi
 
