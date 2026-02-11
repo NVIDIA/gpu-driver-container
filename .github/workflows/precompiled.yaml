@@ -144,7 +144,6 @@ jobs:
         run: |
           source kernel_version.txt && \
           make DRIVER_VERSIONS=${DRIVER_VERSIONS} DRIVER_BRANCH=${{ matrix.driver_branch }} build-${DIST}-${DRIVER_VERSION}
-          docker image ls
       
       - name: Save base image, build image and kernel version file
         env:
@@ -159,7 +158,6 @@ jobs:
           elif [[ "${{ matrix.dist }}" == "ubuntu24.04" ]]; then
             BASE_TARGET="noble"
           fi
-          # Artifact name suffix: amd64 has no suffix (e2e uses these), arm64 uses -arm64
           if [[ "${{ matrix.platform }}" == "amd64" ]]; then
             PLATFORM_SUFFIX=""
           else
@@ -171,15 +169,11 @@ jobs:
           echo "BASE_ARTIFACT_NAME=${BASE_ARTIFACT}" >> $GITHUB_ENV
           echo "DRIVER_ARTIFACT_NAME=${DRIVER_ARTIFACT}" >> $GITHUB_ENV
           echo "KERNEL_VERSION_ARTIFACT_NAME=${KERNEL_VERSION_ARTIFACT}" >> $GITHUB_ENV
-          ls -la
-          docker image ls
           tar -cvf "${KERNEL_VERSION_ARTIFACT}.tar" kernel_version.txt
           docker save "${PRIVATE_REGISTRY}/nvidia/driver:base-${BASE_TARGET}-${LTS_KERNEL}-${{ matrix.flavor }}-${{ matrix.driver_branch }}" -o "${BASE_ARTIFACT}.tar"
           docker save "${PRIVATE_REGISTRY}/nvidia/driver:${{ matrix.driver_branch }}-${KERNEL_VERSION}-${{ matrix.dist }}" -o "${DRIVER_ARTIFACT}.tar"
           echo "Verifying artifacts exist:"
           ls -la "${BASE_ARTIFACT}.tar" "${DRIVER_ARTIFACT}.tar" || exit 1
-          ls -la
-          docker image ls
 
       - name: Upload base image as an artifact
         uses: actions/upload-artifact@v6
@@ -196,7 +190,6 @@ jobs:
            retention-days: 1
       
       - name: Upload kernel version as an artifact
-        if: matrix.platform == 'amd64'
         uses: actions/upload-artifact@v6
         with:
            name: ${{ env.KERNEL_VERSION_ARTIFACT_NAME }}
@@ -243,6 +236,9 @@ jobs:
           driver_branch_json='${{ needs.set-driver-version-matrix.outputs.driver_branch }}'
           DRIVER_BRANCHES=($(echo "$driver_branch_json" | jq -r '.[]'))
 
+          echo "SHIVA1"
+          ls -la ./kernel-version-artifacts
+          echo "SHIVA2"
           # remove 535 driver branch for ubuntu24.04
           if [ "$DIST" == "ubuntu24.04" ]; then
             DRIVER_BRANCHES=($(for branch in "${DRIVER_BRANCHES[@]}"; do
