@@ -161,42 +161,46 @@ jobs:
           fi
           # Artifact name suffix: amd64 has no suffix (e2e uses these), arm64 uses -arm64
           if [[ "${{ matrix.platform }}" == "amd64" ]]; then
-            echo "PLATFORM_SUFFIX=" >> $GITHUB_ENV
+            PLATFORM_SUFFIX=""
           else
-            echo "PLATFORM_SUFFIX=-${{ matrix.platform }}" >> $GITHUB_ENV
+            PLATFORM_SUFFIX="-${{ matrix.platform }}"
           fi
+          BASE_ARTIFACT="base-images-${{ matrix.driver_branch }}-${KERNEL_VERSION}-${{ matrix.dist }}${PLATFORM_SUFFIX}"
+          DRIVER_ARTIFACT="driver-images-${{ matrix.driver_branch }}-${KERNEL_VERSION}-${{ matrix.dist }}${PLATFORM_SUFFIX}"
+          KERNEL_VERSION_ARTIFACT="kernel-version-${{ matrix.driver_branch }}-${KERNEL_VERSION}-${{ matrix.dist }}${PLATFORM_SUFFIX}"
+          echo "BASE_ARTIFACT_NAME=${BASE_ARTIFACT}" >> $GITHUB_ENV
+          echo "DRIVER_ARTIFACT_NAME=${DRIVER_ARTIFACT}" >> $GITHUB_ENV
+          echo "KERNEL_VERSION_ARTIFACT_NAME=${KERNEL_VERSION_ARTIFACT}" >> $GITHUB_ENV
           ls -la
           docker image ls
-          tar -cvf kernel-version-${{ matrix.driver_branch }}-${KERNEL_VERSION}-${DIST}${PLATFORM_SUFFIX}.tar kernel_version.txt
-          docker save "${PRIVATE_REGISTRY}/nvidia/driver:base-${BASE_TARGET}-${LTS_KERNEL}-${{ matrix.flavor }}-${{ matrix.driver_branch }}" \
-            -o  ./base-images-${{ matrix.driver_branch }}-${KERNEL_VERSION}-${DIST}${PLATFORM_SUFFIX}.tar
-          docker save "${PRIVATE_REGISTRY}/nvidia/driver:${{ matrix.driver_branch }}-${KERNEL_VERSION}-${DIST}" \
-            -o  ./driver-images-${{ matrix.driver_branch }}-${KERNEL_VERSION}-${DIST}${PLATFORM_SUFFIX}.tar
-          echo "KERNEL_VERSION=$KERNEL_VERSION" >> $GITHUB_ENV
-          echo "DIST=$DIST" >> $GITHUB_ENV
+          tar -cvf "${KERNEL_VERSION_ARTIFACT}.tar" kernel_version.txt
+          docker save "${PRIVATE_REGISTRY}/nvidia/driver:base-${BASE_TARGET}-${LTS_KERNEL}-${{ matrix.flavor }}-${{ matrix.driver_branch }}" -o "${BASE_ARTIFACT}.tar"
+          docker save "${PRIVATE_REGISTRY}/nvidia/driver:${{ matrix.driver_branch }}-${KERNEL_VERSION}-${{ matrix.dist }}" -o "${DRIVER_ARTIFACT}.tar"
+          echo "Verifying artifacts exist:"
+          ls -la "${BASE_ARTIFACT}.tar" "${DRIVER_ARTIFACT}.tar" || exit 1
           ls -la
           docker image ls
 
       - name: Upload base image as an artifact
         uses: actions/upload-artifact@v6
         with:
-           name: base-images-${{ matrix.driver_branch }}-${{ env.KERNEL_VERSION }}-${{ env.DIST }}${{ env.PLATFORM_SUFFIX }}
-           path: ./base-images-${{ matrix.driver_branch }}-${{ env.KERNEL_VERSION }}-${{ env.DIST }}${{ env.PLATFORM_SUFFIX }}.tar
+           name: ${{ env.BASE_ARTIFACT_NAME }}
+           path: ./${{ env.BASE_ARTIFACT_NAME }}.tar
            retention-days: 1
 
       - name: Upload build image as an artifact
         uses: actions/upload-artifact@v6
         with:
-           name: driver-images-${{ matrix.driver_branch }}-${{ env.KERNEL_VERSION }}-${{ env.DIST }}${{ env.PLATFORM_SUFFIX }}
-           path: ./driver-images-${{ matrix.driver_branch }}-${{ env.KERNEL_VERSION }}-${{ env.DIST }}${{ env.PLATFORM_SUFFIX }}.tar
+           name: ${{ env.DRIVER_ARTIFACT_NAME }}
+           path: ./${{ env.DRIVER_ARTIFACT_NAME }}.tar
            retention-days: 1
       
       - name: Upload kernel version as an artifact
         if: matrix.platform == 'amd64'
         uses: actions/upload-artifact@v6
         with:
-           name: kernel-version-${{ matrix.driver_branch }}-${{ env.KERNEL_VERSION }}-${{ env.DIST }}
-           path: ./kernel-version-${{ matrix.driver_branch }}-${{ env.KERNEL_VERSION }}-${{ env.DIST }}.tar
+           name: ${{ env.KERNEL_VERSION_ARTIFACT_NAME }}
+           path: ./${{ env.KERNEL_VERSION_ARTIFACT_NAME }}.tar
            retention-days: 1
   
   determine-e2e-test-matrix:
@@ -456,6 +460,7 @@ jobs:
       matrix:
         driver_branch: ${{ fromJson(needs.set-driver-version-matrix.outputs.driver_branch) }}
         kernel_version: ${{ fromJson(needs.collect-e2e-test-matrix.outputs.matrix_values) }}
+        platform: ${{ fromJson(needs.set-driver-version-matrix.outputs.platforms) }}
     steps:
       - name: Check out code
         uses: actions/checkout@v6
@@ -469,12 +474,17 @@ jobs:
       - name:  Set image vars
         run: |
           echo "PRIVATE_REGISTRY=ghcr.io" >> $GITHUB_ENV
+          if [[ "${{ matrix.platform }}" == "arm64" ]]; then
+            PLATFORM_SUFFIX="-arm64"
+          else
+            PLATFORM_SUFFIX=""
+          fi
 
       - name: Download base image artifact
         if: ${{ ! (matrix.driver_branch == 535 && contains(matrix.kernel_version, 'ubuntu24.04')) }}
         uses: actions/download-artifact@v7
         with:
-          name: base-images-${{ matrix.driver_branch }}-${{ matrix.kernel_version }}
+          name: base-images-${{ matrix.driver_branch }}-${{ matrix.kernel_version }}${PLATFORM_SUFFIX}
           path: ./
 
       - name: Publish base image
@@ -488,7 +498,7 @@ jobs:
           elif [[ "${DIST}" == "ubuntu24.04" ]]; then
             BASE_TARGET="noble"
           fi
-          image_path="./base-images-${{ matrix.driver_branch }}-${{ matrix.kernel_version }}.tar"
+          image_path="./base-images-${{ matrix.driver_branch }}-${{ matrix.kernel_version }}${PLATFORM_SUFFIX}.tar"
           echo "uploading  $image_path"
           docker load -i $image_path
           # docker push ${PRIVATE_REGISTRY}/nvidia/driver:base-${BASE_TARGET}-${LTS_KERNEL}-${KERNEL_FLAVOR}-${{ matrix.driver_branch }}
@@ -497,13 +507,13 @@ jobs:
         if: ${{ ! (matrix.driver_branch == 535 && contains(matrix.kernel_version, 'ubuntu24.04')) }}
         uses: actions/download-artifact@v7
         with:
-           name: driver-images-${{ matrix.driver_branch }}-${{ matrix.kernel_version }}
+           name: driver-images-${{ matrix.driver_branch }}-${{ matrix.kernel_version }}${PLATFORM_SUFFIX}
            path: ./
 
       - name: Publish image
         if: ${{ ! (matrix.driver_branch == 535 && contains(matrix.kernel_version, 'ubuntu24.04')) }}
         run: |
-          image_path="./driver-images-${{ matrix.driver_branch }}-${{ matrix.kernel_version }}.tar"
+          image_path="./driver-images-${{ matrix.driver_branch }}-${{ matrix.kernel_version }}${PLATFORM_SUFFIX}.tar"
           echo "uploading  $image_path"
           docker load -i $image_path
           # docker push ${PRIVATE_REGISTRY}/nvidia/driver:${{ matrix.driver_branch }}-${{ matrix.kernel_version }}
