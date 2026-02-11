@@ -9,7 +9,6 @@ get_kernel_versions_to_test() {
     local DIST="$3"
     local LTS_KERNEL="$4"
     local PLATFORM="$5"
-
     kernel_versions=()
     for kernel_flavor in "${KERNEL_FLAVORS[@]}"; do
         for DRIVER_BRANCH in "${DRIVER_BRANCHES[@]}"; do

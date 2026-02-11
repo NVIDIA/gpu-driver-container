@@ -1,7 +1,7 @@
 #!/bin/bash
 
-if [[ $# -ne 4 ]]; then
-	echo " KERNEL_FLAVOR DRIVER_BRANCH DIST LTS_KERNEL are required"
+if [[ $# -ne 5 ]]; then
+	echo " KERNEL_FLAVOR DRIVER_BRANCH DIST LTS_KERNEL PLATFORM are required"
 	exit 1
 fi
 
@@ -19,7 +19,12 @@ export PATH=$(pwd)/bin:${PATH}
 
 # calculate kernel version of latest image
 prefix="kernel-version-${DRIVER_BRANCH}-${LTS_KERNEL}"
-suffix="${KERNEL_FLAVOR}-${DIST}-${PLATFORM}"
+if [[ "${PLATFORM}" == "arm64" ]]; then
+    PLATFORM_SUFFIX="-arm64"
+else
+    PLATFORM_SUFFIX=""
+fi
+suffix="${KERNEL_FLAVOR}-${DIST}${PLATFORM_SUFFIX}"
 
 artifact_dir="./kernel-version-artifacts"
 artifact_file=$(find "$artifact_dir" -maxdepth 1 -type f -name "${prefix}*-${suffix}.tar" | head -1)
@@ -31,8 +36,9 @@ fi
 # calculate driver tag
 status_nvcr=0
 status_ghcr=0
-regctl tag ls  nvcr.io/nvidia/driver | grep "^${DRIVER_BRANCH}-${KERNEL_VERSION}-${DIST}$" || status_nvcr=$?
-regctl tag ls  ghcr.io/nvidia/driver | grep "^${DRIVER_BRANCH}-${KERNEL_VERSION}-${DIST}$" || status_ghcr=$?
+regctl tag ls  nvcr.io/nvidia/driver --platform "linux/${PLATFORM}" | grep "^${DRIVER_BRANCH}-${KERNEL_VERSION}-${DIST}$" || status_nvcr=$?
+regctl tag ls  ghcr.io/nvidia/driver --platform "linux/${PLATFORM}" | grep "^${DRIVER_BRANCH}-${KERNEL_VERSION}-${DIST}$" || status_ghcr=$?
+export KERNEL_VERSION="${KERNEL_VERSION}${PLATFORM_SUFFIX}"
 if [[ $status_nvcr -eq 0 || $status_ghcr -eq 0 ]]; then
     export should_continue=false
 else
