@@ -36,8 +36,8 @@ fi
 # calculate driver tag
 status_nvcr=0
 status_ghcr=0
-regctl tag ls  nvcr.io/nvidia/driver --platform "linux/${PLATFORM}" | grep "^${DRIVER_BRANCH}-${KERNEL_VERSION}-${DIST}$" || status_nvcr=$?
-regctl tag ls  ghcr.io/nvidia/driver --platform "linux/${PLATFORM}" | grep "^${DRIVER_BRANCH}-${KERNEL_VERSION}-${DIST}$" || status_ghcr=$?
+regctl manifest get nvcr.io/nvidia/driver:${DRIVER_BRANCH}-${KERNEL_VERSION}-${DIST} --platform linux/${PLATFORM} > /dev/null 2>&1 || status_nvcr=$?
+regctl manifest get ghcr.io/nvidia/driver:${DRIVER_BRANCH}-${KERNEL_VERSION}-${DIST} --platform linux/${PLATFORM} > /dev/null 2>&1 || status_ghcr=$?
 export KERNEL_VERSION="${KERNEL_VERSION}${PLATFORM_SUFFIX}"
 if [[ $status_nvcr -eq 0 || $status_ghcr -eq 0 ]]; then
     export should_continue=false
