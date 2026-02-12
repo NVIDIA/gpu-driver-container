@@ -226,7 +226,7 @@ jobs:
         with:
           pattern: kernel-version-*
           path: ./kernel-version-artifacts
-          merge-multiple: false
+          merge-multiple: true
   
       - name: Set kernel version
         env:
