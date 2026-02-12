@@ -209,6 +209,7 @@ jobs:
           - platform: arm64
             dist: ubuntu22.04
     needs:
+      # - precompiled-build-image
       - set-driver-version-matrix
     steps:
       - name: Check out code
@@ -479,23 +480,18 @@ jobs:
           KERNEL_VERSION="${{ matrix.kernel_version }}"
           # Capture PLATFORM from suffix
           if [[ "${KERNEL_VERSION}" == *-arm64 ]]; then
-            PLATFORM_SUFFIX="-arm64"
             KERNEL_VERSION="${KERNEL_VERSION%-arm64}"
-          else
-            PLATFORM_SUFFIX=""
           fi
           echo "KERNEL_VERSION=$KERNEL_VERSION" >> $GITHUB_ENV
-          echo "PLATFORM_SUFFIX=$PLATFORM_SUFFIX" >> $GITHUB_ENV
 
       - name: Download base image artifact
-        if: ${{ ! (matrix.driver_branch == 535 && contains(${{ env.KERNEL_VERSION }}, 'ubuntu24.04')) }}
+        if: ${{ ! (matrix.driver_branch == 535 && contains(matrix.kernel_version, 'ubuntu24.04')) }}
         uses: actions/download-artifact@v7
         with:
-          name: base-images-${{ matrix.driver_branch }}-${{ env.KERNEL_VERSION }}${{ env.PLATFORM_SUFFIX }}
+          name: base-images-${{ matrix.driver_branch }}-${{ matrix.kernel_version }}
           path: ./
-
       - name: Publish base image
-        if: ${{ ! (matrix.driver_branch == 535 && contains(${{ env.KERNEL_VERSION }}, 'ubuntu24.04')) }}
+        if: ${{ ! (matrix.driver_branch == 535 && contains(matrix.kernel_version, 'ubuntu24.04')) }}
         run: |
           LTS_KERNEL=$(echo "${{ env.KERNEL_VERSION }}" | sed -E 's/^([0-9]+\.[0-9]+)\..*/\1/')
           KERNEL_FLAVOR=$(echo "${{ env.KERNEL_VERSION }}" | sed -E 's/^[0-9]+\.[0-9]+\.[0-9]+-[0-9]+-(.*)-ubuntu[0-9]+\.[0-9]+$/\1/')
@@ -505,28 +501,28 @@ jobs:
           elif [[ "${DIST}" == "ubuntu24.04" ]]; then
             BASE_TARGET="noble"
           fi
-          image_path="./base-images-${{ matrix.driver_branch }}-${{ env.KERNEL_VERSION }}${{ env.PLATFORM_SUFFIX }}.tar"
+          image_path="./base-images-${{ matrix.driver_branch }}-${{ matrix.kernel_version }}.tar"
           echo "uploading  $image_path"
           docker load -i $image_path
           # docker push ${PRIVATE_REGISTRY}/nvidia/driver:base-${BASE_TARGET}-${LTS_KERNEL}-${KERNEL_FLAVOR}-${{ matrix.driver_branch }}
 
       - name: Download built image artifact
-        if: ${{ ! (matrix.driver_branch == 535 && contains(${{ env.KERNEL_VERSION }}, 'ubuntu24.04')) }}
+        if: ${{ ! (matrix.driver_branch == 535 && contains(matrix.kernel_version, 'ubuntu24.04')) }}
         uses: actions/download-artifact@v7
         with:
-           name: driver-images-${{ matrix.driver_branch }}-${{ env.KERNEL_VERSION }}${{ env.PLATFORM_SUFFIX }}
+           name: driver-images-${{ matrix.driver_branch }}-${{ matrix.kernel_version }}
            path: ./
 
       - name: Publish image
-        if: ${{ ! (matrix.driver_branch == 535 && contains(${{ env.KERNEL_VERSION }}, 'ubuntu24.04')) }}
+        if: ${{ ! (matrix.driver_branch == 535 && contains(matrix.kernel_version, 'ubuntu24.04')) }}
         run: |
-          image_path="./driver-images-${{ matrix.driver_branch }}-${{ env.KERNEL_VERSION }}${{ env.PLATFORM_SUFFIX }}.tar"
+          image_path="./driver-images-${{ matrix.driver_branch }}-${{ matrix.kernel_version }}.tar"
           echo "uploading  $image_path"
           docker load -i $image_path
           # docker push ${PRIVATE_REGISTRY}/nvidia/driver:${{ matrix.driver_branch }}-${{ env.KERNEL_VERSION }}
 
       # - name: Slack notification
-      #   if: ${{ ! (matrix.driver_branch == 535 && contains(${{ env.KERNEL_VERSION }}, 'ubuntu24.04')) }}
+      #   if: ${{ ! (matrix.driver_branch == 535 && contains(matrix.kernel_version, 'ubuntu24.04')) }}
       #   uses: slackapi/slack-github-action@v2.1.1
       #   with:
       #     token: ${{ secrets.SLACK_BOT_TOKEN }}
@@ -534,5 +530,5 @@ jobs:
       #     payload: |
       #       {
       #         "channel": "${{ secrets.SLACK_CHANNEL_ID }}",
-      #         "text": "${{ secrets.PUBLISHED_PRECOMPILED_IMAGE_MESSAGE }} ${{ env.PRIVATE_REGISTRY }}/nvidia/driver:${{ matrix.driver_branch }}-${{ env.KERNEL_VERSION }}"
+      #         "text": "${{ secrets.PUBLISHED_PRECOMPILED_IMAGE_MESSAGE }} ${{ env.PRIVATE_REGISTRY }}/nvidia/driver:${{ matrix.driver_branch }}-${matrix.kernel_version }}"
       #       }
