@@ -43,5 +43,4 @@ if [[ $status_nvcr -eq 0 || $status_ghcr -eq 0 ]]; then
     export should_continue=false
 else
     export should_continue=true
-    export KERNEL_VERSION="${KERNEL_VERSION}${PLATFORM_SUFFIX}"
 fi

@@ -25,7 +25,7 @@ get_kernel_versions_to_test() {
     # Remove duplicates
     kernel_versions=($(printf "%s\n" "${kernel_versions[@]}" | sort -u))
     for i in "${!kernel_versions[@]}"; do
-        kernel_versions[$i]="${kernel_versions[$i]}-$DIST"
+        kernel_versions[$i]="${kernel_versions[$i]}-$DIST$PLATFORM_SUFFIX"
     done
     echo "${kernel_versions[@]}"
 }
