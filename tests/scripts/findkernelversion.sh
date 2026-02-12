@@ -9,7 +9,7 @@ export KERNEL_FLAVOR="${1}"
 export DRIVER_BRANCH="${2}"
 export DIST="${3}"
 export LTS_KERNEL="${4}"
-export PLATFORM="${5}"
+export PLATFORM_SUFFIX="${5}"
 
 export REGCTL_VERSION=v0.7.1
 mkdir -p bin
@@ -19,11 +19,6 @@ export PATH=$(pwd)/bin:${PATH}
 
 # calculate kernel version of latest image
 prefix="kernel-version-${DRIVER_BRANCH}-${LTS_KERNEL}"
-if [[ "${PLATFORM}" == "arm64" ]]; then
-    PLATFORM_SUFFIX="-arm64"
-else
-    PLATFORM_SUFFIX=""
-fi
 suffix="${KERNEL_FLAVOR}-${DIST}${PLATFORM_SUFFIX}"
 
 artifact_dir="./kernel-version-artifacts"
@@ -36,11 +31,13 @@ fi
 # calculate driver tag
 status_nvcr=0
 status_ghcr=0
-regctl manifest get nvcr.io/nvidia/driver:${DRIVER_BRANCH}-${KERNEL_VERSION}-${DIST} --platform linux/${PLATFORM} > /dev/null 2>&1 || status_nvcr=$?
-regctl manifest get ghcr.io/nvidia/driver:${DRIVER_BRANCH}-${KERNEL_VERSION}-${DIST} --platform linux/${PLATFORM} > /dev/null 2>&1 || status_ghcr=$?
-export KERNEL_VERSION="${KERNEL_VERSION}${PLATFORM_SUFFIX}"
+PLATFORM=$(echo "${PLATFORM_SUFFIX}" | sed 's/-//')
+regctl manifest inspect nvcr.io/nvidia/driver:${DRIVER_BRANCH}-${KERNEL_VERSION}-${DIST} --platform=linux/${PLATFORM} > /dev/null 2>&1; status_nvcr=$?
+regctl manifest inspect ghcr.io/nvidia/driver:${DRIVER_BRANCH}-${KERNEL_VERSION}-${DIST} --platform=linux/${PLATFORM} > /dev/null 2>&1; status_ghcr=$?
+
 if [[ $status_nvcr -eq 0 || $status_ghcr -eq 0 ]]; then
     export should_continue=false
 else
     export should_continue=true
+    export KERNEL_VERSION="${KERNEL_VERSION}${PLATFORM_SUFFIX}"
 fi
