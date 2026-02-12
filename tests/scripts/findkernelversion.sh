@@ -22,12 +22,15 @@ prefix="kernel-version-${DRIVER_BRANCH}-${LTS_KERNEL}"
 suffix="${KERNEL_FLAVOR}-${DIST}${PLATFORM_SUFFIX}"
 
 artifact_dir="./kernel-version-artifacts"
+ls -la .
+ls -la "$artifact_dir"
 artifact_file=$(find "$artifact_dir" -maxdepth 1 -type f -name "${prefix}*-${suffix}.tar" | head -1)
 if [ -n "$artifact_file" ]; then
     tar -xf "$artifact_file" -C ./
     export $(grep -oE 'KERNEL_VERSION=[^ ]+' ./kernel_version.txt)
     rm -f kernel_version.txt
 fi
+echo "SHIVA KERNEL_VERSION=$KERNEL_VERSION"
 # calculate driver tag
 status_nvcr=0
 status_ghcr=0
