@@ -1,7 +1,7 @@
 #!/bin/bash
 
-if [[ $# -ne 5 ]]; then
-	echo " KERNEL_FLAVOR DRIVER_BRANCH DIST LTS_KERNEL PLATFORM are required"
+if [[ $# -lt 4 || $# -gt 5 ]]; then
+	echo " KERNEL_FLAVOR DRIVER_BRANCH DIST LTS_KERNEL or KERNEL_FLAVOR DRIVER_BRANCH DIST LTS_KERNEL PLATFORM_SUFFIX are required"
 	exit 1
 fi
 
