@@ -386,6 +386,7 @@ jobs:
       - name: Set kernel version and architecture in holodeck_${{ env.DIST }}.yaml
         run: |
           yq eval '.spec += {"kernel": {"version": strenv(KERNEL_VERSION), "architecture": strenv(PLATFORM)}}' -i tests/holodeck_${{ env.DIST }}.yaml
+          cat tests/holodeck_${{ env.DIST }}.yaml
 
       - name: Set up Holodeck
         uses: NVIDIA/holodeck@v0.2.18
