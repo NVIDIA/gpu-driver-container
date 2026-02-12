@@ -67,134 +67,134 @@ jobs:
           platforms_json=$(printf '%s\n' "${PLATFORMS[@]}" | jq -R . | jq -cs .)
           echo "platforms=$platforms_json" >> $GITHUB_OUTPUT
 
-  # precompiled-build-image:
-  #   needs: set-driver-version-matrix
-  #   runs-on: linux-amd64-cpu4
-  #   strategy:
-  #     matrix:
-  #       driver_branch: ${{ fromJson(needs.set-driver-version-matrix.outputs.driver_branch) }}
-  #       flavor: ${{ fromJson(needs.set-driver-version-matrix.outputs.kernel_flavors) }}
-  #       dist: ${{ fromJson(needs.set-driver-version-matrix.outputs.dist) }}
-  #       lts_kernel: ${{ fromJson(needs.set-driver-version-matrix.outputs.lts_kernel) }}
-  #       platform: ${{ fromJson(needs.set-driver-version-matrix.outputs.platforms) }}
-  #       exclude:
-  #         - dist: ubuntu24.04
-  #           driver_branch: 535
-  #         - lts_kernel: 5.15
-  #           dist: ubuntu24.04
-  #         - flavor: azure-fde
-  #           dist: ubuntu22.04
-  #         - dist: ubuntu22.04
-  #           platform: arm64
-  #   steps:
-  #     - uses: actions/checkout@v6
-  #       name: Check out code
-  #     - name: Calculate build vars
-  #       id: vars
-  #       run: |
-  #         echo "LOWERCASE_REPO_OWNER=$(echo "${GITHUB_REPOSITORY_OWNER}" | awk '{print tolower($0)}')" >> $GITHUB_ENV
-  #         REPO_FULL_NAME="${{ github.repository }}"
-  #         echo "LABEL_IMAGE_SOURCE=https://github.com/${REPO_FULL_NAME}" >> $GITHUB_ENV
+  precompiled-build-image:
+    needs: set-driver-version-matrix
+    runs-on: linux-amd64-cpu4
+    strategy:
+      matrix:
+        driver_branch: ${{ fromJson(needs.set-driver-version-matrix.outputs.driver_branch) }}
+        flavor: ${{ fromJson(needs.set-driver-version-matrix.outputs.kernel_flavors) }}
+        dist: ${{ fromJson(needs.set-driver-version-matrix.outputs.dist) }}
+        lts_kernel: ${{ fromJson(needs.set-driver-version-matrix.outputs.lts_kernel) }}
+        platform: ${{ fromJson(needs.set-driver-version-matrix.outputs.platforms) }}
+        exclude:
+          - dist: ubuntu24.04
+            driver_branch: 535
+          - lts_kernel: 5.15
+            dist: ubuntu24.04
+          - flavor: azure-fde
+            dist: ubuntu22.04
+          - dist: ubuntu22.04
+            platform: arm64
+    steps:
+      - uses: actions/checkout@v6
+        name: Check out code
+      - name: Calculate build vars
+        id: vars
+        run: |
+          echo "LOWERCASE_REPO_OWNER=$(echo "${GITHUB_REPOSITORY_OWNER}" | awk '{print tolower($0)}')" >> $GITHUB_ENV
+          REPO_FULL_NAME="${{ github.repository }}"
+          echo "LABEL_IMAGE_SOURCE=https://github.com/${REPO_FULL_NAME}" >> $GITHUB_ENV
 
-  #         GENERATE_ARTIFACTS="false"
-  #         echo "PUSH_ON_BUILD=${GENERATE_ARTIFACTS}" >> $GITHUB_ENV
-  #         echo "BUILD_MULTI_ARCH_IMAGES=false" >> $GITHUB_ENV
-  #         echo "DOCKER_BUILD_PLATFORM_OPTIONS=--platform=linux/${{ matrix.platform }}" >> $GITHUB_ENV
+          GENERATE_ARTIFACTS="false"
+          echo "PUSH_ON_BUILD=${GENERATE_ARTIFACTS}" >> $GITHUB_ENV
+          echo "BUILD_MULTI_ARCH_IMAGES=false" >> $GITHUB_ENV
+          echo "DOCKER_BUILD_PLATFORM_OPTIONS=--platform=linux/${{ matrix.platform }}" >> $GITHUB_ENV
 
-  #     - name: Set up QEMU
-  #       uses: docker/setup-qemu-action@v3
-  #       with:
-  #         image: tonistiigi/binfmt:qemu-v6.2.0
-  #     - name: Set up Docker Buildx
-  #       uses: docker/setup-buildx-action@v3
-  #     - name: Login to GitHub Container Registry
-  #       uses: docker/login-action@v3
-  #       with:
-  #         registry: ghcr.io
-  #         username: ${{ github.actor }}
-  #         password: ${{ secrets.GITHUB_TOKEN }}
-  #     - name: Build base image and get kernel version
-  #       env:
-  #         IMAGE_NAME: ghcr.io/nvidia/driver
-  #         LTS_KERNEL: ${{ matrix.lts_kernel }}
-  #         DOCKER_BUILD_PLATFORM_OPTIONS: --platform=linux/${{ matrix.platform }}
-  #       run: |
-  #         if [[ "${{ matrix.dist }}" == "ubuntu22.04" ]]; then
-  #           BASE_TARGET="jammy"
-  #         elif [[ "${{ matrix.dist }}" == "ubuntu24.04" ]]; then
-  #           BASE_TARGET="noble"
-  #         fi
-  #         make DRIVER_BRANCH=${{ matrix.driver_branch }} KERNEL_FLAVOR=${{ matrix.flavor }} LTS_KERNEL=${LTS_KERNEL} build-base-${BASE_TARGET}
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+        with:
+          image: tonistiigi/binfmt:qemu-v6.2.0
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build base image and get kernel version
+        env:
+          IMAGE_NAME: ghcr.io/nvidia/driver
+          LTS_KERNEL: ${{ matrix.lts_kernel }}
+          DOCKER_BUILD_PLATFORM_OPTIONS: --platform=linux/${{ matrix.platform }}
+        run: |
+          if [[ "${{ matrix.dist }}" == "ubuntu22.04" ]]; then
+            BASE_TARGET="jammy"
+          elif [[ "${{ matrix.dist }}" == "ubuntu24.04" ]]; then
+            BASE_TARGET="noble"
+          fi
+          make DRIVER_BRANCH=${{ matrix.driver_branch }} KERNEL_FLAVOR=${{ matrix.flavor }} LTS_KERNEL=${LTS_KERNEL} build-base-${BASE_TARGET}
 
-  #         trap "docker rm -f base-${BASE_TARGET}-${{ matrix.flavor }}" EXIT
-  #         docker run -d --name base-${BASE_TARGET}-${{ matrix.flavor }} ghcr.io/nvidia/driver:base-${BASE_TARGET}-${LTS_KERNEL}-${{ matrix.flavor }}-${{ matrix.driver_branch }}
-  #         # try 3 times every 10 seconds to get the file, if success exit the loop
-  #         for i in {1..3}; do
-  #             docker cp base-${BASE_TARGET}-${{ matrix.flavor }}:/var/kernel_version.txt kernel_version.txt && break
-  #             sleep 10
-  #         done
-  #         docker image ls
-  #     - name: Build image
-  #       env:
-  #         IMAGE_NAME: ghcr.io/nvidia/driver
-  #         PRECOMPILED: "true"
-  #         DIST: signed_${{ matrix.dist }}
-  #         VERSION: ""
-  #         DOCKER_BUILD_PLATFORM_OPTIONS: --platform=linux/${{ matrix.platform }}
-  #       run: |
-  #         source kernel_version.txt && \
-  #         make DRIVER_VERSIONS=${DRIVER_VERSIONS} DRIVER_BRANCH=${{ matrix.driver_branch }} build-${DIST}-${DRIVER_VERSION}
+          trap "docker rm -f base-${BASE_TARGET}-${{ matrix.flavor }}" EXIT
+          docker run -d --name base-${BASE_TARGET}-${{ matrix.flavor }} ghcr.io/nvidia/driver:base-${BASE_TARGET}-${LTS_KERNEL}-${{ matrix.flavor }}-${{ matrix.driver_branch }}
+          # try 3 times every 10 seconds to get the file, if success exit the loop
+          for i in {1..3}; do
+              docker cp base-${BASE_TARGET}-${{ matrix.flavor }}:/var/kernel_version.txt kernel_version.txt && break
+              sleep 10
+          done
+          docker image ls
+      - name: Build image
+        env:
+          IMAGE_NAME: ghcr.io/nvidia/driver
+          PRECOMPILED: "true"
+          DIST: signed_${{ matrix.dist }}
+          VERSION: ""
+          DOCKER_BUILD_PLATFORM_OPTIONS: --platform=linux/${{ matrix.platform }}
+        run: |
+          source kernel_version.txt && \
+          make DRIVER_VERSIONS=${DRIVER_VERSIONS} DRIVER_BRANCH=${{ matrix.driver_branch }} build-${DIST}-${DRIVER_VERSION}
       
-  #     - name: Save base image, build image and kernel version file
-  #       env:
-  #         DIST: ${{ matrix.dist }}
-  #         PRIVATE_REGISTRY: "ghcr.io"
-  #         LTS_KERNEL: ${{ matrix.lts_kernel }}
-  #       run: |
-  #         cat kernel_version.txt
-  #         source kernel_version.txt
-  #         if [[ "${{ matrix.dist }}" == "ubuntu22.04" ]]; then
-  #           BASE_TARGET="jammy"
-  #         elif [[ "${{ matrix.dist }}" == "ubuntu24.04" ]]; then
-  #           BASE_TARGET="noble"
-  #         fi
-  #         if [[ "${{ matrix.platform }}" == "amd64" ]]; then
-  #           PLATFORM_SUFFIX=""
-  #         else
-  #           PLATFORM_SUFFIX="-${{ matrix.platform }}"
-  #         fi
-  #         BASE_ARTIFACT="base-images-${{ matrix.driver_branch }}-${KERNEL_VERSION}-${{ matrix.dist }}${PLATFORM_SUFFIX}"
-  #         DRIVER_ARTIFACT="driver-images-${{ matrix.driver_branch }}-${KERNEL_VERSION}-${{ matrix.dist }}${PLATFORM_SUFFIX}"
-  #         KERNEL_VERSION_ARTIFACT="kernel-version-${{ matrix.driver_branch }}-${KERNEL_VERSION}-${{ matrix.dist }}${PLATFORM_SUFFIX}"
-  #         echo "BASE_ARTIFACT_NAME=${BASE_ARTIFACT}" >> $GITHUB_ENV
-  #         echo "DRIVER_ARTIFACT_NAME=${DRIVER_ARTIFACT}" >> $GITHUB_ENV
-  #         echo "KERNEL_VERSION_ARTIFACT_NAME=${KERNEL_VERSION_ARTIFACT}" >> $GITHUB_ENV
-  #         tar -cvf "${KERNEL_VERSION_ARTIFACT}.tar" kernel_version.txt
-  #         docker save "${PRIVATE_REGISTRY}/nvidia/driver:base-${BASE_TARGET}-${LTS_KERNEL}-${{ matrix.flavor }}-${{ matrix.driver_branch }}" -o "${BASE_ARTIFACT}.tar"
-  #         docker save "${PRIVATE_REGISTRY}/nvidia/driver:${{ matrix.driver_branch }}-${KERNEL_VERSION}-${{ matrix.dist }}" -o "${DRIVER_ARTIFACT}.tar"
-  #         echo "Verifying artifacts exist:"
-  #         ls -la "${BASE_ARTIFACT}.tar" "${DRIVER_ARTIFACT}.tar" || exit 1
+      - name: Save base image, build image and kernel version file
+        env:
+          DIST: ${{ matrix.dist }}
+          PRIVATE_REGISTRY: "ghcr.io"
+          LTS_KERNEL: ${{ matrix.lts_kernel }}
+        run: |
+          cat kernel_version.txt
+          source kernel_version.txt
+          if [[ "${{ matrix.dist }}" == "ubuntu22.04" ]]; then
+            BASE_TARGET="jammy"
+          elif [[ "${{ matrix.dist }}" == "ubuntu24.04" ]]; then
+            BASE_TARGET="noble"
+          fi
+          if [[ "${{ matrix.platform }}" == "amd64" ]]; then
+            PLATFORM_SUFFIX=""
+          else
+            PLATFORM_SUFFIX="-${{ matrix.platform }}"
+          fi
+          BASE_ARTIFACT="base-images-${{ matrix.driver_branch }}-${KERNEL_VERSION}-${{ matrix.dist }}${PLATFORM_SUFFIX}"
+          DRIVER_ARTIFACT="driver-images-${{ matrix.driver_branch }}-${KERNEL_VERSION}-${{ matrix.dist }}${PLATFORM_SUFFIX}"
+          KERNEL_VERSION_ARTIFACT="kernel-version-${{ matrix.driver_branch }}-${KERNEL_VERSION}-${{ matrix.dist }}${PLATFORM_SUFFIX}"
+          echo "BASE_ARTIFACT_NAME=${BASE_ARTIFACT}" >> $GITHUB_ENV
+          echo "DRIVER_ARTIFACT_NAME=${DRIVER_ARTIFACT}" >> $GITHUB_ENV
+          echo "KERNEL_VERSION_ARTIFACT_NAME=${KERNEL_VERSION_ARTIFACT}" >> $GITHUB_ENV
+          tar -cvf "${KERNEL_VERSION_ARTIFACT}.tar" kernel_version.txt
+          docker save "${PRIVATE_REGISTRY}/nvidia/driver:base-${BASE_TARGET}-${LTS_KERNEL}-${{ matrix.flavor }}-${{ matrix.driver_branch }}" -o "${BASE_ARTIFACT}.tar"
+          docker save "${PRIVATE_REGISTRY}/nvidia/driver:${{ matrix.driver_branch }}-${KERNEL_VERSION}-${{ matrix.dist }}" -o "${DRIVER_ARTIFACT}.tar"
+          echo "Verifying artifacts exist:"
+          ls -la "${BASE_ARTIFACT}.tar" "${DRIVER_ARTIFACT}.tar" || exit 1
 
-  #     - name: Upload base image as an artifact
-  #       uses: actions/upload-artifact@v6
-  #       with:
-  #          name: ${{ env.BASE_ARTIFACT_NAME }}
-  #          path: ./${{ env.BASE_ARTIFACT_NAME }}.tar
-  #          retention-days: 1
+      - name: Upload base image as an artifact
+        uses: actions/upload-artifact@v6
+        with:
+           name: ${{ env.BASE_ARTIFACT_NAME }}
+           path: ./${{ env.BASE_ARTIFACT_NAME }}.tar
+           retention-days: 1
 
-  #     - name: Upload build image as an artifact
-  #       uses: actions/upload-artifact@v6
-  #       with:
-  #          name: ${{ env.DRIVER_ARTIFACT_NAME }}
-  #          path: ./${{ env.DRIVER_ARTIFACT_NAME }}.tar
-  #          retention-days: 1
+      - name: Upload build image as an artifact
+        uses: actions/upload-artifact@v6
+        with:
+           name: ${{ env.DRIVER_ARTIFACT_NAME }}
+           path: ./${{ env.DRIVER_ARTIFACT_NAME }}.tar
+           retention-days: 1
       
-  #     - name: Upload kernel version as an artifact
-  #       uses: actions/upload-artifact@v6
-  #       with:
-  #          name: ${{ env.KERNEL_VERSION_ARTIFACT_NAME }}
-  #          path: ./${{ env.KERNEL_VERSION_ARTIFACT_NAME }}.tar
-  #          retention-days: 1
+      - name: Upload kernel version as an artifact
+        uses: actions/upload-artifact@v6
+        with:
+           name: ${{ env.KERNEL_VERSION_ARTIFACT_NAME }}
+           path: ./${{ env.KERNEL_VERSION_ARTIFACT_NAME }}.tar
+           retention-days: 1
   
   determine-e2e-test-matrix:
     runs-on: linux-amd64-cpu4
@@ -209,7 +209,7 @@ jobs:
           - platform: arm64
             dist: ubuntu22.04
     needs:
-      # - precompiled-build-image
+      - precompiled-build-image
       - set-driver-version-matrix
     steps:
       - name: Check out code
