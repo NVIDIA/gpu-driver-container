@@ -260,12 +260,15 @@ jobs:
           # Convert array to JSON format and assign
           echo "[]" > ./matrix_values_${{ matrix.dist }}_${{ matrix.lts_kernel }}${PLATFORM_SUFFIX}.json
           printf '%s\n' "${KERNEL_VERSIONS[@]}" | jq -R . | jq -s . > ./matrix_values_${{ matrix.dist }}_${{ matrix.lts_kernel }}${PLATFORM_SUFFIX}.json
+          echo "matrix values file: ./matrix_values_${{ matrix.dist }}_${{ matrix.lts_kernel }}${PLATFORM_SUFFIX}.json"
+          ls -la ./matrix_values_${{ matrix.dist }}_${{ matrix.lts_kernel }}${PLATFORM_SUFFIX}.json
+          cat ./matrix_values_${{ matrix.dist }}_${{ matrix.lts_kernel }}${PLATFORM_SUFFIX}.json
 
       - name: Upload kernel matrix values as artifacts
         uses: actions/upload-artifact@v6
         with:
-          name: matrix-values-${{ matrix.dist }}-${{ matrix.lts_kernel }}-${{ env.PLATFORM_SUFFIX }}
-          path: ./matrix_values_${{ matrix.dist }}_${{ matrix.lts_kernel }}-${{ env.PLATFORM_SUFFIX }}.json
+          name: matrix-values-${{ matrix.dist }}-${{ matrix.lts_kernel }}${{ env.PLATFORM_SUFFIX }}
+          path: ./matrix_values_${{ matrix.dist }}_${{ matrix.lts_kernel }}${{ env.PLATFORM_SUFFIX }}.json
           retention-days: 1
 
   collect-e2e-test-matrix:
@@ -361,6 +364,17 @@ jobs:
           echo "${{ secrets.AWS_SSH_KEY }}" > ${{ github.workspace }}/key.pem && chmod 400 ${{ github.workspace }}/key.pem
           echo "PRIVATE_REGISTRY=ghcr.io" >> $GITHUB_ENV
           KERNEL_VERSION="${{ matrix.kernel_version }}"
+          # Capture PLATFORM from suffix
+          if [[ "${KERNEL_VERSION}" == *-arm64 ]]; then
+            PLATFORM=arm64
+            PLATFORM_SUFFIX="-arm64"
+            KERNEL_VERSION="${KERNEL_VERSION%-arm64}"
+          else
+            PLATFORM=amd64
+            PLATFORM_SUFFIX=""
+          fi
+          echo "PLATFORM=$PLATFORM" >> $GITHUB_ENV
+          echo "PLATFORM_SUFFIX=$PLATFORM_SUFFIX" >> $GITHUB_ENV
           # Extract the last segment after the last dash
           DIST=${KERNEL_VERSION##*-}
           echo "DIST=$DIST" >> $GITHUB_ENV
@@ -369,9 +383,9 @@ jobs:
           driver_branch_json="${{ needs.set-driver-version-matrix.outputs.driver_branch }}"
           DRIVER_BRANCHES=($(echo "$driver_branch_json" | jq -r '.[]'))
           echo "DRIVER_BRANCHES=${DRIVER_BRANCHES[*]}" >> $GITHUB_ENV
-      - name: Set kernel version in holodeck_${{ env.DIST }}.yaml
+      - name: Set kernel version and architecture in holodeck_${{ env.DIST }}.yaml
         run: |
-          yq eval '.spec += {"kernel": {"version": strenv(KERNEL_VERSION)}}' -i tests/holodeck_${{ env.DIST }}.yaml
+          yq eval '.spec += {"kernel": {"version": strenv(KERNEL_VERSION), "architecture": strenv(PLATFORM)}}' -i tests/holodeck_${{ env.DIST }}.yaml
 
       - name: Set up Holodeck
         uses: NVIDIA/holodeck@v0.2.18
@@ -421,7 +435,7 @@ jobs:
             TEST_CASE_ARGS="${GPU_OPERATOR_OPTIONS} --set driver.version=${DRIVER_VERSION}"
             # add escape character for space
             TEST_CASE_ARGS=$(printf '%q ' "$TEST_CASE_ARGS")
-            IMAGE_PATH="./tests/driver-images-${DRIVER_VERSION}-${KERNEL_VERSION}-${DIST}.tar"
+            IMAGE_PATH="./tests/driver-images-${DRIVER_VERSION}-${KERNEL_VERSION}-${DIST}${{ env.PLATFORM_SUFFIX }}.tar"
             ./tests/ci-run-e2e.sh "${TEST_CASE}" "${TEST_CASE_ARGS}" ${IMAGE_PATH} || status=$?
             if [ $status -eq 1 ]; then
               echo "e2e validation failed for driver version $DRIVER_VERSION with status $status"

@@ -32,6 +32,7 @@ fi
 status_nvcr=0
 status_ghcr=0
 PLATFORM=$(echo "${PLATFORM_SUFFIX}" | sed 's/-//')
+[ -z "$PLATFORM" ] && PLATFORM=amd64
 regctl manifest inspect nvcr.io/nvidia/driver:${DRIVER_BRANCH}-${KERNEL_VERSION}-${DIST} --platform=linux/${PLATFORM} > /dev/null 2>&1; status_nvcr=$?
 regctl manifest inspect ghcr.io/nvidia/driver:${DRIVER_BRANCH}-${KERNEL_VERSION}-${DIST} --platform=linux/${PLATFORM} > /dev/null 2>&1; status_ghcr=$?
 
