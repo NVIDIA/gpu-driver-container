@@ -264,8 +264,8 @@ jobs:
       - name: Upload kernel matrix values as artifacts
         uses: actions/upload-artifact@v6
         with:
-          name: matrix-values-${{ matrix.dist }}-${{ matrix.lts_kernel }}${PLATFORM_SUFFIX}
-          path: ./matrix_values_${{ matrix.dist }}_${{ matrix.lts_kernel }}${PLATFORM_SUFFIX}.json
+          name: matrix-values-${{ matrix.dist }}-${{ matrix.lts_kernel }}-${{ env.PLATFORM_SUFFIX }}
+          path: ./matrix_values_${{ matrix.dist }}_${{ matrix.lts_kernel }}-${{ env.PLATFORM_SUFFIX }}.json
           retention-days: 1
 
   collect-e2e-test-matrix:
@@ -294,24 +294,13 @@ jobs:
           echo "matrix_values_not_empty=0" >> $GITHUB_OUTPUT
           kernel_versions=()
 
-          # Read and merge kernel_version values from dist files
-          dist_json='${{ needs.set-driver-version-matrix.outputs.dist }}'
-          DIST=($(echo "$dist_json" | jq -r '.[]'))
-          lts_kernel_json='${{ needs.set-driver-version-matrix.outputs.lts_kernel }}'
-          LTS_KERNEL=($(echo "$lts_kernel_json" | jq -r '.[]'))
-          for dist in "${DIST[@]}"; do
-            for kernel in "${LTS_KERNEL[@]}"; do
-              artifact_name="matrix_values_${dist}_${kernel}.json"
-              file_path="./matrix-values-artifacts/${artifact_name}"
-              if [ -f "$file_path" ]; then
-                echo "Successfully found artifact: $artifact_name at $file_path"
-                value=$(jq -r '.[]' "$file_path")
-                kernel_versions+=($value)
-                echo "matrix_values_not_empty=1" >> $GITHUB_OUTPUT
-              else
-                echo "Artifact not found: $artifact_name"
-              fi
-            done
+          # Read and merge kernel_version values from all platform artifacts (amd64 and arm64)
+          for f in $(find ./matrix-values-artifacts -name "matrix_values_*.json" -type f 2>/dev/null); do
+            echo "Found: $f"
+            value=$(jq -r '.[]' "$f")
+            kernel_versions+=($value)
+            echo "matrix_values_not_empty=1" >> $GITHUB_OUTPUT
+          kernel_versions=($(printf '%s\n' "${kernel_versions[@]}" | sort -u))
           done
           echo "Collected Kernel Versions: ${kernel_versions[@]}"
           combined_values=$(printf '%s\n' "${kernel_versions[@]}" | jq -R . | jq -s -c .  | tr -d ' \n')
