@@ -209,7 +209,6 @@ jobs:
           - platform: arm64
             dist: ubuntu22.04
     needs:
-      # - precompiled-build-image
       - set-driver-version-matrix
     steps:
       - name: Check out code
