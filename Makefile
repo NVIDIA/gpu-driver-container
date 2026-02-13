@@ -176,6 +176,7 @@ $(DRIVER_BUILD_TARGETS):
 				$(CURDIR)/$(SUBDIR)
 
 build-rhcos%: SUBDIR = rhel9
+build-rhel9%: SUBDIR = rhel9
 
 build-rocky9%: SUBDIR = rhel9
 build-rocky9%: DOCKER_BUILD_ARGS = --build-arg BASE_IMAGE=nvcr.io/nvidia/cuda:13.1.1-base-rockylinux9
@@ -249,6 +250,7 @@ build-vgpuguest-%: DRIVER_TAG = $(DRIVER_VERSION:-grid=)
 
 # Source of truth for RHEL and CoreOS compatibility https://access.redhat.com/articles/6907891
 build-vgpuguest-rhcos%: SUBDIR = rhel9
+build-vgpuguest-rhel9%: SUBDIR = rhel9
 
 
 $(VGPU_GUEST_DRIVER_BUILD_TARGETS):
@@ -288,6 +290,7 @@ build-vgpuhost-%: DOCKERFILE = $(CURDIR)/vgpu-manager/$(SUBDIR)/Dockerfile
 
 # Source of truth for RHEL and CoreOS compatibility https://access.redhat.com/articles/6907891
 build-vgpuhost-rhcos%: SUBDIR = rhel9
+build-vgpuhost-rhel9%: SUBDIR = rhel9
 
 $(VGPU_HOST_DRIVER_BUILD_TARGETS):
 	DOCKER_BUILDKIT=1 \
