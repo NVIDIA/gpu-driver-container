@@ -387,9 +387,9 @@ jobs:
         run: |
           yq eval '.spec += {"kernel": {"version": strenv(KERNEL_VERSION)}}' -i tests/holodeck_${{ env.DIST }}.yaml
           if [[ "$PLATFORM" == "arm64" ]]; then
-            export ARM64_AMI="ami-04b87574292036551"
+            # export ARM64_AMI="ami-04b87574292036551"
             yq eval '.spec.instance.image.architecture = strenv(PLATFORM)' -i tests/holodeck_${{ env.DIST }}.yaml
-            yq eval '.spec.instance.image.imageId = strenv(ARM64_AMI)' -i tests/holodeck_${{ env.DIST }}.yaml
+            # yq eval '.spec.instance.image.imageId = strenv(ARM64_AMI)' -i tests/holodeck_${{ env.DIST }}.yaml
             yq eval '.spec.instance.type = "g5g.xlarge"' -i tests/holodeck_${{ env.DIST }}.yaml
           fi
           cat tests/holodeck_${{ env.DIST }}.yaml
