@@ -215,6 +215,7 @@ $(BASE_BUILD_TARGETS):
 	DOCKER_BUILDKIT=1 \
 		$(DOCKER) $(BUILDX) build --pull --no-cache \
 				$(DOCKER_BUILD_OPTIONS) \
+				$(DOCKER_BUILD_PLATFORM_OPTIONS) \
 				--tag $(IMAGE)  \
 				--target $(TARGET) \
 				--build-arg CUDA_VERSION="$(CUDA_VERSION)" \
