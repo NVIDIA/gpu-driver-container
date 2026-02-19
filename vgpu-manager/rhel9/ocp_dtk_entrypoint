@@ -32,8 +32,14 @@ nv-ctr-run-with-dtk() {
            /usr/local/bin/ocp_dtk_entrypoint \
            /usr/local/bin/nvidia-driver \
            /usr/sbin/lspci \
+           /usr/sbin/setpci \
            /driver \
            "$DRIVER_TOOLKIT_SHARED_DIR/"
+
+        # Copy pciutils library dependencies for the DTK container
+        # (the DTK image does not have libpci, and dnf fallback fails in air-gapped networks)
+        mkdir -p "$DRIVER_TOOLKIT_SHARED_DIR/lib64"
+        cp /usr/lib64/libpci.so* "$DRIVER_TOOLKIT_SHARED_DIR/lib64/"
 
         env | sed 's/=/="/' | sed 's/$/"/' > "$DRIVER_TOOLKIT_SHARED_DIR/env"
 
@@ -108,9 +114,11 @@ dtk-build-driver() {
     cp -v \
        "$DRIVER_TOOLKIT_SHARED_DIR/nvidia-driver" \
        "$DRIVER_TOOLKIT_SHARED_DIR/lspci" \
+       "$DRIVER_TOOLKIT_SHARED_DIR/setpci" \
        "${DRIVER_TOOLKIT_SHARED_DIR}/bin"
 
     export PATH="${DRIVER_TOOLKIT_SHARED_DIR}/bin:$PATH";
+    export LD_LIBRARY_PATH="${DRIVER_TOOLKIT_SHARED_DIR}/lib64:${LD_LIBRARY_PATH:-}";
 
     # ensure lspci is installed, as 'sriov-manage' script requires it
     if ! $(lspci >/dev/null); then
