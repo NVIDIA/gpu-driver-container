@@ -27,5 +27,4 @@ $(DRIVER_PUSH_TARGETS): push-%:
 build-ubuntu18.04%: DOCKER_BUILD_PLATFORM_OPTIONS = --platform=linux/amd64
 build-signed_ubuntu20.04%: DOCKER_BUILD_PLATFORM_OPTIONS = --platform=linux/amd64
 build-signed_ubuntu22.04%: DOCKER_BUILD_PLATFORM_OPTIONS = --platform=linux/amd64
-build-signed_ubuntu24.04%: DOCKER_BUILD_PLATFORM_OPTIONS = --platform=linux/amd64
 build-sles%: DOCKER_BUILD_PLATFORM_OPTIONS = --platform=linux/amd64
