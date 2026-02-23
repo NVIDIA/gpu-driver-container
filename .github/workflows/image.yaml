@@ -29,9 +29,7 @@ jobs:
       matrix:
         driver:
           - 535.288.01
-          - 570.211.01
-          - 580.126.16
-          - 590.48.01
+          - 580.126.20
         dist:
           - ubuntu22.04
           - ubuntu24.04
@@ -46,8 +44,6 @@ jobs:
             driver: 535.288.01
           - dist: rhel10
             driver: 535.288.01
-          - dist: rhel10
-            driver: 570.211.01
       fail-fast: false
     steps:
       - uses: actions/checkout@v6
@@ -103,9 +99,8 @@ jobs:
     runs-on: linux-amd64-cpu4
     strategy:
       matrix:
-        driver: 
+        driver:
           - 535
-          - 570
           - 580
         flavor:
           - aws
@@ -139,8 +134,6 @@ jobs:
             dist: ubuntu22.04
           - dist: rhel10
             driver: 535
-          - dist: rhel10
-            driver: 570
     steps:
       - uses: actions/checkout@v6
         name: Check out code
