@@ -156,10 +156,10 @@ image-rhel9:
     - .image-pull
     - .dist-rhel9
 
-#image-rhel10:
-#  extends:
-#    - .image-pull-rhel10
-#    - .dist-rhel10
+image-rhel10:
+  extends:
+    - .image-pull-rhel10
+    - .dist-rhel10
 
 image-rocky9:
   extends:
@@ -365,21 +365,21 @@ scan-rhel9-arm64:
   needs:
     - image-rhel9
 
-#scan-rhel10-amd64:
-#  extends:
-#    - .scan-rhel10
-#    - .dist-rhel10
-#    - .platform-amd64
-#  needs:
-#    - image-rhel10
-#
-#scan-rhel10-arm64:
-#  extends:
-#    - .scan-rhel10
-#    - .dist-rhel10
-#    - .platform-arm64
-#  needs:
-#    - image-rhel10
+scan-rhel10-amd64:
+  extends:
+    - .scan-rhel10
+    - .dist-rhel10
+    - .platform-amd64
+  needs:
+    - image-rhel10
+
+scan-rhel10-arm64:
+  extends:
+    - .scan-rhel10
+    - .dist-rhel10
+    - .platform-arm64
+  needs:
+    - image-rhel10
 
 scan-rocky9-amd64:
   extends:
@@ -521,21 +521,21 @@ release:ngc-rocky9:
     - .release:ngc
     - .dist-rocky9
 
-#release:ngc-rhel10.0:
-#  extends:
-#    - .release:ngc
-#    - .dist-rhel10
-#    - .driver-versions-rhel10
-#  variables:
-#    OUT_DIST: "rhel10.0"
-#
-#release:ngc-rhel10.1:
-#  extends:
-#    - .release:ngc
-#    - .dist-rhel10
-#    - .driver-versions-rhel10
-#  variables:
-#    OUT_DIST: "rhel10.1"
+release:ngc-rhel10.0:
+  extends:
+    - .release:ngc
+    - .dist-rhel10
+    - .driver-versions-rhel10
+  variables:
+    OUT_DIST: "rhel10.0"
+
+release:ngc-rhel10.1:
+  extends:
+    - .release:ngc
+    - .dist-rhel10
+    - .driver-versions-rhel10
+  variables:
+    OUT_DIST: "rhel10.1"
 
 generate-build-info:
   stage: ngc-publish
