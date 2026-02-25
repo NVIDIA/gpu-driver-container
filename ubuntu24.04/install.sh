@@ -83,7 +83,7 @@ nvsdm_install() {
 }
 
 nvlink5_pkgs_install() {
-  if [ "$DRIVER_BRANCH" -ge "550" ]; then
+  if [ "$DRIVER_BRANCH" -ge "570" ]; then
     apt-get install -y --no-install-recommends nvlsm infiniband-diags
   fi
 }
@@ -100,6 +100,7 @@ imex_install() {
   apt-get install -y --no-install-recommends ${imex_package_name}=${DRIVER_VERSION}*
   apt-mark hold ${imex_package_name}
 }
+
 extra_pkgs_install() {
   if [ "$DRIVER_TYPE" != "vgpu" ]; then
       apt-get update
