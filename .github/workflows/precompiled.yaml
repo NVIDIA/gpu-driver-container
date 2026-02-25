@@ -342,9 +342,12 @@ jobs:
           driver_branch_json="${{ needs.set-driver-version-matrix.outputs.driver_branch }}"
           DRIVER_BRANCHES=($(echo "$driver_branch_json" | jq -r '.[]'))
           echo "DRIVER_BRANCHES=${DRIVER_BRANCHES[*]}" >> $GITHUB_ENV
-      - name: Set kernel version in holodeck_${{ env.DIST }}.yaml
+      - name: Configure Holodeck e2e test config (kernel, instance)
         run: |
-          yq eval '.spec += {"kernel": {"version": strenv(KERNEL_VERSION)}}' -i tests/holodeck_${{ env.DIST }}.yaml
+          yq eval '.spec += {"kernel": {"version": strenv(KERNEL_VERSION)}}' -i tests/holodeck_ubuntu.yaml
+          if [[ "$DIST" == "ubuntu24.04" ]]; then
+            yq eval '.spec.instance.os = "ubuntu-24.04"' -i tests/holodeck_ubuntu.yaml
+          fi
 
       - name: Set up Holodeck
         uses: NVIDIA/holodeck@v0.2.18
@@ -352,12 +355,11 @@ jobs:
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SSH_KEY: ${{ secrets.AWS_SSH_KEY }}
-          DIST: ${{ env.DIST }}
         with:
           aws_access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws_ssh_key: ${{ secrets.AWS_SSH_KEY }}
-          holodeck_config: "tests/holodeck_${{ env.DIST }}.yaml"
+          holodeck_config: "tests/holodeck_ubuntu.yaml"
       - name: Get public dns name
         id: get_public_dns_name
         uses: mikefarah/yq@master
