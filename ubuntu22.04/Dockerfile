@@ -1,4 +1,4 @@
-FROM nvcr.io/nvidia/cuda:13.1.1-base-ubuntu22.04 as build
+FROM nvcr.io/nvidia/cuda:13.1.1-base-ubuntu22.04 AS build
 
 ARG TARGETARCH
 ARG GOLANG_VERSION
@@ -28,7 +28,7 @@ RUN OS_ARCH=${TARGETARCH/x86_64/amd64} && OS_ARCH=${OS_ARCH/aarch64/arm64} && \
     wget -nv -O - https://go.dev/dl/go${GOLANG_VERSION}.linux-${OS_ARCH}.tar.gz \
     | tar -C /usr/local -xz
 
-ENV PATH /usr/local/go/bin:$PATH
+ENV PATH=/usr/local/go/bin:$PATH
 
 WORKDIR /work
 

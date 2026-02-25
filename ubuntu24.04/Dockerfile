@@ -1,6 +1,6 @@
 ARG BASE_IMAGE=ubuntu:noble-20260210.1
 
-FROM ${BASE_IMAGE} as build
+FROM ${BASE_IMAGE} AS build
 
 ARG TARGETARCH
 ARG GOLANG_VERSION
@@ -32,7 +32,7 @@ RUN OS_ARCH=${TARGETARCH/x86_64/amd64} && OS_ARCH=${OS_ARCH/aarch64/arm64} && \
     wget -nv -O - https://go.dev/dl/go${GOLANG_VERSION}.linux-${OS_ARCH}.tar.gz \
     | tar -C /usr/local -xz
 
-ENV PATH /usr/local/go/bin:$PATH
+ENV PATH=/usr/local/go/bin:$PATH
 
 WORKDIR /work
 

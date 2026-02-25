@@ -91,7 +91,7 @@ nvsdm_install() {
 }
 
 nvlink5_pkgs_install() {
-  if [ "$DRIVER_BRANCH" -ge "550" ]; then
+  if [ "$DRIVER_BRANCH" -ge "570" ]; then
     apt-get install -y --no-install-recommends nvlsm infiniband-diags
   fi
 }

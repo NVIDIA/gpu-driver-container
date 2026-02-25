@@ -33,34 +33,34 @@ nvlink5_pkgs_download() {
 nvsdm_download() {
   if [ "$TARGETARCH" = "amd64" ]; then
     if [ "$DRIVER_BRANCH" -ge "580" ]; then
-       download_apt_with_dep libnvsdm ${DRIVER_VERSION}-1
+       download_apt_with_dep libnvsdm ${DRIVER_VERSION}*
     elif [ "$DRIVER_BRANCH" -ge "560" ]; then
-       download_apt_with_dep libnvsdm-${DRIVER_BRANCH} ${DRIVER_VERSION}-1
+       download_apt_with_dep libnvsdm-${DRIVER_BRANCH} ${DRIVER_VERSION}*
     fi
   fi
 }
 
 fabricmanager_download() {
   if [ "$DRIVER_BRANCH" -ge "580" ]; then
-    download_apt_with_dep nvidia-fabricmanager ${DRIVER_VERSION}-1
+    download_apt_with_dep nvidia-fabricmanager ${DRIVER_VERSION}*
   else
-    download_apt_with_dep nvidia-fabricmanager-${DRIVER_BRANCH} ${DRIVER_VERSION}-1
+    download_apt_with_dep nvidia-fabricmanager-${DRIVER_BRANCH} ${DRIVER_VERSION}*
   fi
 }
 
 nscq_download() {
   if [ "$DRIVER_BRANCH" -ge "580" ]; then
-     download_apt_with_dep libnvidia-nscq ${DRIVER_VERSION}-1
+     download_apt_with_dep libnvidia-nscq ${DRIVER_VERSION}*
   else
-    download_apt_with_dep libnvidia-nscq-${DRIVER_BRANCH} ${DRIVER_VERSION}-1
+    download_apt_with_dep libnvidia-nscq-${DRIVER_BRANCH} ${DRIVER_VERSION}*
   fi
 }
 
 imex_download() {
   if [ "$DRIVER_BRANCH" -ge "580" ]; then
-    download_apt_with_dep nvidia-imex ${DRIVER_VERSION}-1
+    download_apt_with_dep nvidia-imex ${DRIVER_VERSION}*
   elif [ "$DRIVER_BRANCH" -ge "550" ]; then
-    download_apt_with_dep nvidia-imex-${DRIVER_BRANCH} ${DRIVER_VERSION}-1
+    download_apt_with_dep nvidia-imex-${DRIVER_BRANCH} ${DRIVER_VERSION}*
   fi
 }
 
