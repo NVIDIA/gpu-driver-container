@@ -146,21 +146,21 @@ jobs:
           echo "DIST=$DIST" >> $GITHUB_ENV
 
       - name: Upload base image as an artifact
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
            name: base-images-${{ matrix.driver_branch }}-${{ env.KERNEL_VERSION }}-${{ env.DIST }}
            path: ./base-images-${{ matrix.driver_branch }}-${{ env.KERNEL_VERSION }}-${{ env.DIST }}.tar
            retention-days: 1
 
       - name: Upload build image as an artifact
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
            name: driver-images-${{ matrix.driver_branch }}-${{ env.KERNEL_VERSION }}-${{ env.DIST }}
            path: ./driver-images-${{ matrix.driver_branch }}-${{ env.KERNEL_VERSION }}-${{ env.DIST }}.tar
            retention-days: 1
       
       - name: Upload kernel version as an artifact
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
            name: kernel-version-${{ matrix.driver_branch }}-${{ env.KERNEL_VERSION }}-${{ env.DIST }}
            path: ./kernel-version-${{ matrix.driver_branch }}-${{ env.KERNEL_VERSION }}-${{ env.DIST }}.tar
@@ -224,7 +224,7 @@ jobs:
           printf '%s\n' "${KERNEL_VERSIONS[@]}" | jq -R . | jq -s . > ./matrix_values_${{ matrix.dist }}_${{ matrix.lts_kernel }}.json
 
       - name: Upload kernel matrix values as artifacts
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: matrix-values-${{ matrix.dist }}-${{ matrix.lts_kernel }}
           path: ./matrix_values_${{ matrix.dist }}_${{ matrix.lts_kernel }}.json
@@ -407,7 +407,7 @@ jobs:
 
       - name: Archive test logs
         if: ${{ failure() }}
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: nvidiadriver-Precompiled-e2e-test-logs
           path: ./logs/
