@@ -1,5 +1,4 @@
-ARG BASE_IMAGE=nvcr.io/nvidia/cuda:13.1.1-base-ubi9
-
+ARG BASE_IMAGE=registry.access.redhat.com/ubi9/ubi:9.7-1771346757
 FROM ${BASE_IMAGE} as build
 
 ARG TARGETARCH
