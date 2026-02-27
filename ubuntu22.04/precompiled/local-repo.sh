@@ -78,6 +78,7 @@ download_driver_package_deps () {
   download_apt_with_dep libnvidia-extra-${DRIVER_BRANCH}-server
   download_apt_with_dep libnvidia-encode-${DRIVER_BRANCH}-server
   download_apt_with_dep libnvidia-fbc1-${DRIVER_BRANCH}-server
+  download_apt_with_dep libnvidia-gl-${DRIVER_BRANCH}-server
 
   fabricmanager_download
   nscq_download
