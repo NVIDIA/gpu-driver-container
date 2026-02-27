@@ -34,7 +34,6 @@ nv-ctr-run-with-dtk() {
            /usr/local/bin/extract-vmlinux \
            /usr/local/bin/vgpu-util \
            /drivers \
-           /licenses \
            "$DRIVER_TOOLKIT_SHARED_DIR/"
 
         env | sed 's/=/="/' | sed 's/$/"/' > "$DRIVER_TOOLKIT_SHARED_DIR/env"
