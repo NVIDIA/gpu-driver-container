@@ -159,12 +159,19 @@ extra_pkgs_install() {
   fi
 }
 
+setup_cuda_repo() {
+    OS_ARCH=${TARGETARCH/amd64/x86_64} && OS_ARCH=${OS_ARCH/arm64/sbsa};
+    dnf config-manager --add-repo https://developer.download.nvidia.com/compute/cuda/repos/rhel8/${OS_ARCH}/cuda-rhel8.repo
+}
+
 if [ "$1" = "nvinstall" ]; then
   nvidia_installer
 elif [ "$1" = "depinstall" ]; then
   dep_installer
 elif [ "$1" = "extrapkgsinstall" ]; then
   extra_pkgs_install
+elif [ "$1" = "setup_cuda_repo" ]; then
+  setup_cuda_repo
 else
   echo "Unknown function: $1"
 fi
