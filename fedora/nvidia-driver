@@ -338,12 +338,6 @@ _get_module_params() {
 
 # Load the kernel modules and start persistenced.
 _load_driver() {
-    # Apply SELinux labels before loading modules
-    # if [ -e /sys/fs/selinux ]; then
-    #     echo "Change module files security context to modules_file_t"
-    #     chcon -R -t modules_object_t /lib/modules/$KERNEL_VERSION/kernel/drivers/video
-    # fi
-
     echo "Parsing kernel module parameters..."
     _get_module_params
 
@@ -501,7 +495,7 @@ _mount_rootfs() {
     mount --rbind / ${RUN_DIR}/driver
 
     echo "Check SELinux status"
-    if [ -e /sys/fs/selinux ]; then
+    if command -v selinuxenabled >/dev/null 2>&1 && selinuxenabled; then
         echo "SELinux is enabled"
         echo "Change device files security context for selinux compatibility"
         chcon -R -t container_file_t ${RUN_DIR}/driver/dev
