@@ -25,6 +25,13 @@ echo "DRIVER_ARCH is $DRIVER_ARCH"
 SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 source $SCRIPT_DIR/common.sh
 
+# Requires the pod to run with hostPID: true.
+_host_selinux_enabled() {
+    [ -r /proc/1/mounts ] &&
+        grep -qsw "selinuxfs" /proc/1/mounts &&
+        [ -f /proc/1/root/sys/fs/selinux/enforce ]
+}
+
 _update_package_cache() {
     if [ "${PACKAGE_TAG:-}" != "builtin" ]; then
         echo "Updating the package cache..."
@@ -363,13 +370,13 @@ _mount_rootfs() {
     mkdir -p ${RUN_DIR}/driver
     mount --rbind / ${RUN_DIR}/driver
 
-    echo "Check SELinux status"
-    if [ -e /sys/fs/selinux ]; then
-        echo "SELinux is enabled"
+    echo "Check host SELinux status"
+    if _host_selinux_enabled; then
+        echo "Host SELinux is enabled"
         echo "Change device files security context for selinux compatibility"
         chcon -R -t container_file_t ${RUN_DIR}/driver/dev
     else
-        echo "SELinux is disabled, skipping..."
+        echo "Host SELinux is disabled, skipping..."
     fi
 }
 

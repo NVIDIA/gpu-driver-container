@@ -10,6 +10,13 @@ echo "Running $*"
 SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 source $SCRIPT_DIR/common.sh
 
+# Requires the pod to run with hostPID: true.
+_host_selinux_enabled() {
+    [ -r /proc/1/mounts ] &&
+        grep -qsw "selinuxfs" /proc/1/mounts &&
+        [ -f /proc/1/root/sys/fs/selinux/enforce ]
+}
+
 nv-ctr-run-with-dtk() {
     set -x
 
@@ -72,9 +79,15 @@ nv-ctr-run-with-dtk() {
     cp -rv "${MODULES_SHARED}"/* "${MODULES_LOCAL}"
 
     # Tell SELinux to allow loading these files
-    find . -type f \
-         \( -name "*.txt" -or -name "*.go" \) \
-         -exec chcon -t modules_object_t "{}" \;
+    echo "Check host SELinux status"
+    if _host_selinux_enabled; then
+        echo "Host SELinux is enabled"
+        find . -type f \
+             \( -name "*.txt" -or -name "*.go" \) \
+             -exec chcon -t modules_object_t "{}" \;
+    else
+        echo "Host SELinux is disabled, skipping..."
+    fi
 
     echo "#"
     echo "# Executing nvidia-driver load script ..."
