@@ -72,9 +72,11 @@ nv-ctr-run-with-dtk() {
     cp -rv "${MODULES_SHARED}"/* "${MODULES_LOCAL}"
 
     # Tell SELinux to allow loading these files
-    find . -type f \
-         \( -name "*.txt" -or -name "*.go" \) \
-         -exec chcon -t modules_object_t "{}" \;
+    if command -v selinuxenabled >/dev/null 2>&1 && selinuxenabled; then
+        find . -type f \
+             \( -name "*.txt" -or -name "*.go" \) \
+             -exec chcon -t modules_object_t "{}" \;
+    fi
 
     echo "#"
     echo "# Executing nvidia-driver load script ..."
