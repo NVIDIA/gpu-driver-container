@@ -327,7 +327,7 @@ _mount_rootfs() {
     if [ -e /sys/fs/selinux ]; then
         echo "SELinux is enabled"
         echo "Change device files security context for selinux compatibility"
-        chcon -R -t container_file_t ${RUN_DIR}/driver/dev
+        chcon -R -t container_file_t ${RUN_DIR}/driver/dev || true
     else
         echo "SELinux is disabled, skipping..."
     fi

@@ -74,7 +74,7 @@ nv-ctr-run-with-dtk() {
     # Tell SELinux to allow loading these files
     find . -type f \
          \( -name "*.txt" -or -name "*.go" \) \
-         -exec chcon -t modules_object_t "{}" \;
+         -exec chcon -t modules_object_t "{}" \; || true
 
     echo "#"
     echo "# Executing nvidia-driver load script ..."
