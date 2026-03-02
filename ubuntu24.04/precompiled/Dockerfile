@@ -18,7 +18,8 @@ ENV NVIDIA_VISIBLE_DEVICES=void
 
 RUN echo 'debconf debconf/frontend select Noninteractive' | debconf-set-selections
 
-RUN dpkg --add-architecture i386 && \
+# Add i386 architecture only for amd64 builds (not available on ARM)
+RUN if [ "$TARGETARCH" = "amd64" ]; then dpkg --add-architecture i386; fi && \
     apt-get update && apt-get install -y --no-install-recommends \
         apt-utils \
         build-essential \
@@ -31,9 +32,10 @@ RUN dpkg --add-architecture i386 && \
         pkg-config && \
     rm -rf /var/lib/apt/lists/*
 
-# Fetch GPG keys for CUDA repo
-RUN rm -f /etc/apt/sources.list.d/cuda* && \
-    curl -fsSL https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2404/x86_64/cuda-keyring_1.1-1_all.deb -o cuda-keyring_1.1-1_all.deb && \
+# Fetch GPG keys for CUDA repo (architecture-specific)
+RUN CUDA_ARCH=$([ "$TARGETARCH" = "arm64" ] && echo "sbsa" || echo "x86_64") && \
+    rm -f /etc/apt/sources.list.d/cuda* && \
+    curl -fsSL https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2404/${CUDA_ARCH}/cuda-keyring_1.1-1_all.deb -o cuda-keyring_1.1-1_all.deb && \
     dpkg -i cuda-keyring_1.1-1_all.deb && \
     rm -f cuda-keyring_1.1-1_all.deb
 
