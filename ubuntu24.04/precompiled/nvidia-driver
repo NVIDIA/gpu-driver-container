@@ -416,22 +416,37 @@ _install_driver() {
         nvidia-headless-no-dkms-${DRIVER_BRANCH}-server \
         libnvidia-decode-${DRIVER_BRANCH}-server \
         libnvidia-extra-${DRIVER_BRANCH}-server \
-        libnvidia-encode-${DRIVER_BRANCH}-server \
-        libnvidia-fbc1-${DRIVER_BRANCH}-server \
-        libnvidia-gl-${DRIVER_BRANCH}-server
+        libnvidia-encode-${DRIVER_BRANCH}-server
+        # libnvidia-fbc1 (FrameBuffer Capture) is not available for arm64
+    if [ "$TARGETARCH" = "amd64" ]; then
+        apt-get install -y --no-install-recommends libnvidia-fbc1-${DRIVER_BRANCH}-server
+    fi
+    apt-get install -y --no-install-recommends libnvidia-gl-${DRIVER_BRANCH}-server
 
     # Now install the precompiled kernel module packages signed by Canonical
+    # linux-signatures-nvidia (secure boot signatures) is not available for arm64
     if [ "$KERNEL_TYPE" = "kernel-open" ]; then
         echo "Installing Open NVIDIA driver kernel modules..."
-        apt-get install --no-install-recommends -y \
-            linux-signatures-nvidia-${KERNEL_VERSION} \
-            linux-modules-nvidia-${DRIVER_BRANCH}-server-open-${KERNEL_VERSION}
+        if [ "$TARGETARCH" = "arm64" ]; then
+            apt-get install --no-install-recommends -y \
+                linux-modules-nvidia-${DRIVER_BRANCH}-server-open-${KERNEL_VERSION}
+        else
+            apt-get install --no-install-recommends -y \
+                linux-signatures-nvidia-${KERNEL_VERSION} \
+                linux-modules-nvidia-${DRIVER_BRANCH}-server-open-${KERNEL_VERSION}
+        fi
     else
         echo "Installing Closed NVIDIA driver kernel modules..."
-        apt-get install --no-install-recommends -y \
-            linux-objects-nvidia-${DRIVER_BRANCH}-server-${KERNEL_VERSION} \
-            linux-signatures-nvidia-${KERNEL_VERSION} \
-            linux-modules-nvidia-${DRIVER_BRANCH}-server-${KERNEL_VERSION}
+        if [ "$TARGETARCH" = "arm64" ]; then
+                apt-get install --no-install-recommends -y \
+                    linux-objects-nvidia-${DRIVER_BRANCH}-server-${KERNEL_VERSION} \
+                    linux-modules-nvidia-${DRIVER_BRANCH}-server-${KERNEL_VERSION}
+        else
+                apt-get install --no-install-recommends -y \
+                    linux-objects-nvidia-${DRIVER_BRANCH}-server-${KERNEL_VERSION} \
+                    linux-signatures-nvidia-${KERNEL_VERSION} \
+                    linux-modules-nvidia-${DRIVER_BRANCH}-server-${KERNEL_VERSION}
+        fi
     fi
 }
 

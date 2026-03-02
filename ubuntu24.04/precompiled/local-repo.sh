@@ -68,7 +68,12 @@ download_driver_package_deps () {
   pushd ${LOCAL_REPO_DIR}
 
   download_apt_with_dep linux-objects-nvidia-${DRIVER_BRANCH}-server-${KERNEL_VERSION}
-  download_apt_with_dep linux-signatures-nvidia-${KERNEL_VERSION}
+  
+  # linux-signatures-nvidia (secure boot signatures) is not available for arm64
+  if [ "$TARGETARCH" = "amd64" ]; then
+    download_apt_with_dep linux-signatures-nvidia-${KERNEL_VERSION}
+  fi
+  
   download_apt_with_dep linux-modules-nvidia-${DRIVER_BRANCH}-server-${KERNEL_VERSION}
   download_apt_with_dep linux-modules-nvidia-${DRIVER_BRANCH}-server-open-${KERNEL_VERSION}
   download_apt_with_dep nvidia-utils-${DRIVER_BRANCH}-server
@@ -76,7 +81,10 @@ download_driver_package_deps () {
   download_apt_with_dep libnvidia-decode-${DRIVER_BRANCH}-server
   download_apt_with_dep libnvidia-extra-${DRIVER_BRANCH}-server
   download_apt_with_dep libnvidia-encode-${DRIVER_BRANCH}-server
-  download_apt_with_dep libnvidia-fbc1-${DRIVER_BRANCH}-server
+  # libnvidia-fbc1 (FrameBuffer Capture) is not available for arm64
+  if [ "$TARGETARCH" = "amd64" ]; then
+    download_apt_with_dep libnvidia-fbc1-${DRIVER_BRANCH}-server
+  fi
   download_apt_with_dep libnvidia-gl-${DRIVER_BRANCH}-server
 
   fabricmanager_download
