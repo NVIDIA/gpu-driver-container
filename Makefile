@@ -160,12 +160,13 @@ build-%: DOCKERFILE = $(CURDIR)/$(SUBDIR)/Dockerfile
 # build-ubuntu20.04-$(DRIVER_VERSION) triggers a build for a specific $(DRIVER_VERSION)
 $(DISTRIBUTIONS): %: build-%
 $(BUILD_TARGETS): %: $(foreach driver_version, $(DRIVER_VERSIONS), $(addprefix %-, $(driver_version)))
+DRIVER_BUILD_TAG = $(if $(findstring type=oci,$(DOCKER_BUILD_OPTIONS)),,--tag $(IMAGE))
 $(DRIVER_BUILD_TARGETS):
 	DOCKER_BUILDKIT=1 \
 		$(DOCKER) $(BUILDX) build --pull \
 				$(DOCKER_BUILD_OPTIONS) \
 				$(DOCKER_BUILD_PLATFORM_OPTIONS) \
-				--tag $(IMAGE) \
+				$(DRIVER_BUILD_TAG) \
 				--build-arg DRIVER_VERSION="$(DRIVER_VERSION)" \
 				--build-arg GOLANG_VERSION="$(GOLANG_VERSION)" \
 				--build-arg DRIVER_BRANCH="$(DRIVER_BRANCH)" \
@@ -215,6 +216,7 @@ $(BASE_BUILD_TARGETS):
 	DOCKER_BUILDKIT=1 \
 		$(DOCKER) $(BUILDX) build --pull --no-cache \
 				$(DOCKER_BUILD_OPTIONS) \
+				$(DOCKER_BUILD_PLATFORM_OPTIONS) \
 				--tag $(IMAGE)  \
 				--target $(TARGET) \
 				--build-arg CUDA_VERSION="$(CUDA_VERSION)" \
