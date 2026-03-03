@@ -23,9 +23,9 @@ RUN dpkg --add-architecture i386 && \
         build-essential \
         ca-certificates \
         curl \
-        gpg \
         kmod \
         file \
+        gnupg \
         libelf-dev \
         libglvnd-dev \
         pkg-config && \
