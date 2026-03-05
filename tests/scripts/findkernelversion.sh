@@ -18,7 +18,7 @@ export PATH=$(pwd)/bin:${PATH}
 
 # calculate kernel version of latest image
 prefix="kernel-version-${DRIVER_BRANCH}-${LTS_KERNEL}"
-suffix="${kernel_flavor}-${DIST}"
+suffix="${KERNEL_FLAVOR}-${DIST}"
 
 artifact_dir="./kernel-version-artifacts"
 artifact=$(find "$artifact_dir" -maxdepth 1 -type d -name "${prefix}*-${suffix}" | head -1)
