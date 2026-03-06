@@ -20,6 +20,10 @@ on:
     - cron: '00 09 * * *'
   workflow_dispatch:
 
+concurrency:
+  group: precompiled-driver-build-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   set-driver-version-matrix:
     runs-on: linux-amd64-cpu4
@@ -265,9 +269,15 @@ jobs:
             for kernel in "${LTS_KERNEL[@]}"; do
               artifact_name="matrix-values-${dist}-${kernel}"
               file_path="./matrix-values-artifacts/${artifact_name}/matrix_values_${dist}_${kernel}.json"
+              flat_path="./matrix-values-artifacts/matrix_values_${dist}_${kernel}.json"
               if [ -f "$file_path" ]; then
                 echo "Successfully found artifact: $artifact_name at $file_path"
                 value=$(jq -r '.[]' "$file_path")
+                kernel_versions+=($value)
+                echo "matrix_values_not_empty=1" >> $GITHUB_OUTPUT
+              elif [ -f "$flat_path" ]; then
+                echo "Successfully found artifact: $artifact_name at $flat_path"
+                value=$(jq -r '.[]' "$flat_path")
                 kernel_versions+=($value)
                 echo "matrix_values_not_empty=1" >> $GITHUB_OUTPUT
               else
@@ -290,7 +300,7 @@ jobs:
       # slack notification for new kernel release before e2e tests starts
       # as e2e tests may fail for new kernel release
       - name: Slack notification
-        if: steps.set_kernel_version.outputs.matrix_values_not_empty == '1'
+        if: ${{ steps.set_kernel_version.outputs.matrix_values_not_empty == '1' && github.ref == 'refs/heads/main' }}
         uses: slackapi/slack-github-action@v2.1.1
         with:
           token: ${{ secrets.SLACK_BOT_TOKEN }}
@@ -458,7 +468,11 @@ jobs:
           image_path="./base-images-${{ matrix.driver_branch }}-${{ matrix.kernel_version }}.tar"
           echo "uploading  $image_path"
           docker load -i $image_path
-          docker push ${PRIVATE_REGISTRY}/nvidia/driver:base-${BASE_TARGET}-${LTS_KERNEL}-${KERNEL_FLAVOR}-${{ matrix.driver_branch }}
+          if [[ "${{ github.ref == 'refs/heads/main' }}" == "true" ]]; then
+            docker push ${PRIVATE_REGISTRY}/nvidia/driver:base-${BASE_TARGET}-${LTS_KERNEL}-${KERNEL_FLAVOR}-${{ matrix.driver_branch }}
+          else
+            echo "Skipping base image push for non-main branch ${{ github.ref }}"
+          fi
 
       - name: Download built image artifact
         if: ${{ ! (matrix.driver_branch == 535 && contains(matrix.kernel_version, 'ubuntu24.04')) }}
@@ -473,10 +487,14 @@ jobs:
           image_path="./driver-images-${{ matrix.driver_branch }}-${{ matrix.kernel_version }}.tar"
           echo "uploading  $image_path"
           docker load -i $image_path
-          docker push ${PRIVATE_REGISTRY}/nvidia/driver:${{ matrix.driver_branch }}-${{ matrix.kernel_version }}
+          if [[ "${{ github.ref == 'refs/heads/main' }}" == "true" ]]; then
+            docker push ${PRIVATE_REGISTRY}/nvidia/driver:${{ matrix.driver_branch }}-${{ matrix.kernel_version }}
+          else
+            echo "Skipping image push for non-main branch ${{ github.ref }}"
+          fi
 
       - name: Slack notification
-        if: ${{ ! (matrix.driver_branch == 535 && contains(matrix.kernel_version, 'ubuntu24.04')) }}
+        if: ${{ ! (matrix.driver_branch == 535 && contains(matrix.kernel_version, 'ubuntu24.04')) && github.ref == 'refs/heads/main' }}
         uses: slackapi/slack-github-action@v2.1.1
         with:
           token: ${{ secrets.SLACK_BOT_TOKEN }}
