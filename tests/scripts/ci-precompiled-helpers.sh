@@ -1,6 +1,6 @@
 get_kernel_versions_to_test() {
-    if [[ "$#" -ne 4 ]]; then
-	    echo " Error:$0 must be called with KERNEL_FLAVORS DRIVER_BRANCHES DIST LTS_KERNEL" >&2
+    if [[ "$#" -lt 4 ]]; then
+	    echo " Error:$0 must be called with KERNEL_FLAVORS DRIVER_BRANCHES DIST LTS_KERNEL [FORCE_REBUILD]" >&2
 	    exit 1
     fi
 
@@ -8,11 +8,19 @@ get_kernel_versions_to_test() {
     local -a DRIVER_BRANCHES=("${!2}")
     local DIST="$3"
     local LTS_KERNEL="$4"
+    local FORCE_REBUILD="${5:-false}"
 
     kernel_versions=()
+    local had_errors=false
     for kernel_flavor in "${KERNEL_FLAVORS[@]}"; do
         for DRIVER_BRANCH in "${DRIVER_BRANCHES[@]}"; do
-            source ./tests/scripts/findkernelversion.sh "${kernel_flavor}" "$DRIVER_BRANCH" "$DIST" "$LTS_KERNEL" >&2
+            regctl_error=false
+            source ./tests/scripts/findkernelversion.sh "${kernel_flavor}" "$DRIVER_BRANCH" "$DIST" "$LTS_KERNEL" "$FORCE_REBUILD" >&2
+            if [[ "$regctl_error" == true ]]; then
+                echo "skipping ${kernel_flavor}/${DRIVER_BRANCH} due to registry connectivity error" >&2
+                had_errors=true
+                break
+            fi
             if [[ "$should_continue" == true ]]; then
                 break
             fi
@@ -28,4 +36,7 @@ get_kernel_versions_to_test() {
         kernel_versions[$i]="${kernel_versions[$i]}-$DIST"
     done
     echo "${kernel_versions[@]}"
+    if [[ "$had_errors" == true ]]; then
+        return 1
+    fi
 }

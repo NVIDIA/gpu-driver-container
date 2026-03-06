@@ -1,7 +1,7 @@
 #!/bin/bash
 
-if [[ $# -ne 4 ]]; then
-	echo " KERNEL_FLAVOR DRIVER_BRANCH DIST LTS_KERNEL are required"
+if [[ $# -lt 4 ]]; then
+	echo " KERNEL_FLAVOR DRIVER_BRANCH DIST LTS_KERNEL [FORCE_REBUILD] are required"
 	exit 1
 fi
 
@@ -9,6 +9,7 @@ export KERNEL_FLAVOR="${1}"
 export DRIVER_BRANCH="${2}"
 export DIST="${3}"
 export LTS_KERNEL="${4}"
+FORCE_REBUILD="${5:-false}"
 
 export REGCTL_VERSION=v0.7.1
 mkdir -p bin
@@ -32,12 +33,33 @@ if [ -n "$artifact" ]; then
 fi
 
 # calculate driver tag
-status_nvcr=0
-status_ghcr=0
-regctl tag ls  nvcr.io/nvidia/driver | grep "^${DRIVER_BRANCH}-${KERNEL_VERSION}-${DIST}$" || status_nvcr=$?
-regctl tag ls  ghcr.io/nvidia/driver | grep "^${DRIVER_BRANCH}-${KERNEL_VERSION}-${DIST}$" || status_ghcr=$?
-if [[ $status_nvcr -eq 0 || $status_ghcr -eq 0 ]]; then
+nvcr_tags=$(regctl tag ls nvcr.io/nvidia/driver 2>&1)
+nvcr_status=$?
+if [[ $nvcr_status -ne 0 ]]; then
+    echo "failed to list tags from nvcr.io/nvidia/driver (exit $nvcr_status): $nvcr_tags" >&2
     export should_continue=false
-else
+    export regctl_error=true
+    return 1
+fi
+
+if echo "$nvcr_tags" | grep -q "^${DRIVER_BRANCH}-${KERNEL_VERSION}-${DIST}$"; then
+    echo "image tag ${DRIVER_BRANCH}-${KERNEL_VERSION}-${DIST} already exists on nvcr.io - rebuild not allowed" >&2
+    export should_continue=false
+elif [[ "$FORCE_REBUILD" == "true" ]]; then
+    echo "force rebuild requested for ${DRIVER_BRANCH}-${KERNEL_VERSION}-${DIST}" >&2
     export should_continue=true
+else
+    ghcr_tags=$(regctl tag ls ghcr.io/nvidia/driver 2>&1)
+    ghcr_status=$?
+    if [[ $ghcr_status -ne 0 ]]; then
+        echo "failed to list tags from ghcr.io/nvidia/driver (exit $ghcr_status): $ghcr_tags" >&2
+        export should_continue=false
+        export regctl_error=true
+        return 1
+    fi
+    if echo "$ghcr_tags" | grep -q "^${DRIVER_BRANCH}-${KERNEL_VERSION}-${DIST}$"; then
+        export should_continue=false
+    else
+        export should_continue=true
+    fi
 fi
