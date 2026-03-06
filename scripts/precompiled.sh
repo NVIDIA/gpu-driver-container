@@ -54,18 +54,36 @@ function pushBaseImage(){
     make IMAGE_NAME=${IMAGE_NAME} DRIVER_BRANCH=${DRIVER_BRANCH} KERNEL_FLAVOR=${KERNEL_FLAVOR} push-base-${BASE_TARGET}
 }
 
+function imageDigest(){
+	regctl image digest --list "$1" 2>/dev/null
+}
+
+function manifestsMatch(){
+	local src_digest
+	local dst_digest
+	src_digest=$(imageDigest "$1") || { echo "failed to get digest for $1 - assuming manifests differ"; return 1; }
+	dst_digest=$(imageDigest "$2") || { echo "failed to get digest for $2 - assuming manifests differ"; return 1; }
+	[ "$src_digest" = "$dst_digest" ]
+}
+
 function pushImage(){
 	# check if image exists in output registry
 	# note: DIST is in the form "signed_<distribution>", so we drop the '*_' prefix
 	# to extract the distribution string.
-	local out_image=${OUT_IMAGE_NAME}:${DRIVER_BRANCH}-${KERNEL_VERSION}-${DIST##*_}
+	local tag=${DRIVER_BRANCH}-${KERNEL_VERSION}-${DIST##*_}
+	local out_image=${OUT_IMAGE_NAME}:${tag}
+	local in_image=${IMAGE_NAME}:${tag}
 	if imageExists "$out_image"; then
 		echo "image tag already exists in output registry - $out_image"
 		if [ "$FORCE_PUSH" != "true" ]; then
-			echo "exiting"
-			return 0
+			if manifestsMatch "$in_image" "$out_image"; then
+				echo "source and destination manifests match - skipping push"
+				return 0
+			fi
+			echo "source and destination manifests differ - pushing updated image"
+		else
+			echo "overwriting image tag - $out_image"
 		fi
-		echo "overwriting image tag - $out_image"
 	fi
     # push the image
     make DRIVER_VERSIONS=${DRIVER_VERSIONS} DRIVER_BRANCH=${DRIVER_BRANCH} push-${DIST}
