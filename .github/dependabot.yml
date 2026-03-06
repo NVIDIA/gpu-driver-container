@@ -7,6 +7,19 @@ updates:
     target-branch: main
     directories:
       - "**/*"
+    exclude-paths:
+      - "azurelinux/**"
+      - "centos7/**"
+      - "centos8/**"
+      - "coreos/**"
+      - "fedora/**"
+      - "flatcar/**"
+      - "photon3.0/**"
+      - "rhel7/**"
+      - "sle15/**"
+      - "ubuntu16.04/**"
+      - "ubuntu18.04/**"
+      - "ubuntu20.04/**"
     open-pull-requests-limit: 10
     schedule:
       interval: "weekly"
@@ -16,5 +29,18 @@ updates:
 
   - package-ecosystem: "github-actions"
     directory: "/"
+    exclude-paths:
+      - "azurelinux/**"
+      - "centos7/**"
+      - "centos8/**"
+      - "coreos/**"
+      - "fedora/**"
+      - "flatcar/**"
+      - "photon3.0/**"
+      - "rhel7/**"
+      - "sle15/**"
+      - "ubuntu16.04/**"
+      - "ubuntu18.04/**"
+      - "ubuntu20.04/**"
     schedule:
       interval: "daily"
