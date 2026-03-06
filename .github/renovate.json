@@ -10,6 +10,20 @@
         "dependencies",
         "docker"
     ],
+    "ignorePaths": [
+        "azurelinux/**",
+        "centos7/**",
+        "centos8/**",
+        "coreos/**",
+        "fedora/**",
+        "flatcar/**",
+        "photon3.0/**",
+        "rhel7/**",
+        "sle15/**",
+        "ubuntu16.04/**",
+        "ubuntu18.04/**",
+        "ubuntu20.04/**"
+    ],
     "prConcurrentLimit": 15,
     "prHourlyLimit": 0,
     "additionalBranchPrefix": "{{packageFileDir}}-",
