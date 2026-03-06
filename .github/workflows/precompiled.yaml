@@ -19,6 +19,28 @@ on:
   schedule:
     - cron: '00 09 * * *'
   workflow_dispatch:
+    inputs:
+      driver_branch:
+        description: 'Driver branch to build (e.g. 535). Leave empty for all.'
+        required: false
+        default: ''
+      kernel_flavor:
+        description: 'Kernel flavor to build (e.g. azure). Leave empty for all.'
+        required: false
+        default: ''
+      dist:
+        description: 'Distribution to build (e.g. ubuntu22.04). Leave empty for all.'
+        required: false
+        default: ''
+      lts_kernel:
+        description: 'LTS kernel series to build (e.g. 6.8). Leave empty for all.'
+        required: false
+        default: ''
+      force_rebuild:
+        description: 'Force rebuild and re-publish even if the image tag already exists'
+        required: false
+        type: boolean
+        default: false
 
 concurrency:
   group: precompiled-driver-build-${{ github.ref }}
@@ -40,13 +62,38 @@ jobs:
         uses: actions/checkout@v6
       - name: Read driver versions
         id: generate_matrix_config
+        env:
+          DRIVER_BRANCH_INPUT: ${{ inputs.driver_branch }}
+          KERNEL_FLAVOR_INPUT: ${{ inputs.kernel_flavor }}
+          DIST_INPUT: ${{ inputs.dist }}
+          LTS_KERNEL_INPUT: ${{ inputs.lts_kernel }}
         run: |
           CONFIG_FILE=.github/precompiled-matrix-config.json
 
-          echo "driver_branch=$(jq -c '.driver_branch' "$CONFIG_FILE")" >> "$GITHUB_OUTPUT"
-          echo "kernel_flavors=$(jq -c '.kernel_flavors' "$CONFIG_FILE")" >> "$GITHUB_OUTPUT"
-          echo "dist=$(jq -c '.dist' "$CONFIG_FILE")" >> "$GITHUB_OUTPUT"
-          echo "lts_kernel=$(jq -c '.lts_kernel' "$CONFIG_FILE")" >> "$GITHUB_OUTPUT"
+          if [ -n "$DRIVER_BRANCH_INPUT" ]; then
+            echo "driver_branch=$(jq -cn --arg value "$DRIVER_BRANCH_INPUT" '[$value]')" >> "$GITHUB_OUTPUT"
+          else
+            echo "driver_branch=$(jq -c '.driver_branch' "$CONFIG_FILE")" >> "$GITHUB_OUTPUT"
+          fi
+
+          if [ -n "$KERNEL_FLAVOR_INPUT" ]; then
+            echo "kernel_flavors=$(jq -cn --arg value "$KERNEL_FLAVOR_INPUT" '[$value]')" >> "$GITHUB_OUTPUT"
+          else
+            echo "kernel_flavors=$(jq -c '.kernel_flavors' "$CONFIG_FILE")" >> "$GITHUB_OUTPUT"
+          fi
+
+          if [ -n "$DIST_INPUT" ]; then
+            echo "dist=$(jq -cn --arg value "$DIST_INPUT" '[$value]')" >> "$GITHUB_OUTPUT"
+          else
+            echo "dist=$(jq -c '.dist' "$CONFIG_FILE")" >> "$GITHUB_OUTPUT"
+          fi
+
+          if [ -n "$LTS_KERNEL_INPUT" ]; then
+            echo "lts_kernel=$(jq -cn --arg value "$LTS_KERNEL_INPUT" '[$value]')" >> "$GITHUB_OUTPUT"
+          else
+            echo "lts_kernel=$(jq -c '.lts_kernel' "$CONFIG_FILE")" >> "$GITHUB_OUTPUT"
+          fi
+
           echo "exclude_build_matrix_pairs=$(jq -c '.exclude_build_matrix_pairs' "$CONFIG_FILE")" >> "$GITHUB_OUTPUT"
           echo "exclude_precompiled_build_matrix=$(jq -c '.exclude_precompiled_build_matrix' "$CONFIG_FILE")" >> "$GITHUB_OUTPUT"
           echo "exclude_precompiled_e2e_matrix=$(jq -c '.exclude_precompiled_e2e_matrix' "$CONFIG_FILE")" >> "$GITHUB_OUTPUT"
@@ -196,6 +243,7 @@ jobs:
           DIST: ${{ matrix.dist }}
           GH_TOKEN:  ${{ secrets.GITHUB_TOKEN }}
           LTS_KERNEL: ${{ matrix.lts_kernel }}
+          FORCE_REBUILD: ${{ inputs.force_rebuild || 'false' }}
         run: |
           kernel_flavors_json='${{ needs.set-driver-version-matrix.outputs.kernel_flavors }}'
           KERNEL_FLAVORS=($(echo "$kernel_flavors_json" | jq -r '.[]'))
@@ -209,7 +257,12 @@ jobs:
             fi
           done
           source ./tests/scripts/ci-precompiled-helpers.sh
-          KERNEL_VERSIONS=($(get_kernel_versions_to_test KERNEL_FLAVORS[@] DRIVER_BRANCHES[@] $DIST $LTS_KERNEL))
+          KERNEL_VERSIONS=($(get_kernel_versions_to_test KERNEL_FLAVORS[@] DRIVER_BRANCHES[@] $DIST $LTS_KERNEL $FORCE_REBUILD))
+          rc=$?
+          if [[ $rc -ne 0 ]]; then
+            echo "registry connectivity error while determining kernel versions to test" >&2
+            exit 1
+          fi
           if [ -z "$KERNEL_VERSIONS" ]; then
             # no new kernel release
             echo "Skipping e2e tests"
