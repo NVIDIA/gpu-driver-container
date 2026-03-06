@@ -1,42 +1,54 @@
 ARG SLES_VERSION
-FROM nvcr.io/nvidia/cuda:13.1.1-base-ubi8 as license
+ARG GOLANG_VERSION=1.25
+FROM registry.suse.com/bci/golang:${GOLANG_VERSION} as build
 
-FROM registry.suse.com/bci/golang:1.25 as build
+ARG TARGETARCH
 
-RUN zypper --non-interactive install -y git wget tar gzip
+# Arg to indicate if driver type is either of passthrough(baremetal) or vgpu
+ARG DRIVER_TYPE=passthrough
+ENV DRIVER_TYPE=$DRIVER_TYPE
+
+SHELL ["/bin/bash", "-c"]
+RUN zypper --gpg-auto-import-keys --non-interactive install -y git-core wget tar gzip
 
 WORKDIR /work
 
-RUN git clone https://github.com/NVIDIA/gpu-driver-container driver && \
+RUN if [ "$DRIVER_TYPE" = "vgpu" ]; then \
+    git clone https://github.com/NVIDIA/gpu-driver-container driver && \
     cd driver/vgpu/src && \
     go build -o vgpu-util && \
-    mv vgpu-util /work
+    mv vgpu-util /work; fi
 
 FROM registry.suse.com/suse/sle15:$SLES_VERSION
 
 #ARG BASE_URL=http://us.download.nvidia.com/XFree86/Linux-x86_64
 ARG BASE_URL=https://us.download.nvidia.com/tesla
+ARG TARGETARCH
+ENV TARGETARCH=$TARGETARCH
 ARG DRIVER_VERSION
 ENV DRIVER_VERSION=$DRIVER_VERSION
-ARG DRIVER_ARCH=x86_64
-ENV DRIVER_ARCH=$DRIVER_ARCH
+ARG DRIVER_BRANCH
+ENV DRIVER_BRANCH=$DRIVER_BRANCH
 
 # Arg to indicate if driver type is either of passthrough/baremetal or vgpu
 ARG DRIVER_TYPE=passthrough
 ENV DRIVER_TYPE=$DRIVER_TYPE
-ARG VGPU_LICENSE_SERVER_TYPE=FNE
+ARG VGPU_LICENSE_SERVER_TYPE=NLS
 ENV VGPU_LICENSE_SERVER_TYPE=$VGPU_LICENSE_SERVER_TYPE
 # Enable vGPU version compability check by default
-ARG DISABLE_VGPU_VERSION_CHECK=false
+ARG DISABLE_VGPU_VERSION_CHECK=true
 ENV DISABLE_VGPU_VERSION_CHECK=$DISABLE_VGPU_VERSION_CHECK
 # Avoid dependency of container-toolkit for driver container
 ENV NVIDIA_VISIBLE_DEVICES=void
 
+RUN echo "TARGETARCH=$TARGETARCH"
+
 ADD install.sh /tmp/
 
-RUN zypper --non-interactive install -y curl awk tar util-linux-systemd
+RUN zypper --gpg-auto-import-keys --non-interactive install -y curl awk tar util-linux-systemd
 
 RUN sh /tmp/install.sh depinstall && \
+    sh /tmp/install.sh setup_cuda_repo && \
     curl -fsSL -o /usr/local/bin/donkey https://github.com/3XX0/donkey/releases/download/v1.1.0/donkey && \
     curl -fsSL -o /usr/local/bin/extract-vmlinux https://raw.githubusercontent.com/torvalds/linux/master/scripts/extract-vmlinux && \
     chmod +x /usr/local/bin/donkey /usr/local/bin/extract-vmlinux && \
@@ -44,26 +56,18 @@ RUN sh /tmp/install.sh depinstall && \
 
 ADD drivers drivers/
 
-# Fetch the installer automatically for passthrough/baremetal types
+# Fetch the installer, fabricmanager and libnvidia-nscq automatically for passthrough/baremetal types
 RUN if [ "$DRIVER_TYPE" != "vgpu" ]; then \
-    versionArray=(${DRIVER_VERSION//./ }); \
-    DRIVER_BRANCH=${versionArray[0]}; \
-    if [ ${versionArray[0]} -ge 470 ] || ([ ${versionArray[0]} == 460 ] && [ ${versionArray[1]} -ge 91 ]); then \
-      fmPackage=nvidia-fabric-manager-${DRIVER_VERSION}-1; \
-    else \
-      fmPackage=nvidia-fabricmanager-${DRIVER_BRANCH}-${DRIVER_VERSION}-1; \
-    fi; \
-    nscqPackage=libnvidia-nscq-${DRIVER_BRANCH}-${DRIVER_VERSION}-1; \
     cd drivers && \
-    curl -fSsl -O $BASE_URL/$DRIVER_VERSION/NVIDIA-Linux-$DRIVER_ARCH-$DRIVER_VERSION.run && \
-    chmod +x NVIDIA-Linux-$DRIVER_ARCH-$DRIVER_VERSION.run && \
-    zypper --non-interactive addrepo https://developer.download.nvidia.com/compute/cuda/repos/sles15/$DRIVER_ARCH cuda-sles15 && \
-    zypper --gpg-auto-import-keys --non-interactive install -y ${fmPackage} ${nscqPackage} && \
-    zypper removerepo cuda-sles15; fi
+    sh /tmp/install.sh download_installer ; fi
+
+# Fetch the installer, fabricmanager, libnvidia-nscq, libnvsdm, imex packages
+RUN sh /tmp/install.sh extrapkgsinstall
 
 COPY nvidia-driver /usr/local/bin
 
-COPY --from=build /work/vgpu-util /usr/local/bin
+#COPY --from=build /work/vgpu-util* /usr/local/bin
+
 
 WORKDIR /drivers
 
@@ -82,6 +86,8 @@ LABEL summary="Provision the NVIDIA driver through containers"
 LABEL description="See summary"
 
 # Add NGC DL license from the CUDA image
-COPY --from=license /NGC-DL-CONTAINER-LICENSE /licenses/NGC-DL-CONTAINER-LICENSE
+RUN mkdir /licenses && curl -fsSL -o /licenses/NGC-DL-CONTAINER-LICENSE https://gitlab.com/nvidia/container-images/cuda/-/raw/master/NGC-DL-CONTAINER-LICENSE
+
+RUN zypper removerepo cuda-sles15
 
 ENTRYPOINT ["nvidia-driver", "init"]
