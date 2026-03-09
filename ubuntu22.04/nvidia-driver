@@ -28,7 +28,7 @@ echo "DRIVER_ARCH is $DRIVER_ARCH"
 _enable_fips_if_required() {
     if [[ -n "${UBUNTU_PRO_TOKEN}" && ${KERNEL_VERSION} =~ "fips" ]]; then
       echo "Ubuntu Pro token and FIPS kernel detected"
-      apt-get -qq install --no-install-recommends ubuntu-advantage-tools > /dev/null
+      apt-get install -y --no-install-recommends ubuntu-advantage-tools
       echo "Attaching Ubuntu Pro token..."
       pro attach --no-auto-enable "${UBUNTU_PRO_TOKEN}"
       echo "Enabling FIPS apt repo access..."
@@ -98,11 +98,11 @@ _install_prerequisites() (
     mkdir -p /lib/modules/${KERNEL_VERSION}/proc
 
     echo "Installing Linux kernel headers..."
-    apt-get -qq install --no-install-recommends linux-headers-${KERNEL_VERSION} > /dev/null
+    apt-get install -y --no-install-recommends linux-headers-${KERNEL_VERSION}
 
     echo "Installing Linux kernel module files..."
-    apt-get -qq download linux-image-${KERNEL_VERSION} && dpkg -x linux-image*.deb .
-    { apt-get -qq download linux-modules-${KERNEL_VERSION} && dpkg -x linux-modules*.deb . || true; } 2> /dev/null
+    apt-get download linux-image-${KERNEL_VERSION} && dpkg -x linux-image*.deb .
+    { apt-get download linux-modules-${KERNEL_VERSION} && dpkg -x linux-modules*.deb . || true; }
     mv lib/modules/${KERNEL_VERSION}/modules.* /lib/modules/${KERNEL_VERSION}
     mv lib/modules/${KERNEL_VERSION}/kernel /lib/modules/${KERNEL_VERSION}
     depmod ${KERNEL_VERSION}
@@ -120,7 +120,7 @@ _install_prerequisites() (
 # Cleanup the prerequisites installed above.
 _remove_prerequisites() {
     if [ "${PACKAGE_TAG:-}" != "builtin" ]; then
-        apt-get -qq purge linux-headers-${KERNEL_VERSION} > /dev/null
+        apt-get purge -y linux-headers-${KERNEL_VERSION}
         # TODO remove module files not matching an existing driver package.
     fi
 }

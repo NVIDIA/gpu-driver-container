@@ -28,7 +28,7 @@ echo "DRIVER_ARCH is $DRIVER_ARCH"
 _enable_fips_if_required() {
     if [[ -n "${UBUNTU_PRO_TOKEN}" && ${KERNEL_VERSION} =~ "fips" ]]; then
       echo "Ubuntu Pro token and FIPS kernel detected"
-      apt-get -qq install --no-install-recommends ubuntu-advantage-tools > /dev/null
+      apt-get install -y --no-install-recommends ubuntu-advantage-tools
 
       # This workaround is needed in Ubuntu 24.04 as OpenSSL attempts to leverage the FIPS provider
       # when the underlying kernel is FIPS enabled.
@@ -39,7 +39,7 @@ _enable_fips_if_required() {
       echo "Enabling FIPS apt repo access..."
       pro enable --access-only --assume-yes fips-updates
       echo "Installing the OpenSSL FIPS modules"
-      apt-get -qq install --no-install-recommends ubuntu-fips-userspace > /dev/null
+      apt-get install -y --no-install-recommends ubuntu-fips-userspace
 
       # With the OpenSSL FIPS module installed, OpenSSL can now work with the default settings,
       unset OPENSSL_FORCE_FIPS_MODE
@@ -108,11 +108,11 @@ _install_prerequisites() (
     mkdir -p /lib/modules/${KERNEL_VERSION}/proc
 
     echo "Installing Linux kernel headers..."
-    apt-get -qq install --no-install-recommends linux-headers-${KERNEL_VERSION} > /dev/null
+    apt-get install -y --no-install-recommends linux-headers-${KERNEL_VERSION}
 
     echo "Installing Linux kernel module files..."
-    apt-get -qq download linux-image-${KERNEL_VERSION} && dpkg -x linux-image*.deb .
-    { apt-get -qq download linux-modules-${KERNEL_VERSION} && dpkg -x linux-modules*.deb . || true; } 2> /dev/null
+    apt-get download linux-image-${KERNEL_VERSION} && dpkg -x linux-image*.deb .
+    { apt-get download linux-modules-${KERNEL_VERSION} && dpkg -x linux-modules*.deb . || true; }
     mv lib/modules/${KERNEL_VERSION}/modules.* /lib/modules/${KERNEL_VERSION}
     mv lib/modules/${KERNEL_VERSION}/kernel /lib/modules/${KERNEL_VERSION}
     depmod ${KERNEL_VERSION}
@@ -130,7 +130,7 @@ _install_prerequisites() (
 # Cleanup the prerequisites installed above.
 _remove_prerequisites() {
     if [ "${PACKAGE_TAG:-}" != "builtin" ]; then
-        apt-get -qq purge linux-headers-${KERNEL_VERSION} > /dev/null
+        apt-get purge -y linux-headers-${KERNEL_VERSION}
         # TODO remove module files not matching an existing driver package.
     fi
 }
