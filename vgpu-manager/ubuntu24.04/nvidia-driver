@@ -13,10 +13,24 @@ MODPROBE_CONFIG_DIR="/etc/modprobe.d"
 
 export DEBIAN_FRONTEND=noninteractive
 
+# Run apt-get -qq quietly, on failure print actual error to stdout and exit.
+_apt_quiet() {
+    local err_file
+    err_file=$(mktemp)
+    trap "rm -f \"$err_file\"" RETURN
+    if ! apt-get -qq "$@" 2>"$err_file"; then
+        echo "ERROR: apt-get failed (exit $?): $*"
+        echo "apt-get stderr:"
+        cat "$err_file"
+        return 1
+    fi
+    return 0
+}
+
 _update_package_cache() {
     if [ "${PACKAGE_TAG:-}" != "builtin" ]; then
         echo "Updating the package cache..."
-        apt-get -qq update
+        _apt_quiet update
     fi
 }
 
@@ -56,13 +70,13 @@ _install_prerequisites() {
     mkdir -p /lib/modules/${KERNEL_VERSION}/proc
 
     echo "Installing Linux kernel headers..."
-    apt-get -qq install --no-install-recommends linux-headers-${KERNEL_VERSION} > /dev/null
+    _apt_quiet install --no-install-recommends linux-headers-${KERNEL_VERSION}
 
     echo "Installing Linux kernel module files..."
-    apt-get -qq download linux-image-${KERNEL_VERSION} && dpkg -x linux-image*.deb .
-    { apt-get -qq download linux-modules-${KERNEL_VERSION} && dpkg -x linux-modules*.deb . || true; } 2> /dev/null
+    _apt_quiet download linux-image-${KERNEL_VERSION} && dpkg -x linux-image*.deb .
+    { _apt_quiet download linux-modules-${KERNEL_VERSION} && dpkg -x linux-modules*.deb . || true; }
     # linux-modules-extra contains pci-pf-stub which is required when enabling SR-IOV on a physical GPU
-    { apt-get -qq download linux-modules-extra-${KERNEL_VERSION} && dpkg -x linux-modules-extra*.deb . || true; } 2> /dev/null
+    { _apt_quiet download linux-modules-extra-${KERNEL_VERSION} && dpkg -x linux-modules-extra*.deb . || true; }
     mv lib/modules/${KERNEL_VERSION}/modules.* /lib/modules/${KERNEL_VERSION}
     mv lib/modules/${KERNEL_VERSION}/kernel /lib/modules/${KERNEL_VERSION}
     depmod ${KERNEL_VERSION}
@@ -80,7 +94,7 @@ _install_prerequisites() {
 # Cleanup the prerequisites installed above.
 _remove_prerequisites() {
     if [ "${PACKAGE_TAG:-}" != "builtin" ]; then
-        apt-get -qq purge linux-headers-${KERNEL_VERSION} > /dev/null
+        _apt_quiet purge linux-headers-${KERNEL_VERSION}
         # TODO remove module files not matching an existing driver package.
     fi
 }
