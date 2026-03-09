@@ -75,10 +75,24 @@ nvsdm_install() {
   fi
 }
 
+# Run apt-get -qq quietly, on failure print actual error to stdout and exit.
+_apt_quiet() {
+    local err_file
+    err_file=$(mktemp)
+    trap "rm -f \"$err_file\"" RETURN
+    if ! apt-get -qq "$@" 2>"$err_file"; then
+        echo "ERROR: apt-get failed (exit $?): $*"
+        echo "apt-get stderr:"
+        cat "$err_file"
+        return 1
+    fi
+    return 0
+}
+
 _update_package_cache() {
     if [ "${PACKAGE_TAG:-}" != "builtin" ]; then
         echo "Updating the package cache..."
-        if ! apt-get -qq update; then
+        if ! _apt_quiet update; then
             echo "ERROR: Failed to update package cache. "\
                  "Ensure that the cluster can access the proper networks."
             exit 1
