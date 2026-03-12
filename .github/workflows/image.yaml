@@ -198,5 +198,11 @@ jobs:
           PRECOMPILED: "true"
           DIST: signed_${{ matrix.dist }}
         run: |
-          source kernel_version.txt && \
+          source kernel_version.txt
+          # arm64 does not support azure-fde (package linux-objects-nvidia-*-azure-fde not available for arm64)
+          if [[ "${{ matrix.dist }}" == "ubuntu24.04" ]] && [[ "${{ matrix.flavor }}" != "azure-fde" ]]; then
+            export DOCKER_BUILD_PLATFORM_OPTIONS="--platform=linux/amd64,linux/arm64"
+          else
+            export DOCKER_BUILD_PLATFORM_OPTIONS="--platform=linux/amd64"
+          fi
           make DRIVER_VERSIONS=${DRIVER_VERSIONS} DRIVER_BRANCH=${{ matrix.driver }} build-${DIST}-${DRIVER_VERSION}
