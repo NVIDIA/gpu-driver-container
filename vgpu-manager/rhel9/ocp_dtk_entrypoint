@@ -32,6 +32,8 @@ nv-ctr-run-with-dtk() {
            /usr/local/bin/ocp_dtk_entrypoint \
            /usr/local/bin/nvidia-driver \
            /usr/sbin/lspci \
+           /usr/sbin/setpci \
+           /lib64/libpci.so.* \
            /driver \
            "$DRIVER_TOOLKIT_SHARED_DIR/"
 
@@ -108,9 +110,16 @@ dtk-build-driver() {
     cp -v \
        "$DRIVER_TOOLKIT_SHARED_DIR/nvidia-driver" \
        "$DRIVER_TOOLKIT_SHARED_DIR/lspci" \
+       "$DRIVER_TOOLKIT_SHARED_DIR/setpci" \
        "${DRIVER_TOOLKIT_SHARED_DIR}/bin"
 
     export PATH="${DRIVER_TOOLKIT_SHARED_DIR}/bin:$PATH";
+
+    mkdir "${DRIVER_TOOLKIT_SHARED_DIR}/lib" -p
+    cp -v \
+       "$DRIVER_TOOLKIT_SHARED_DIR"/libpci.so.* \
+       "${DRIVER_TOOLKIT_SHARED_DIR}/lib"
+    export LD_LIBRARY_PATH="${DRIVER_TOOLKIT_SHARED_DIR}/lib:$LD_LIBRARY_PATH";
 
     # ensure lspci is installed, as 'sriov-manage' script requires it
     if ! $(lspci >/dev/null); then
