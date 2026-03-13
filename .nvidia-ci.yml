@@ -600,8 +600,10 @@ update-nspect:
     pull_policy: always
   variables:
     GITLAB_ACCESS_TOKEN: "${CNT_GITLAB_TOKEN}"
+  before_script:
+    - export RELEASE_VERSION="${PUBLISH_VERSIONS// /_}"
   script:
-    - cnt-ngc-publish render --project-name "gpu-driver-container" --versions-file "build-info/${CI_PIPELINE_ID}-full.txt" --output gpu-driver-container.yaml
+    - cnt-ngc-publish render --project-name "gpu-driver-container" --nspect-release-version "${RELEASE_VERSION}" --versions-file "build-info/${CI_PIPELINE_ID}-full.txt" --output gpu-driver-container.yaml
     - cnt-ngc-publish merge-request --files "gpu-driver-container.yaml"
 
 # Raise an MR to publish the image to NGC
