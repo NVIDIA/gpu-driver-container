@@ -521,6 +521,12 @@ release:ngc-rocky9:
     - .release:ngc
     - .dist-rocky9
 
+release:ngc-rhel10:
+  extends:
+    - .release:ngc
+    - .dist-rhel10
+    - .driver-versions-rhel10
+
 release:ngc-rhel10.0:
   extends:
     - .release:ngc
