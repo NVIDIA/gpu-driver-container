@@ -79,39 +79,40 @@ _resolve_kernel_version() {
 }
 
 # Install the kernel modules header/builtin/order files and generate the kernel version string.
-_install_prerequisites() (
+_install_prerequisites() { 
     local tmp_dir=$(mktemp -d)
 
     trap "rm -rf ${tmp_dir}" EXIT
     cd ${tmp_dir}
-
-    rm -rf /lib/modules/${KERNEL_VERSION}
-    mkdir -p /lib/modules/${KERNEL_VERSION}/proc
-
-    echo "Installing Linux kernel headers..."
-    apt-get -qq install --no-install-recommends linux-headers-${KERNEL_VERSION} > /dev/null
-
-    echo "Installing Linux kernel module files..."
-    apt-get -qq download linux-image-${KERNEL_VERSION} && dpkg -x linux-image*.deb .
-    { apt-get -qq download linux-modules-${KERNEL_VERSION} && dpkg -x linux-modules*.deb . || true; } 2> /dev/null
-    mv lib/modules/${KERNEL_VERSION}/modules.* /lib/modules/${KERNEL_VERSION}
-    mv lib/modules/${KERNEL_VERSION}/kernel /lib/modules/${KERNEL_VERSION}
-    depmod ${KERNEL_VERSION}
+    
+    if [ "${PERSIST_DRIVER}" = false ]; then
+        rm -rf /lib/modules/${KERNEL_VERSION}
+    fi
+    
+    if [ ! -d "/usr/src/linux-headers-$(uname -r)/" ]; then
+        echo "Installing Linux kernel headers..."
+        apt-get -qq install --no-install-recommends linux-headers-${KERNEL_VERSION} > /dev/null
+    fi
+    
+    echo ${KERNEL_VERSION} > version
 
     echo "Generating Linux kernel version string..."
+    
+    mkdir -p /lib/modules/${KERNEL_VERSION}/proc
 
-    ls -1 boot/vmlinuz-* | sed  's/\/boot\/vmlinuz-//g' - > version
-    if [ -z "$(<version)" ]; then
-        echo "Could not locate Linux kernel version string" >&2
-        return 1
-    fi
     mv version /lib/modules/${KERNEL_VERSION}/proc
-)
+
+    if [ "${PERSIST_DRIVER}" = false ]; then
+        mv lib/modules/${KERNEL_VERSION}/modules.* /lib/modules/${KERNEL_VERSION}
+	mv lib/modules/${KERNEL_VERSION}/kernel /lib/modules/${KERNEL_VERSION}
+	depmod ${KERNEL_VERSION}
+    fi
+}
 
 # Cleanup the prerequisites installed above.
 _remove_prerequisites() {
     if [ "${PACKAGE_TAG:-}" != "builtin" ]; then
-        apt-get -qq purge linux-headers-${KERNEL_VERSION} > /dev/null
+        apt-get -qq purge linux-headers-${KERNEL_VERSION} > /dev/null || true
         # TODO remove module files not matching an existing driver package.
     fi
 }
