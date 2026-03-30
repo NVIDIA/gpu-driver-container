@@ -1,4 +1,4 @@
-FROM nvcr.io/nvidia/cuda:13.1.1-base-ubuntu24.04
+FROM nvcr.io/nvidia/cuda:13.2.0-base-ubuntu24.04
 
 ENV DEBIAN_FRONTEND=noninteractive
 
@@ -33,7 +33,7 @@ RUN dpkg --add-architecture i386 && \
 
 # Fetch GPG keys for CUDA repo
 RUN apt-key del 3bf863cc && \
-    rm /etc/apt/sources.list.d/cuda.list && \
+    rm /etc/apt/sources.list.d/cuda* && \
     curl -fsSL https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2404/x86_64/3bf863cc.pub | gpg --dearmor -o /etc/apt/keyrings/cuda.pub && \
     echo "deb [signed-by=/etc/apt/keyrings/cuda.pub] https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2404/x86_64 /" > /etc/apt/sources.list.d/cuda.list
 
