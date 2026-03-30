@@ -249,6 +249,7 @@ build-vgpuguest-%: DRIVER_TAG = $(DRIVER_VERSION:-grid=)
 
 # Source of truth for RHEL and CoreOS compatibility https://access.redhat.com/articles/6907891
 build-vgpuguest-rhcos%: SUBDIR = rhel9
+build-vgpuguest-rhel9%: SUBDIR = rhel9
 
 
 $(VGPU_GUEST_DRIVER_BUILD_TARGETS):
@@ -288,6 +289,7 @@ build-vgpuhost-%: DOCKERFILE = $(CURDIR)/vgpu-manager/$(SUBDIR)/Dockerfile
 
 # Source of truth for RHEL and CoreOS compatibility https://access.redhat.com/articles/6907891
 build-vgpuhost-rhcos%: SUBDIR = rhel9
+build-vgpuhost-rhel9%: SUBDIR = rhel9
 
 $(VGPU_HOST_DRIVER_BUILD_TARGETS):
 	DOCKER_BUILDKIT=1 \
