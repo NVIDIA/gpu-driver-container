@@ -178,7 +178,7 @@ $(DRIVER_BUILD_TARGETS):
 build-rhcos%: SUBDIR = rhel9
 
 build-rocky9%: SUBDIR = rhel9
-build-rocky9%: DOCKER_BUILD_ARGS = --build-arg BASE_IMAGE=nvcr.io/nvidia/cuda:13.1.1-base-rockylinux9
+build-rocky9%: DOCKER_BUILD_ARGS = --build-arg BASE_IMAGE=nvcr.io/nvidia/cuda:13.2.0-base-rockylinux9
 
 build-fedora%: SUBDIR = fedora
 
