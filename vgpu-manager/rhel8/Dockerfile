@@ -28,8 +28,8 @@ LABEL description="See summary"
 # Install / upgrade packages here that are required to resolve CVEs
 ARG CVE_UPDATES
 RUN if [ -n "${CVE_UPDATES}" ]; then \
-        yum update -y ${CVE_UPDATES} && \
-        rm -rf /var/cache/yum/*; \
+    dnf update -y ${CVE_UPDATES} && \
+    dnf clean all; \
     fi
 
 # Add NGC DL license from the CUDA image

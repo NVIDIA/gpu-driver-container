@@ -35,6 +35,8 @@ ENV TARGETARCH=$TARGETARCH
 
 SHELL ["/bin/bash", "-c"]
 
+RUN dnf update -y && dnf clean all
+
 #ARG BASE_URL=http://us.download.nvidia.com/XFree86/Linux-x86_64
 ARG BASE_URL=https://us.download.nvidia.com/tesla
 ARG DRIVER_VERSION
@@ -104,8 +106,8 @@ LABEL description="See summary"
 # Install / upgrade packages here that are required to resolve CVEs
 ARG CVE_UPDATES
 RUN if [ -n "${CVE_UPDATES}" ]; then \
-        yum update -y ${CVE_UPDATES} && \
-        rm -rf /var/cache/yum/*; \
+    dnf update -y ${CVE_UPDATES} && \
+    dnf clean all; \
     fi
 
 # Remove cuda repository to avoid GPG errors
