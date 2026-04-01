@@ -4,6 +4,7 @@ ARG DRIVER_VERSION
 ENV DRIVER_VERSION=$DRIVER_VERSION
 ARG DRIVER_ARCH=x86_64
 ENV DRIVER_ARCH=$DRIVER_ARCH
+ARG GIT_COMMIT=""
 
 # Remove cuda repository to avoid GPG errors
 RUN rm /etc/apt/sources.list.d/cuda.list
@@ -39,5 +40,14 @@ RUN if [ -n "${CVE_UPDATES}" ]; then \
 
 # Add NGC DL license from the CUDA image
 RUN mkdir /licenses && mv /NGC-DL-CONTAINER-LICENSE /licenses/NGC-DL-CONTAINER-LICENSE
+
+LABEL io.k8s.display-name="NVIDIA vGPU Manager Container"
+LABEL name="NVIDIA vGPU Manager Container"
+LABEL vendor="NVIDIA"
+LABEL version="${DRIVER_VERSION}"
+LABEL vcs-ref="${GIT_COMMIT}"
+LABEL release="N/A"
+LABEL summary="Provision the NVIDIA vGPU Manager (host driver) through containers"
+LABEL description="See summary"
 
 ENTRYPOINT ["nvidia-driver", "init"]
