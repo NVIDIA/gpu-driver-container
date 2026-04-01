@@ -90,7 +90,8 @@ RUN echo "${RHEL_VERSION}" > /etc/dnf/vars/releasever \
     && dnf config-manager --best --nodocs --setopt=install_weak_deps=False --save \
     && DRIVER_STREAM=$(echo ${DRIVER_VERSION} | cut -d '.' -f 1) \
     && dnf -y module enable nvidia-driver:${DRIVER_STREAM}/default \
-    && dnf -y install kmod binutils
+    && dnf -y install kmod binutils \
+    && dnf clean all
 
 # Prevent modprobe from giving a WARNING about missing files
 RUN rm -rf /lib/modules/${KERNEL_VERSION} \
@@ -100,7 +101,8 @@ RUN rm -rf /lib/modules/${KERNEL_VERSION} \
     && depmod ${KERNEL_VERSION}
 
 # Install the Driver modules
-RUN dnf install -y /rpms/kmod-nvidia-*.rpm
+RUN dnf install -y /rpms/kmod-nvidia-*.rpm \
+    && dnf clean all
 
 # Copy the rhsm-register script to enable subscription-manager during build time
 COPY --chmod=744 ./rhsm-register /usr/local/bin/rhsm-register
@@ -115,7 +117,8 @@ RUN --mount=type=secret,id=RHSM_ORG,target=/run/secrets/RHSM_ORG \
 	    nvidia-driver-libs-${DRIVER_VERSION} \
 	    nvidia-driver-NVML-${DRIVER_VERSION} \
         cuda-compat-${CUDA_DASHED_VERSION} \
-        cuda-cudart-${CUDA_DASHED_VERSION}
+        cuda-cudart-${CUDA_DASHED_VERSION} \
+    && dnf clean all
 
 RUN if [ "$DRIVER_TYPE" != "vgpu" ]; then \
         VERSION_ARRAY=(${DRIVER_VERSION//./ }) \
@@ -128,10 +131,15 @@ RUN if [ "$DRIVER_TYPE" != "vgpu" ]; then \
         && NSCQ_VERSION=${VERSION_ARRAY[0]}-${DRIVER_VERSION}-1 \
         && dnf install -y \
             nvidia-fabric-manager-${FABRIC_MANAGER_VERSION} \
-            libnvidia-nscq-${NSCQ_VERSION}; \
+            libnvidia-nscq-${NSCQ_VERSION} \
+        && dnf clean all; \
     fi
 
-RUN dnf clean all \
+ARG CVE_UPDATES
+RUN if [ -n "${CVE_UPDATES}" ]; then \
+        dnf update -y ${CVE_UPDATES}; \
+    fi \
+    && dnf clean all \
     && subscription-manager unregister
 
 LABEL io.k8s.display-name="NVIDIA Driver Container"

@@ -111,7 +111,8 @@ COPY --from=builder --chmod=444 /home/builder/yum-packaging-precompiled-kmod/tmp
 # Kernel packages needed to build drivers / kmod
 RUN echo "${RHEL_VERSION}" > /etc/dnf/vars/releasever \
     && dnf config-manager --best --nodocs --setopt=install_weak_deps=False --save \
-    && dnf -y install kmod binutils
+    && dnf -y install kmod binutils \
+    && dnf clean all
 
 # Prevent modprobe from giving a WARNING about missing files
 RUN rm -rf /lib/modules/${KERNEL_VERSION_NOARCH}.${BUILD_ARCH} \
@@ -128,6 +129,7 @@ COPY --from=builder /home/builder/yum-packaging-precompiled-kmod/RPMS/${TARGET_A
 
 # Install the Driver modules
 RUN dnf install -y /rpms/kmod-nvidia-*.rpm \
+    && dnf clean all \
     && rm -rf /rpms
 
 # Copy the rhsm-register script to enable subscription-manager during build time
@@ -162,10 +164,15 @@ RUN --mount=type=secret,id=RHSM_ORG,target=/run/secrets/RHSM_ORG \
             DRIVER_BRANCH=${versionArray[0]}; \
             dnf install -y nvidia-fabric-manager-${DRIVER_VERSION} libnvidia-nscq-${DRIVER_BRANCH}-${DRIVER_VERSION} ; \
         fi \
+        && dnf clean all \
         && subscription-manager unregister ; \
     fi
 
-RUN dnf clean all \
+ARG CVE_UPDATES
+RUN if [ -n "${CVE_UPDATES}" ]; then \
+        dnf update -y ${CVE_UPDATES}; \
+    fi \
+    && dnf clean all \
     && rm /usr/local/bin/rhsm-register
 
 LABEL io.k8s.display-name="NVIDIA Driver Container"
