@@ -37,13 +37,17 @@ jobs:
           - rhel8
           - rhel9
           - rhel10
+          - rocky8
           - rocky9
+          - rocky10
         ispr:
           - ${{github.event_name == 'pull_request'}}
         exclude:
           - dist: ubuntu24.04
             driver: 535.288.01
           - dist: rhel10
+            driver: 535.288.01
+          - dist: rocky10
             driver: 535.288.01
       fail-fast: false
     steps:

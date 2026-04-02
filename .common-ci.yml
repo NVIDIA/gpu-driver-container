@@ -131,9 +131,17 @@ trigger-pipeline:
   variables:
     DIST: rhel10
 
+.dist-rocky8:
+  variables:
+    DIST: rocky8
+
 .dist-rocky9:
   variables:
     DIST: rocky9
+
+.dist-rocky10:
+  variables:
+    DIST: rocky10
 
 .dist-fedora36:
   variables:
@@ -227,11 +235,27 @@ trigger-pipeline:
   rules:
     - if: $CI_PIPELINE_SOURCE != "schedule" && $CI_COMMIT_TAG == null
 
+.release-rocky10:
+  # Perform for each DRIVER_VERSION
+  extends:
+    - .release-generic
+    - .driver-versions-rhel10
+  rules:
+    - if: $CI_PIPELINE_SOURCE != "schedule" && $CI_COMMIT_TAG == null
+
 .release-rhel10:
   # Perform for each DRIVER_VERSION
   extends:
     - .release-generic
     - .driver-versions-rhel10
+  rules:
+    - if: $CI_PIPELINE_SOURCE != "schedule" && $CI_COMMIT_TAG == null
+
+.release-rocky8:
+  # Perform for each DRIVER_VERSION
+  extends:
+    - .release-generic
+    - .driver-versions
   rules:
     - if: $CI_PIPELINE_SOURCE != "schedule" && $CI_COMMIT_TAG == null
 
@@ -291,9 +315,27 @@ trigger-pipeline:
     OUT_REGISTRY: "${NGC_REGISTRY}"
     OUT_IMAGE_NAME: "${NGC_STAGING_REGISTRY}/driver"
 
+.release:staging-rocky8:
+  extends:
+    - .release-rocky8
+  variables:
+    OUT_REGISTRY_USER: "${NGC_REGISTRY_USER}"
+    OUT_REGISTRY_TOKEN: "${NGC_REGISTRY_TOKEN}"
+    OUT_REGISTRY: "${NGC_REGISTRY}"
+    OUT_IMAGE_NAME: "${NGC_STAGING_REGISTRY}/driver"
+
 .release:staging-rocky9:
   extends:
     - .release-rocky9
+  variables:
+    OUT_REGISTRY_USER: "${NGC_REGISTRY_USER}"
+    OUT_REGISTRY_TOKEN: "${NGC_REGISTRY_TOKEN}"
+    OUT_REGISTRY: "${NGC_REGISTRY}"
+    OUT_IMAGE_NAME: "${NGC_STAGING_REGISTRY}/driver"
+
+.release:staging-rocky10:
+  extends:
+    - .release-rocky10
   variables:
     OUT_REGISTRY_USER: "${NGC_REGISTRY_USER}"
     OUT_REGISTRY_TOKEN: "${NGC_REGISTRY_TOKEN}"
@@ -359,6 +401,13 @@ release:staging-rhel9:
   needs:
     - image-rhel9
 
+release:staging-rocky8:
+  extends:
+    - .release:staging
+    - .dist-rocky8
+  needs:
+    - image-rocky8
+
 #release:staging-rhel10:
 #  extends:
 #    - .release:staging
@@ -372,6 +421,13 @@ release:staging-rocky9:
     - .dist-rocky9
   needs:
     - image-rocky9
+
+release:staging-rocky10:
+  extends:
+    - .release:staging-rhel10
+    - .dist-rocky10
+  needs:
+    - image-rocky10
 
 .release:staging-precompiled:
   stage: release
