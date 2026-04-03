@@ -922,6 +922,12 @@ reload_nvidia_peermem() {
     fi
     # get any parameters provided for nvidia-peermem
     _get_module_params && set +o nounset
+    # If nvidia-peermem is already loaded (e.g. fast-path restart), skip modprobe
+    if [ -f /sys/module/nvidia_peermem/refcnt ]; then
+        echo "nvidia-peermem module already loaded, skipping modprobe"
+        sleep inf
+        trap "echo 'Caught signal'; exit 1" HUP INT QUIT PIPE TERM
+    fi
     if chroot /run/nvidia/driver modprobe nvidia-peermem "${NVIDIA_PEERMEM_MODULE_PARAMS[@]}"; then
         if [ -f /sys/module/nvidia_peermem/refcnt ]; then
             echo "successfully loaded nvidia-peermem module, now waiting for signal"
