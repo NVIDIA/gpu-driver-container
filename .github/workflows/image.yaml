@@ -101,6 +101,7 @@ jobs:
         driver:
           - 535
           - 580
+          - 595
         flavor:
           - aws
           - azure
