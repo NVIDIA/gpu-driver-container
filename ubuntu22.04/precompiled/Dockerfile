@@ -1,4 +1,6 @@
-FROM nvcr.io/nvidia/cuda:13.2.0-base-ubuntu22.04
+ARG BASE_IMAGE=ubuntu:jammy-20260410
+
+FROM ${BASE_IMAGE}
 
 ENV DEBIAN_FRONTEND=noninteractive
 
@@ -17,10 +19,6 @@ ENV NVIDIA_VISIBLE_DEVICES=void
 
 RUN echo 'debconf debconf/frontend select Noninteractive' | debconf-set-selections
 
-# Fetch GPG keys for CUDA repo
-RUN apt-key del 7fa2af80 && \
-    apt-key adv --fetch-keys "https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2204/x86_64/3bf863cc.pub"
-
 RUN dpkg --add-architecture i386 && \
     apt-get update && apt-get install -y --no-install-recommends \
         apt-utils \
@@ -33,6 +31,12 @@ RUN dpkg --add-architecture i386 && \
         libglvnd-dev \
         pkg-config && \
     rm -rf /var/lib/apt/lists/*
+
+# Fetch GPG keys for CUDA repo
+RUN rm -f /etc/apt/sources.list.d/cuda* && \
+    curl -fsSL https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2204/x86_64/cuda-keyring_1.1-1_all.deb -o cuda-keyring_1.1-1_all.deb && \
+    dpkg -i cuda-keyring_1.1-1_all.deb && \
+    rm -f cuda-keyring_1.1-1_all.deb
 
 RUN echo "deb [arch=amd64] http://archive.ubuntu.com/ubuntu/ jammy main universe" > /etc/apt/sources.list && \
     echo "deb [arch=amd64] http://archive.ubuntu.com/ubuntu/ jammy-updates main universe" >> /etc/apt/sources.list && \
