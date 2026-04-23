@@ -1,4 +1,5 @@
-FROM nvcr.io/nvidia/cuda:13.2.0-base-ubuntu24.04
+ARG BASE_IMAGE=ubuntu:noble-20260410
+FROM ${BASE_IMAGE}
 
 ENV DEBIAN_FRONTEND=noninteractive
 
@@ -25,17 +26,16 @@ RUN dpkg --add-architecture i386 && \
         curl \
         kmod \
         file \
-        gnupg \
         libelf-dev \
         libglvnd-dev \
         pkg-config && \
     rm -rf /var/lib/apt/lists/*
 
 # Fetch GPG keys for CUDA repo
-RUN apt-key del 3bf863cc && \
-    rm /etc/apt/sources.list.d/cuda* && \
-    curl -fsSL https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2404/x86_64/3bf863cc.pub | gpg --dearmor -o /etc/apt/keyrings/cuda.pub && \
-    echo "deb [signed-by=/etc/apt/keyrings/cuda.pub] https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2404/x86_64 /" > /etc/apt/sources.list.d/cuda.list
+RUN rm -f /etc/apt/sources.list.d/cuda* && \
+    curl -fsSL https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2404/x86_64/cuda-keyring_1.1-1_all.deb -o cuda-keyring_1.1-1_all.deb && \
+    dpkg -i cuda-keyring_1.1-1_all.deb && \
+    rm -f cuda-keyring_1.1-1_all.deb
 
 RUN usermod -o -u 0 -g 0 _apt
 
