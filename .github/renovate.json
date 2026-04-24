@@ -28,6 +28,32 @@
     "prHourlyLimit": 0,
     "additionalBranchPrefix": "{{packageFileDir}}-",
     "commitMessageSuffix": "[{{packageFileDir}}]",
+    "packageRules": [
+        {
+            "matchDatasources": [
+                "docker"
+            ],
+            "matchPackageNames": [
+                "ubuntu"
+            ],
+            "matchFileNames": [
+                "ubuntu22.04/**"
+            ],
+            "allowedVersions": "/^jammy(-\\d{8})?$/"
+        },
+        {
+            "matchDatasources": [
+                "docker"
+            ],
+            "matchPackageNames": [
+                "ubuntu"
+            ],
+            "matchFileNames": [
+                "ubuntu24.04/**"
+            ],
+            "allowedVersions": "/^noble(-\\d{8})?$/"
+        }
+    ],
     "customManagers": [
         {
             "customType": "regex",
