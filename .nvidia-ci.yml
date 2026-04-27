@@ -488,6 +488,11 @@ release:ngc-rhel8.10:
   variables:
     OUT_DIST: "rhel8.10"
 
+release:ngc-rhel8:
+  extends:
+    - .release:ngc
+    - .dist-rhel8
+
 release:ngc-rhel9.4:
   extends:
     - .release:ngc
@@ -515,6 +520,11 @@ release:ngc-rhel9.8:
     - .dist-rhel9
   variables:
     OUT_DIST: "rhel9.8"
+
+release:ngc-rhel9:
+  extends:
+    - .release:ngc
+    - .dist-rhel9
 
 release:ngc-rocky9:
   extends:
