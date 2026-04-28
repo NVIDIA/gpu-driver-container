@@ -17,6 +17,7 @@ dep_install () {
             curl \
             kmod \
             file \
+            gnupg \
             libelf-dev \
             libglvnd-dev \
             pkg-config && \
@@ -29,27 +30,18 @@ dep_install () {
             curl \
             kmod \
             file \
+            gnupg \
             libelf-dev \
             libglvnd-dev && \
         rm -rf /var/lib/apt/lists/*
     fi
 }
 
-repo_setup () {
-    if [ "$TARGETARCH" = "amd64" ]; then
-        echo "deb [arch=amd64] http://archive.ubuntu.com/ubuntu/ jammy main universe" > /etc/apt/sources.list && \
-        echo "deb [arch=amd64] http://archive.ubuntu.com/ubuntu/ jammy-updates main universe" >> /etc/apt/sources.list && \
-        echo "deb [arch=amd64] http://archive.ubuntu.com/ubuntu/ jammy-security main universe" >> /etc/apt/sources.list && \
-        usermod -o -u 0 -g 0 _apt
-    elif [ "$TARGETARCH" = "arm64" ]; then
-        echo "deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports jammy main universe" > /etc/apt/sources.list && \
-        echo "deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports jammy-updates main universe" >> /etc/apt/sources.list && \
-        echo "deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports jammy-security main universe" >> /etc/apt/sources.list && \
-        usermod -o -u 0 -g 0 _apt
-    else
-        echo "TARGETARCH doesn't match a known arch target"
-        exit 1
-    fi
+setup_cuda_repo() {
+    # Fetch public CUDA GPG key and configure apt to only use this key when downloading CUDA packages
+    OS_ARCH=${TARGETARCH/amd64/x86_64} && OS_ARCH=${OS_ARCH/arm64/sbsa};
+    curl -fSsL "https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2204/${OS_ARCH}/cuda-keyring_1.1-1_all.deb" -o cuda-keyring_1.1-1_all.deb
+    dpkg -i cuda-keyring_1.1-1_all.deb
 }
 
 fabricmanager_install() {
@@ -123,8 +115,8 @@ extra_pkgs_install() {
   fi
 }
 
-if [ "$1" = "reposetup" ]; then
-  repo_setup
+if [ "$1" = "setup_cuda_repo" ]; then
+  setup_cuda_repo
 elif [ "$1" = "depinstall" ]; then
   dep_install
 elif [ "$1" = "extra_pkgs_install" ]; then
