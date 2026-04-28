@@ -25,10 +25,24 @@ DRIVER_ARCH=${TARGETARCH/amd64/x86_64} && DRIVER_ARCH=${DRIVER_ARCH/arm64/aarch6
 
 echo "DRIVER_ARCH is $DRIVER_ARCH"
 
+# Run apt-get -qq quietly, on failure print actual error to stdout and exit.
+_apt_quiet() {
+    local err_file
+    err_file=$(mktemp)
+    trap "rm -f \"$err_file\"" RETURN
+    if ! apt-get -qq "$@" 2>"$err_file"; then
+        echo "ERROR: apt-get failed (exit $?): $*"
+        echo "apt-get stderr:"
+        cat "$err_file"
+        return 1
+    fi
+    return 0
+}
+
 _enable_fips_if_required() {
     if [[ -n "${UBUNTU_PRO_TOKEN}" && ${KERNEL_VERSION} =~ "fips" ]]; then
       echo "Ubuntu Pro token and FIPS kernel detected"
-      apt-get -qq install --no-install-recommends ubuntu-advantage-tools > /dev/null
+      _apt_quiet install --no-install-recommends ubuntu-advantage-tools
       echo "Attaching Ubuntu Pro token..."
       pro attach --no-auto-enable "${UBUNTU_PRO_TOKEN}"
       echo "Enabling FIPS apt repo access..."
@@ -39,7 +53,7 @@ _enable_fips_if_required() {
 _update_package_cache() {
     if [ "${PACKAGE_TAG:-}" != "builtin" ]; then
         echo "Updating the package cache..."
-        if ! apt-get -qq update; then
+        if ! _apt_quiet update; then
             echo "ERROR: Failed to update package cache. "\
                  "Ensure that the cluster can access the proper networks."
             exit 1
@@ -89,11 +103,11 @@ _install_prerequisites() (
     mkdir -p /lib/modules/${KERNEL_VERSION}/proc
 
     echo "Installing Linux kernel headers..."
-    apt-get -qq install --no-install-recommends linux-headers-${KERNEL_VERSION} > /dev/null
+    _apt_quiet install --no-install-recommends linux-headers-${KERNEL_VERSION}
 
     echo "Installing Linux kernel module files..."
-    apt-get -qq download linux-image-${KERNEL_VERSION} && dpkg -x linux-image*.deb .
-    { apt-get -qq download linux-modules-${KERNEL_VERSION} && dpkg -x linux-modules*.deb . || true; } 2> /dev/null
+    _apt_quiet download linux-image-${KERNEL_VERSION} && dpkg -x linux-image*.deb .
+    { _apt_quiet download linux-modules-${KERNEL_VERSION} && dpkg -x linux-modules*.deb . || true; }
     mv lib/modules/${KERNEL_VERSION}/modules.* /lib/modules/${KERNEL_VERSION}
     mv lib/modules/${KERNEL_VERSION}/kernel /lib/modules/${KERNEL_VERSION}
     depmod ${KERNEL_VERSION}
@@ -111,7 +125,7 @@ _install_prerequisites() (
 # Cleanup the prerequisites installed above.
 _remove_prerequisites() {
     if [ "${PACKAGE_TAG:-}" != "builtin" ]; then
-        apt-get -qq purge linux-headers-${KERNEL_VERSION} > /dev/null
+        _apt_quiet purge linux-headers-${KERNEL_VERSION}
         # TODO remove module files not matching an existing driver package.
     fi
 }
