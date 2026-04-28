@@ -1,4 +1,6 @@
-FROM nvcr.io/nvidia/cuda:13.2.0-base-ubuntu22.04 AS build
+ARG BASE_IMAGE=ubuntu:jammy-20260410
+
+FROM ${BASE_IMAGE} AS build
 
 ARG TARGETARCH
 ARG GOLANG_VERSION
@@ -38,7 +40,7 @@ RUN if [ "$DRIVER_TYPE" = "vgpu" ]; then \
     go build -o vgpu-util && \
     mv vgpu-util /work; fi
 
-FROM nvcr.io/nvidia/cuda:13.2.0-base-ubuntu22.04
+FROM ${BASE_IMAGE}
 
 SHELL ["/bin/bash", "-c"]
 
@@ -67,11 +69,8 @@ RUN echo "TARGETARCH=$TARGETARCH"
 
 ADD install.sh /tmp
 
-# Fetch GPG keys for CUDA repo
-RUN apt-key del 7fa2af80 && OS_ARCH=${TARGETARCH/amd64/x86_64} && OS_ARCH=${OS_ARCH/arm64/sbsa} && \
-    apt-key adv --fetch-keys "https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2204/${OS_ARCH}/3bf863cc.pub"
-
-RUN /tmp/install.sh reposetup && /tmp/install.sh depinstall && \
+RUN usermod -o -u 0 -g 0 _apt && \
+    /tmp/install.sh depinstall && /tmp/install.sh setup_cuda_repo && \
     curl -fsSL -o /usr/local/bin/donkey https://github.com/3XX0/donkey/releases/download/v1.1.0/donkey && \
     chmod +x /usr/local/bin/donkey
 
@@ -107,11 +106,5 @@ RUN if [ -n "${CVE_UPDATES}" ]; then \
         apt-get update && apt-get --only-upgrade -y install ${CVE_UPDATES} && \
         rm -rf /var/lib/apt/lists/*; \
     fi
-
-# Remove cuda repository to avoid GPG errors
-RUN rm -f /etc/apt/sources.list.d/cuda*
-
-# Add NGC DL license from the CUDA image
-RUN mkdir /licenses && mv /NGC-DL-CONTAINER-LICENSE /licenses/NGC-DL-CONTAINER-LICENSE
 
 ENTRYPOINT ["nvidia-driver", "init"]
