@@ -30,8 +30,10 @@ _mount_rootfs() {
     mkdir -p ${RUN_DIR}/driver
     mount --rbind / ${RUN_DIR}/driver
 
-    echo "Change device files security context for selinux compatibility"
-    chcon -R -t container_file_t ${RUN_DIR}/driver/dev
+    if command -v selinuxenabled >/dev/null 2>&1 && selinuxenabled; then
+        echo "Change device files security context for selinux compatibility"
+        chcon -R -t container_file_t ${RUN_DIR}/driver/dev
+    fi
 }
 
 # Unmount the driver rootfs from the run directory.
