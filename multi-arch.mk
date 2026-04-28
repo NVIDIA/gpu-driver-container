@@ -24,8 +24,5 @@ $(DRIVER_PUSH_TARGETS): push-%:
 		$(IMAGE) $(OUT_IMAGE)
 
 # No multi-arch support for the following distributions
-build-ubuntu18.04%: DOCKER_BUILD_PLATFORM_OPTIONS = --platform=linux/amd64
-build-signed_ubuntu20.04%: DOCKER_BUILD_PLATFORM_OPTIONS = --platform=linux/amd64
 build-signed_ubuntu22.04%: DOCKER_BUILD_PLATFORM_OPTIONS = --platform=linux/amd64
 build-signed_ubuntu24.04%: DOCKER_BUILD_PLATFORM_OPTIONS = --platform=linux/amd64
-build-sles%: DOCKER_BUILD_PLATFORM_OPTIONS = --platform=linux/amd64

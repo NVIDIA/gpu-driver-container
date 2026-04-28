@@ -54,7 +54,7 @@ OUT_IMAGE_TAG = $(OUT_IMAGE_VERSION)-$(OUT_DIST)
 OUT_IMAGE = $(OUT_IMAGE_NAME):$(OUT_IMAGE_TAG)
 
 ##### Public rules #####
-DISTRIBUTIONS := ubuntu18.04 ubuntu20.04 ubuntu22.04 ubuntu24.04 signed_ubuntu20.04 signed_ubuntu22.04 signed_ubuntu24.04 rhel8 rhel9 rhel10 rocky9 flatcar fedora36 sles15.3 precompiled_rhcos
+DISTRIBUTIONS := ubuntu22.04 ubuntu24.04 signed_ubuntu22.04 signed_ubuntu24.04 rhel8 rhel9 rhel10 rocky9 precompiled_rhcos
 RHCOS_VERSIONS := rhcos4.14 rhcos4.15 rhcos4.16 rhcos4.17 rhcos4.18 rhel9.6
 PUSH_TARGETS := $(patsubst %, push-%, $(DISTRIBUTIONS))
 BASE_FROM := noble jammy focal
@@ -90,9 +90,6 @@ pull-%: DRIVER_BRANCH = $(word 1,$(subst ., ,${DRIVER_VERSION}))
 
 $(PULL_TARGETS): %: $(foreach driver_version, $(DRIVER_VERSIONS), $(addprefix %-, $(driver_version)))
 
-pull-signed_ubuntu20.04%: DIST = signed-ubuntu20.04
-pull-signed_ubuntu20.04%: DRIVER_TAG = $(DRIVER_BRANCH)
-
 pull-signed_ubuntu22.04%: DIST = ubuntu22.04
 pull-signed_ubuntu22.04%: DRIVER_TAG = $(DRIVER_BRANCH)
 pull-signed_ubuntu22.04%: IMAGE_TAG = $(DRIVER_BRANCH)-$(KERNEL_VERSION)-$(DIST)
@@ -111,9 +108,6 @@ archive-%: DRIVER_BRANCH = $(word 1,$(subst ., ,${DRIVER_VERSION}))
 
 $(ARCHIVE_TARGETS): %: $(foreach driver_version, $(DRIVER_VERSIONS), $(addprefix %-, $(driver_version)))
 
-archive-signed_ubuntu20.04%: DIST = signed-ubuntu20.04
-archive-signed_ubuntu20.04%: DRIVER_TAG = $(DRIVER_BRANCH)
-
 archive-signed_ubuntu22.04%: DIST = ubuntu22.04
 archive-signed_ubuntu22.04%: DRIVER_TAG = $(DRIVER_BRANCH)
 archive-signed_ubuntu22.04%: IMAGE_TAG = $(if $(VERSION),$(VERSION)-)$(DRIVER_BRANCH)-$(KERNEL_VERSION)-$(DIST)
@@ -131,12 +125,9 @@ push-%: DIST = $(word 2,$(subst -, ,$@))
 push-%: DRIVER_VERSION = $(word 3,$(subst -, ,$@))
 push-%: DRIVER_BRANCH = $(word 1,$(subst ., ,${DRIVER_VERSION}))
 
-# push-ubuntu20.04 pushes all driver images for ubuntu20.04
-# push-ubuntu20.04-$(DRIVER_VERSION) pushes an image for the specific $(DRIVER_VERSION)
+# push-ubuntu22.04 pushes all driver images for ubuntu22.04
+# push-ubuntu22.04-$(DRIVER_VERSION) pushes an image for the specific $(DRIVER_VERSION)
 $(PUSH_TARGETS): %: $(foreach driver_version, $(DRIVER_VERSIONS), $(addprefix %-, $(driver_version)))
-
-push-signed_ubuntu20.04%: DIST = signed-ubuntu20.04
-push-signed_ubuntu20.04%: DRIVER_TAG = $(DRIVER_BRANCH)
 
 push-signed_ubuntu22.04%: DIST = ubuntu22.04
 push-signed_ubuntu22.04%: DRIVER_TAG = $(DRIVER_BRANCH)
@@ -156,8 +147,8 @@ build-%: DRIVER_BRANCH = $(word 1,$(subst ., ,${DRIVER_VERSION}))
 build-%: SUBDIR = $(word 2,$(subst -, ,$@))
 build-%: DOCKERFILE = $(CURDIR)/$(SUBDIR)/Dockerfile
 
-# Both ubuntu20.04 and build-ubuntu20.04 trigger a build of all driver images for ubuntu20.04
-# build-ubuntu20.04-$(DRIVER_VERSION) triggers a build for a specific $(DRIVER_VERSION)
+# Both ubuntu22.04 and build-ubuntu22.04 trigger a build of all driver images for ubuntu22.04
+# build-ubuntu22.04-$(DRIVER_VERSION) triggers a build for a specific $(DRIVER_VERSION)
 $(DISTRIBUTIONS): %: build-%
 $(BUILD_TARGETS): %: $(foreach driver_version, $(DRIVER_VERSIONS), $(addprefix %-, $(driver_version)))
 $(DRIVER_BUILD_TARGETS):
@@ -179,16 +170,6 @@ build-rhcos%: SUBDIR = rhel9
 
 build-rocky9%: SUBDIR = rhel9
 build-rocky9%: DOCKER_BUILD_ARGS = --build-arg BASE_IMAGE=nvcr.io/nvidia/cuda:13.2.0-base-rockylinux9
-
-build-fedora%: SUBDIR = fedora
-
-build-sles15%: SUBDIR = sle15
-build-sles%: DOCKER_BUILD_ARGS = --build-arg SLES_VERSION=$(subst sles,,$(word 2,$(subst -, ,$@)))
-
-# ubuntu20.04 Precompiled Driver
-build-signed_ubuntu20.04%: DIST = signed-ubuntu20.04
-build-signed_ubuntu20.04%: SUBDIR = ubuntu20.04/precompiled
-build-signed_ubuntu20.04%: DRIVER_TAG = $(DRIVER_BRANCH)
 
 # ubuntu22.04 Precompiled Driver
 build-signed_ubuntu22.04%: DIST = ubuntu22.04

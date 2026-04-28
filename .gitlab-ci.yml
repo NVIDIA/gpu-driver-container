@@ -76,11 +76,6 @@ include:
   rules:
     - if: $CI_PIPELINE_SOURCE != "schedule"
 
-image-ubuntu20.04:
-  extends:
-    - .image-build
-    - .dist-ubuntu20.04
-
 image-ubuntu22.04:
   extends:
     - .image-build-ubuntu22.04

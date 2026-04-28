@@ -49,14 +49,12 @@ driver_container_build_simple()
 
 driver_container_build_ubuntu()
 {
-  driver_container_build_simple "ubuntu18.04"
-  driver_container_build_simple "ubuntu20.04"
-  driver_container_build_simple "ubuntu16.04"
+  driver_container_build_simple "ubuntu22.04"
+  driver_container_build_simple "ubuntu24.04"
 }
 
 driver_container_build_rhel()
 {
-  driver_container_build_simple "rhel7"
   driver_container_build_simple "rhel8"
   driver_container_build_simple "rhel9"
   driver_container_build_simple "rhel10"
