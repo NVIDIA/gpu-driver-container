@@ -65,6 +65,17 @@
             ],
             "datasourceTemplate": "docker",
             "versioningTemplate": "ubuntu"
+        },
+        {
+            "customType": "regex",
+            "managerFilePatterns": [
+                "/(^|/)Makefile$/"
+            ],
+            "matchStrings": [
+                "DOCKER_BUILD_ARGS\\s*=\\s*--build-arg\\s+BASE_IMAGE=(?<depName>\\S+):(?<currentValue>\\S+)"
+            ],
+            "datasourceTemplate": "docker",
+            "versioningTemplate": "docker"
         }
     ]
 }
