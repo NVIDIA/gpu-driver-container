@@ -28,9 +28,9 @@ jobs:
     strategy:
       matrix:
         driver:
-          - 535.288.01
-          - 580.126.20
-          - 595.58.03
+          - 535.309.01
+          - 580.159.03
+          - 595.71.05
         dist:
           - ubuntu22.04
           - ubuntu24.04
@@ -42,9 +42,9 @@ jobs:
           - ${{github.event_name == 'pull_request'}}
         exclude:
           - dist: ubuntu24.04
-            driver: 535.288.01
+            driver: 535.309.01
           - dist: rhel10
-            driver: 535.288.01
+            driver: 535.309.01
       fail-fast: false
     steps:
       - uses: actions/checkout@v6
