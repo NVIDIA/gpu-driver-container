@@ -161,10 +161,20 @@ image-rhel10:
     - .image-pull-rhel10
     - .dist-rhel10
 
+image-rocky8:
+  extends:
+    - .image-pull
+    - .dist-rocky8
+
 image-rocky9:
   extends:
     - .image-pull
     - .dist-rocky9
+
+image-rocky10:
+  extends:
+    - .image-pull-rhel10
+    - .dist-rocky10
 
 # The .scan step forms the base of the image scan operation performed before releasing
 # images.
@@ -381,6 +391,22 @@ scan-rhel10-arm64:
   needs:
     - image-rhel10
 
+scan-rocky8-amd64:
+  extends:
+    - .scan
+    - .dist-rocky8
+    - .platform-amd64
+  needs:
+    - image-rocky8
+
+scan-rocky8-arm64:
+  extends:
+    - .scan
+    - .dist-rocky8
+    - .platform-arm64
+  needs:
+    - image-rocky8
+
 scan-rocky9-amd64:
   extends:
     - .scan
@@ -396,6 +422,22 @@ scan-rocky9-arm64:
     - .platform-arm64
   needs:
     - image-rocky9
+
+scan-rocky10-amd64:
+  extends:
+    - .scan-rhel10
+    - .dist-rocky10
+    - .platform-amd64
+  needs:
+    - image-rocky10
+
+scan-rocky10-arm64:
+  extends:
+    - .scan-rhel10
+    - .dist-rocky10
+    - .platform-arm64
+  needs:
+    - image-rocky10
 
 .release:ngc-variables:
   variables:
@@ -526,10 +568,21 @@ release:ngc-rhel9:
     - .release:ngc
     - .dist-rhel9
 
+release:ngc-rocky8:
+  extends:
+    - .release:ngc
+    - .dist-rocky8
+
 release:ngc-rocky9:
   extends:
     - .release:ngc
     - .dist-rocky9
+
+release:ngc-rocky10:
+  extends:
+    - .release:ngc
+    - .dist-rocky10
+    - .driver-versions-rhel10
 
 release:ngc-rhel10:
   extends:

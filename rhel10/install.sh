@@ -39,32 +39,45 @@ dep_installer () {
         kmod
   fi
 
-  # Download unzboot as kernel images are compressed in the zboot format on RHEL 9 arm64
+  if ! dnf install -y 'dnf-command(config-manager)'; then
+    dnf install -y dnf5-plugins
+  fi
+
+  # Download unzboot as kernel images are compressed in the zboot format on RHEL 10 arm64
   # unzboot is only available on the EPEL RPM repo
-  rpm --import  https://dl.fedoraproject.org/pub/epel/RPM-GPG-KEY-EPEL-10
-  dnf install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-10.noarch.rpm
-  dnf config-manager --enable epel
-  
-  # Try to install unzboot, but continue if not available (only in EPEL 10.2+)
-  if ! dnf install -y unzboot 2>/dev/null; then
-    echo "Warning: unzboot package not available in current EPEL version (requires EPEL 10.2+)"
-    echo "Attempting to build unzboot from source..."
-    
-   # Install meson build dependencies
-    dnf install -y git gcc meson ninja-build glib2-devel zlib-devel libzstd-devel || true
-    git clone https://github.com/eballetbo/unzboot.git 2>/dev/null
-    cd unzboot
-    if meson setup build && meson compile -C build; then
-      echo "Successfully built unzboot from source"
-      cp build/unzboot /usr/bin/unzboot
-      chmod +x /usr/bin/unzboot
-    else
-      echo "Warning: Failed to build unzboot from source. Kernel extraction may fall back to gunzip methods."
+  if [ "$DRIVER_ARCH" = "aarch64" ]; then
+    rpm --import https://dl.fedoraproject.org/pub/epel/RPM-GPG-KEY-EPEL-10
+    dnf install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-10.noarch.rpm
+    dnf config-manager --enable epel
+    # Try to install unzboot, but continue if not available (only in EPEL 10.2+)
+    if ! dnf install -y unzboot; then
+      echo "Warning: unzboot package not available in current EPEL version; continuing without it."
+
+      # Install meson build dependencies
+      if dnf install -y git gcc meson ninja-build glib2-devel zlib-devel libzstd-devel; then
+        if command -v meson >/dev/null 2>&1 && command -v ninja >/dev/null 2>&1; then
+          if git clone https://github.com/eballetbo/unzboot.git /tmp/unzboot-src 2>/dev/null; then
+            if meson setup /tmp/unzboot-src/build /tmp/unzboot-src && meson compile -C /tmp/unzboot-src/build; then
+              cp /tmp/unzboot-src/build/unzboot /usr/bin/unzboot
+              chmod +x /usr/bin/unzboot
+              echo "Built and installed unzboot from source"
+            else
+              echo "Warning: Failed to build unzboot from source; continuing without it."
+            fi
+            rm -rf /tmp/unzboot-src
+          else
+            echo "Warning: Unable to clone unzboot source; continuing without it."
+          fi
+        else
+          echo "Warning: meson or ninja not available; continuing without unzboot."
+        fi
+
+        dnf remove -y git meson ninja-build glib2-devel zlib-devel libzstd-devel || true
+        dnf autoremove -y || true
+      else
+        echo "Warning: Could not install build dependencies for unzboot; continuing without it."
+      fi
     fi
-    cd ..
-    rm -rf unzboot
-    dnf remove -y git meson ninja-build glib2-devel zlib-devel libzstd-devel || true
-    dnf autoremove -y || true
   fi
   rm -rf /var/cache/yum/*
 }
