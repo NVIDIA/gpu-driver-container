@@ -296,6 +296,11 @@ jobs:
           exclude_combined_values=$(printf '%s\n' "${kernel_versions[@]}" | jq -R . | jq -s -c 'map(select(test("azure")))')
           exclude_combined_values=$(echo "$exclude_combined_values" | jq -c '[.[] | {kernel_version: .}]')
           echo "exclude_combined_values Kernel Versions : $exclude_combined_values"
+          # If all collected kernel versions are excluded, treat the matrix as empty so a standalone azure kernel release does not trigger e2e tests.
+          all_matched=$(echo "$combined_values" | jq -r --argjson exclude "$exclude_combined_values" 'all(. == ($exclude[].kernel_version))')
+          if [ "$all_matched" = "true" ]; then
+            echo "matrix_values_not_empty=0" >> $GITHUB_OUTPUT
+          fi
           echo "matrix_values=$combined_values" >> $GITHUB_OUTPUT
           echo "exclude_matrix_values=$exclude_combined_values" >> $GITHUB_OUTPUT
           published_kernels=$(printf " %s " "${kernel_versions[@]}")
