@@ -2,6 +2,7 @@
     "extends": [
         "config:recommended"
     ],
+    "dependencyDashboard": false,
     "enabledManagers": [
         "dockerfile",
         "custom.regex"
