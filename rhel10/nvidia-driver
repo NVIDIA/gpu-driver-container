@@ -147,9 +147,13 @@ _install_prerequisites() (
 
     if [ -z "$(<version)" ]; then
         echo "extract-vmlinux image extraction failed. Falling back to unzboot..."
-        unzboot /lib/modules/${KERNEL_VERSION}/vmlinuz vmlinuz.out
-        < vmlinuz.out strings | grep -E '^Linux version' | sed 's/^\(.*\)\s\+(.*)$/\1/' > version
-        rm vmlinuz.out
+        if command -v unzboot >/dev/null 2>&1; then
+            unzboot /lib/modules/${KERNEL_VERSION}/vmlinuz vmlinuz.out
+            < vmlinuz.out strings | grep -E '^Linux version' | sed 's/^\(.*\)\s\+(.*)$/\1/' > version
+            rm vmlinuz.out
+        else
+            echo "unzboot is not installed."
+        fi
     fi
 
     if [ -z "$(<version)" ]; then

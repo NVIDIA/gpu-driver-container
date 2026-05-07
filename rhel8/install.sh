@@ -38,6 +38,8 @@ dep_installer () {
         cpio \
         kmod
   fi
+
+  dnf install -y 'dnf-command(config-manager)'
   rm -rf /var/cache/yum/*
 }
 
