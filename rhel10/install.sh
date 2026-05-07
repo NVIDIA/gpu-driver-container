@@ -16,6 +16,7 @@ dep_installer () {
         glibc \
         make \
         cpio \
+        file \
         kmod
   elif [ "$DRIVER_ARCH" = "ppc64le" ]; then
     dnf install -y \
@@ -26,6 +27,7 @@ dep_installer () {
         glibc \
         make \
         cpio \
+        file \
         kmod
   elif [ "$DRIVER_ARCH" = "aarch64" ]; then
     dnf install -y \
@@ -36,6 +38,7 @@ dep_installer () {
         glibc \
         make \
         cpio \
+        file \
         kmod
   fi
 
@@ -49,9 +52,10 @@ dep_installer () {
     rpm --import https://dl.fedoraproject.org/pub/epel/RPM-GPG-KEY-EPEL-10
     dnf install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-10.noarch.rpm
     dnf config-manager --enable epel
-    # Try to install unzboot, but continue if not available (only in EPEL 10.2+)
+    # Try to install unzboot from EPEL. If it is not available yet, build it
+    # from source because RHEL/Rocky 10 arm64 kernel images require it.
     if ! dnf install -y unzboot; then
-      echo "Warning: unzboot package not available in current EPEL version; continuing without it."
+      echo "unzboot package not available in current EPEL version; building from source."
 
       # Install meson build dependencies
       if dnf install -y git gcc meson ninja-build glib2-devel zlib-devel libzstd-devel; then
@@ -62,20 +66,24 @@ dep_installer () {
               chmod +x /usr/bin/unzboot
               echo "Built and installed unzboot from source"
             else
-              echo "Warning: Failed to build unzboot from source; continuing without it."
+              echo "Error: Failed to build unzboot from source." >&2
+              rm -rf /tmp/unzboot-src
+              return 1
             fi
             rm -rf /tmp/unzboot-src
           else
-            echo "Warning: Unable to clone unzboot source; continuing without it."
+            echo "Error: Unable to clone unzboot source." >&2
+            return 1
           fi
         else
-          echo "Warning: meson or ninja not available; continuing without unzboot."
+          echo "Error: meson or ninja not available." >&2
+          return 1
         fi
 
         dnf remove -y git meson ninja-build glib2-devel zlib-devel libzstd-devel || true
-        dnf autoremove -y || true
       else
-        echo "Warning: Could not install build dependencies for unzboot; continuing without it."
+        echo "Error: Could not install build dependencies for unzboot." >&2
+        return 1
       fi
     fi
   fi
