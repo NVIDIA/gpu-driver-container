@@ -46,6 +46,13 @@ dep_installer () {
     dnf install -y dnf5-plugins
   fi
 
+  OS_RELEASE_ID=$(grep -oP '(?<=^ID=).+' /etc/os-release | tr -d '"')
+  if [ "$OS_RELEASE_ID" = "rocky" ]; then
+    dnf config-manager --set-enabled crb
+  elif [ "$OS_RELEASE_ID" = "rhel" ]; then
+    dnf config-manager --set-enabled codeready-builder-for-rhel-10-${DRIVER_ARCH}-rpms || true
+  fi
+
   # Download unzboot as kernel images are compressed in the zboot format on RHEL 10 arm64
   # unzboot is only available on the EPEL RPM repo
   if [ "$DRIVER_ARCH" = "aarch64" ]; then
@@ -64,6 +71,10 @@ dep_installer () {
             if meson setup /tmp/unzboot-src/build /tmp/unzboot-src && meson compile -C /tmp/unzboot-src/build; then
               cp /tmp/unzboot-src/build/unzboot /usr/bin/unzboot
               chmod +x /usr/bin/unzboot
+              runtime_pkgs=$(ldd /usr/bin/unzboot | awk '/=> \// { print $3 } /^\// { print $1 }' | xargs -r rpm -q --whatprovides | sort -u)
+              if [ -n "$runtime_pkgs" ]; then
+                dnf install -y $runtime_pkgs
+              fi
               echo "Built and installed unzboot from source"
             else
               echo "Error: Failed to build unzboot from source." >&2
@@ -81,6 +92,7 @@ dep_installer () {
         fi
 
         dnf remove -y git meson ninja-build glib2-devel zlib-devel libzstd-devel || true
+        dnf autoremove -y || true
       else
         echo "Error: Could not install build dependencies for unzboot." >&2
         return 1
