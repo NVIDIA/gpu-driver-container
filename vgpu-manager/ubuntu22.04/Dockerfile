@@ -5,6 +5,15 @@ ENV DRIVER_VERSION=$DRIVER_VERSION
 ARG DRIVER_ARCH=x86_64
 ENV DRIVER_ARCH=$DRIVER_ARCH
 
+# Optional: inject custom CA certificates so apt can verify TLS when building
+# behind a corporate MITM proxy. Drop one or more *.crt files into the build
+# context's "certs/" directory (the default), or override CUSTOM_CA_CERTS_DIR
+# with a path to a different directory inside the build context. When the
+# directory is empty, this is a no-op.
+ARG CUSTOM_CA_CERTS_DIR=certs
+COPY ${CUSTOM_CA_CERTS_DIR}/ /usr/local/share/ca-certificates/
+RUN update-ca-certificates
+
 # Remove cuda repository to avoid GPG errors
 RUN rm /etc/apt/sources.list.d/cuda*.list
 
