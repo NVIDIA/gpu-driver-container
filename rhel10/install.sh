@@ -191,6 +191,8 @@ extra_pkgs_install() {
     nvsdm_install
     nvlink5_pkgs_install
     imex_install
+    rm -rf /usr/share/doc/*
+    dnf clean all
   fi
 }
 
