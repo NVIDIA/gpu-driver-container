@@ -10,7 +10,7 @@ ENV DRIVER_TYPE=$DRIVER_TYPE
 
 SHELL ["/bin/bash", "-c"]
 
-RUN dnf install -y git wget
+RUN dnf install -y --nodocs git wget && dnf clean all
 
 # download appropriate binary based on the target architecture for multi-arch builds
 RUN OS_ARCH=${TARGETARCH/x86_64/amd64} && OS_ARCH=${OS_ARCH/aarch64/arm64} && \
