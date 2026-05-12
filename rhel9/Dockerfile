@@ -1,4 +1,4 @@
-ARG BASE_IMAGE=registry.access.redhat.com/ubi9/ubi:9.7-1778044007
+ARG BASE_IMAGE=registry.access.redhat.com/ubi9/ubi:9.7-1778576335
 FROM ${BASE_IMAGE} as build
 
 ARG TARGETARCH
