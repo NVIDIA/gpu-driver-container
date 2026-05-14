@@ -112,6 +112,20 @@ image-precompiled-ubuntu24.04:
     - .driver-versions-precompiled-ubuntu24.04
     - .image-pull-generic
 
+image-precompiled-ubuntu26.04:
+  variables:
+    DIST: signed_ubuntu26.04
+    BASE_TARGET: questing
+    PRECOMPILED: "true"
+    CVE_UPDATES: "curl libc6"
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "schedule"
+      when: delayed
+      start_in: 30 minutes
+  extends:
+    - .driver-versions-precompiled-ubuntu26.04
+    - .image-pull-generic
+
 .image-pull-ubuntu22.04:
   # Perform for each DRIVER_VERSION
   extends:
@@ -281,6 +295,18 @@ image-rocky10:
     - !reference [.scan-rules-common, rules]
     - !reference [.precompiled-rules, rules]
 
+.scan-precompiled-ubuntu26.04:
+  variables:
+    DIST: signed_ubuntu26.04
+    BASE_TARGET: questing
+    PRECOMPILED: "true"
+  extends:
+    - .driver-versions-precompiled-ubuntu26.04
+    - .scan-generic
+  rules:
+    - !reference [.scan-rules-common, rules]
+    - !reference [.precompiled-rules, rules]
+
 .scan-precompiled-ubuntu22.04:
   variables:
     DIST: signed_ubuntu22.04
@@ -333,6 +359,15 @@ scan-precompiled-ubuntu24.04-amd64:
     - .platform-amd64
   needs:
     - image-precompiled-ubuntu24.04
+
+scan-precompiled-ubuntu26.04-amd64:
+  variables:
+    PLATFORM: linux/amd64
+  extends:
+    - .scan-precompiled-ubuntu26.04
+    - .platform-amd64
+  needs:
+    - image-precompiled-ubuntu26.04
 
 scan-precompiled-ubuntu22.04-amd64:
   variables:
@@ -475,6 +510,18 @@ release:ngc-precompiled-ubuntu24.04:
     - .release:ngc-variables
   rules:
   - !reference [.precompiled-rules, rules]
+
+release:ngc-precompiled-ubuntu26.04:
+  variables:
+    DIST: signed_ubuntu26.04
+    BASE_TARGET: questing
+    PRECOMPILED: "true"
+  extends:
+    - .driver-versions-precompiled-ubuntu26.04
+    - .release-generic
+    - .release:ngc-variables
+  rules:
+    - !reference [.precompiled-rules, rules]
 
 release:ngc-precompiled-ubuntu22.04:
   variables:

@@ -110,6 +110,14 @@ trigger-pipeline:
         KERNEL_FLAVOR: [aws, azure, azure-fde, generic, nvidia, oracle]
         LTS_KERNEL: ["6.8"]
 
+# Define the matrix of precompiled jobs that can be run in parallel for ubuntu26.04
+.driver-versions-precompiled-ubuntu26.04:
+  parallel:
+    matrix:
+      - DRIVER_BRANCH: [580]
+        KERNEL_FLAVOR: [aws, azure, azure-fde, generic, nvidia, oracle]
+        LTS_KERNEL: ["6.14"]
+
 .dist-ubuntu22.04:
   variables:
     DIST: ubuntu22.04
@@ -467,3 +475,14 @@ release:staging-precompiled-ubuntu24.04:
     - .release:staging-precompiled
   needs:
     - image-precompiled-ubuntu24.04
+
+# Precompiled Ubuntu26.04 release
+release:staging-precompiled-ubuntu26.04:
+  variables:
+    DIST: signed_ubuntu26.04
+    BASE_TARGET: questing
+  extends:
+    - .driver-versions-precompiled-ubuntu26.04
+    - .release:staging-precompiled
+  needs:
+    - image-precompiled-ubuntu26.04
