@@ -74,6 +74,7 @@ jobs:
             dist: ubuntu24.04
           - flavor: azure-fde
             dist: ubuntu22.04
+      max-parallel: 20
     steps:
       - uses: actions/checkout@v6
         name: Check out code
