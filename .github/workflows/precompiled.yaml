@@ -402,7 +402,7 @@ jobs:
           fi
 
       - name: Set up Holodeck
-        uses: NVIDIA/holodeck@v0.3.2
+        uses: NVIDIA/holodeck@ubuntu26.04
         env:
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
