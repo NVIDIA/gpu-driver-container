@@ -33,7 +33,7 @@ RUN chmod +x /usr/local/bin/generate-ci-config && \
 ENTRYPOINT ["/usr/bin/sleep","1000"]
 
 # Ubuntu 22.04
-FROM ubuntu:jammy-20260410 AS jammy
+FROM ubuntu:jammy-20260509 AS jammy
 
 SHELL ["/bin/bash", "-c"]
 
