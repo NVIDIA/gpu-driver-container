@@ -162,7 +162,19 @@ RUN --mount=type=secret,id=RHSM_ORG,target=/run/secrets/RHSM_ORG \
         && if [ "$DRIVER_TYPE" != "vgpu" ] && [ "$TARGETARCH" != "aarch64" ]; then \
             versionArray=(${DRIVER_VERSION//./ }); \
             DRIVER_BRANCH=${versionArray[0]}; \
+            if [ "$DRIVER_BRANCH" -ge "580" ]; then \
+            dnf install -y nvidia-fabricmanager-${DRIVER_VERSION} libnvidia-nscq-${DRIVER_VERSION}; \
+            else \
             dnf install -y nvidia-fabric-manager-${DRIVER_VERSION} libnvidia-nscq-${DRIVER_BRANCH}-${DRIVER_VERSION} ; \
+            fi \
+            if [ "$DRIVER_BRANCH" -ge "580" ]; then \
+            dnf install -y nvidia-imex-${DRIVER_VERSION} libnvdsm-${DRIVER_VERSION}; \
+            elif [ "$DRIVER_BRANCH" -ge "570" ]; then \
+            dnf install -y nvidia-imex-${DRIVER_BRANCH}-${DRIVER_VERSION} libnvsdm-${DRIVER_BRANCH}-${DRIVER_VERSION} ; \
+            fi \
+            if [ "$DRIVER_BRANCH" -ge "550" ]; then \
+            dnf install install -y infiniband-diags nvlsm ; \
+            fi \
         fi \
         && dnf clean all \
         && subscription-manager unregister ; \
