@@ -28,35 +28,28 @@ jobs:
   set-driver-version-matrix:
     runs-on: linux-amd64-cpu4
     outputs:
-      driver_branch: ${{ steps.extract_driver_branch.outputs.driver_branch }}
-      kernel_flavors: ${{ steps.extract_driver_branch.outputs.kernel_flavors }}
-      dist: ${{ steps.extract_driver_branch.outputs.dist }}
-      lts_kernel: ${{ steps.extract_driver_branch.outputs.lts_kernel }}
+      driver_branch: ${{ steps.generate_matrix_config.outputs.driver_branch }}
+      exclude_build_matrix_pairs: ${{ steps.generate_matrix_config.outputs.exclude_build_matrix_pairs }}
+      exclude_precompiled_build_matrix: ${{ steps.generate_matrix_config.outputs.exclude_precompiled_build_matrix }}
+      exclude_precompiled_e2e_matrix: ${{ steps.generate_matrix_config.outputs.exclude_precompiled_e2e_matrix }}
+      kernel_flavors: ${{ steps.generate_matrix_config.outputs.kernel_flavors }}
+      dist: ${{ steps.generate_matrix_config.outputs.dist }}
+      lts_kernel: ${{ steps.generate_matrix_config.outputs.lts_kernel }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
       - name: Read driver versions
-        id: extract_driver_branch
+        id: generate_matrix_config
         run: |
-          # get driver_branch
-          DRIVER_BRANCH=("535" "580")
-          driver_branch_json=$(printf '%s\n' "${DRIVER_BRANCH[@]}" | jq -R . | jq -cs .)
-          echo "driver_branch=$driver_branch_json" >> $GITHUB_OUTPUT
+          CONFIG_FILE=.github/precompiled-matrix-config.json
 
-          # get kernel flavors
-          KERNEL_FLAVORS=("aws" "azure" "azure-fde" "generic" "nvidia" "oracle")
-          kernel_flavors_json=$(printf '%s\n' "${KERNEL_FLAVORS[@]}" | jq -R . | jq -cs .)
-          echo "kernel_flavors=$kernel_flavors_json" >> $GITHUB_OUTPUT
-
-          # get ubuntu distributions
-          DIST=("ubuntu22.04" "ubuntu24.04")
-          dist_json=$(printf '%s\n' "${DIST[@]}" | jq -R . | jq -cs .)
-          echo "dist=$dist_json" >> $GITHUB_OUTPUT
-
-          # LTS_KERNEL setup
-          LTS_KERNEL=("5.15" "6.8")
-          lts_kernel_json=$(printf '%s\n' "${LTS_KERNEL[@]}" | jq -R . | jq -cs .)
-          echo "lts_kernel=$lts_kernel_json" >> $GITHUB_OUTPUT
+          echo "driver_branch=$(jq -c '.driver_branch' "$CONFIG_FILE")" >> "$GITHUB_OUTPUT"
+          echo "kernel_flavors=$(jq -c '.kernel_flavors' "$CONFIG_FILE")" >> "$GITHUB_OUTPUT"
+          echo "dist=$(jq -c '.dist' "$CONFIG_FILE")" >> "$GITHUB_OUTPUT"
+          echo "lts_kernel=$(jq -c '.lts_kernel' "$CONFIG_FILE")" >> "$GITHUB_OUTPUT"
+          echo "exclude_build_matrix_pairs=$(jq -c '.exclude_build_matrix_pairs' "$CONFIG_FILE")" >> "$GITHUB_OUTPUT"
+          echo "exclude_precompiled_build_matrix=$(jq -c '.exclude_precompiled_build_matrix' "$CONFIG_FILE")" >> "$GITHUB_OUTPUT"
+          echo "exclude_precompiled_e2e_matrix=$(jq -c '.exclude_precompiled_e2e_matrix' "$CONFIG_FILE")" >> "$GITHUB_OUTPUT"
 
   precompiled-build-image:
     needs: set-driver-version-matrix
@@ -67,13 +60,7 @@ jobs:
         flavor: ${{ fromJson(needs.set-driver-version-matrix.outputs.kernel_flavors) }}
         dist: ${{ fromJson(needs.set-driver-version-matrix.outputs.dist) }}
         lts_kernel: ${{ fromJson(needs.set-driver-version-matrix.outputs.lts_kernel) }}
-        exclude:
-          - dist: ubuntu24.04
-            driver_branch: 535
-          - lts_kernel: 5.15
-            dist: ubuntu24.04
-          - flavor: azure-fde
-            dist: ubuntu22.04
+        exclude: ${{ fromJson(needs.set-driver-version-matrix.outputs.exclude_precompiled_build_matrix) }}
       max-parallel: 20
     steps:
       - uses: actions/checkout@v6
@@ -181,9 +168,7 @@ jobs:
       matrix:
         dist: ${{ fromJson(needs.set-driver-version-matrix.outputs.dist) }}
         lts_kernel: ${{ fromJson(needs.set-driver-version-matrix.outputs.lts_kernel) }}
-        exclude:
-          - lts_kernel: 5.15
-            dist: ubuntu24.04
+        exclude: ${{ fromJson(needs.set-driver-version-matrix.outputs.exclude_precompiled_e2e_matrix) }}
     needs:
       - precompiled-build-image
       - set-driver-version-matrix
@@ -213,14 +198,14 @@ jobs:
           kernel_flavors_json='${{ needs.set-driver-version-matrix.outputs.kernel_flavors }}'
           KERNEL_FLAVORS=($(echo "$kernel_flavors_json" | jq -r '.[]'))
           driver_branch_json='${{ needs.set-driver-version-matrix.outputs.driver_branch }}'
-          DRIVER_BRANCHES=($(echo "$driver_branch_json" | jq -r '.[]'))
-
-          # remove 535 driver branch for ubuntu24.04
-          if [ "$DIST" == "ubuntu24.04" ]; then
-            DRIVER_BRANCHES=($(for branch in "${DRIVER_BRANCHES[@]}"; do
-            [[ $branch != "535" ]] && echo "$branch"
-          done))
-          fi
+          exclude_pairs_json='${{ needs.set-driver-version-matrix.outputs.exclude_build_matrix_pairs }}'
+          DRIVER_BRANCHES=()
+          for branch in $(echo "$driver_branch_json" | jq -r '.[]'); do
+            pair="$DIST $branch"
+            if ! echo "$exclude_pairs_json" | jq -r '.[]' | grep -qx "$pair"; then
+              DRIVER_BRANCHES+=("$branch")
+            fi
+          done
           source ./tests/scripts/ci-precompiled-helpers.sh
           KERNEL_VERSIONS=($(get_kernel_versions_to_test KERNEL_FLAVORS[@] DRIVER_BRANCHES[@] $DIST $LTS_KERNEL))
           if [ -z "$KERNEL_VERSIONS" ]; then
@@ -359,9 +344,6 @@ jobs:
           echo "DIST=$DIST" >> $GITHUB_ENV
           KERNEL_VERSION=${KERNEL_VERSION%-*}
           echo "KERNEL_VERSION=$KERNEL_VERSION" >> $GITHUB_ENV
-          driver_branch_json="${{ needs.set-driver-version-matrix.outputs.driver_branch }}"
-          DRIVER_BRANCHES=($(echo "$driver_branch_json" | jq -r '.[]'))
-          echo "DRIVER_BRANCHES=${DRIVER_BRANCHES[*]}" >> $GITHUB_ENV
       - name: Configure Holodeck e2e test config (kernel, instance)
         run: |
           yq eval '.spec += {"kernel": {"version": strenv(KERNEL_VERSION)}}' -i tests/holodeck_ubuntu.yaml
@@ -402,15 +384,13 @@ jobs:
           GH_TOKEN:  ${{ secrets.GITHUB_TOKEN }}
         run: |
           rc=0
-          # for precompiled driver we are setting driver branch as driver version
-          DRIVER_BRANCHES=(${{ env.DRIVER_BRANCHES }})
-          # remove 535 driver branch for ubuntu24.04
-          if [ "$DIST" == "ubuntu24.04" ]; then
-            DRIVER_BRANCHES=($(for branch in "${DRIVER_BRANCHES[@]}"; do
-            [[ $branch != "535" ]] && echo "$branch"
-          done))
-          fi
+          DRIVER_BRANCHES=($(echo '${{ needs.set-driver-version-matrix.outputs.driver_branch }}' | jq -r '.[]'))
+          EXCLUDE_PAIRS='${{ needs.set-driver-version-matrix.outputs.exclude_build_matrix_pairs }}'
           for DRIVER_VERSION in "${DRIVER_BRANCHES[@]}"; do
+            pair="$DIST $DRIVER_VERSION"
+            if echo "$EXCLUDE_PAIRS" | jq -r '.[]' | grep -qx "$pair"; then
+              continue
+            fi
             echo "Running e2e for DRIVER_VERSION=$DRIVER_VERSION"
             status=0
             TEST_CASE_ARGS="${GPU_OPERATOR_OPTIONS} --set driver.version=${DRIVER_VERSION}"
@@ -456,18 +436,26 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name:  Set image vars
+        id: set_image_vars
         run: |
           echo "PRIVATE_REGISTRY=ghcr.io" >> $GITHUB_ENV
+          KERNEL_VERSION="${{ matrix.kernel_version }}"
+          DIST="${KERNEL_VERSION##*-}"
+          pair="$DIST ${{ matrix.driver_branch }}"
+          echo "run_publish=true" >> $GITHUB_OUTPUT
+          if echo '${{ needs.set-driver-version-matrix.outputs.exclude_build_matrix_pairs }}' | jq -r '.[]' | grep -qx "$pair"; then
+            echo "run_publish=false" >> $GITHUB_OUTPUT
+          fi
 
       - name: Download base image artifact
-        if: ${{ ! (matrix.driver_branch == 535 && contains(matrix.kernel_version, 'ubuntu24.04')) }}
+        if: steps.set_image_vars.outputs.run_publish == 'true'
         uses: actions/download-artifact@v8
         with:
           name: base-images-${{ matrix.driver_branch }}-${{ matrix.kernel_version }}
           path: ./
 
       - name: Publish base image
-        if: ${{ ! (matrix.driver_branch == 535 && contains(matrix.kernel_version, 'ubuntu24.04')) }}
+        if: steps.set_image_vars.outputs.run_publish == 'true'
         run: |
           LTS_KERNEL=$(echo "${{ matrix.kernel_version }}" | sed -E 's/^([0-9]+\.[0-9]+)\..*/\1/')
           KERNEL_FLAVOR=$(echo "${{ matrix.kernel_version }}" | sed -E 's/^[0-9]+\.[0-9]+\.[0-9]+-[0-9]+-(.*)-ubuntu[0-9]+\.[0-9]+$/\1/')
@@ -487,14 +475,14 @@ jobs:
           fi
 
       - name: Download built image artifact
-        if: ${{ ! (matrix.driver_branch == 535 && contains(matrix.kernel_version, 'ubuntu24.04')) }}
+        if: steps.set_image_vars.outputs.run_publish == 'true'
         uses: actions/download-artifact@v8
         with:
            name: driver-images-${{ matrix.driver_branch }}-${{ matrix.kernel_version }}
            path: ./
 
       - name: Publish image
-        if: ${{ ! (matrix.driver_branch == 535 && contains(matrix.kernel_version, 'ubuntu24.04')) }}
+        if: steps.set_image_vars.outputs.run_publish == 'true'
         run: |
           image_path="./driver-images-${{ matrix.driver_branch }}-${{ matrix.kernel_version }}.tar"
           echo "uploading  $image_path"
@@ -506,7 +494,7 @@ jobs:
           fi
 
       - name: Slack notification
-        if: ${{ ! (matrix.driver_branch == 535 && contains(matrix.kernel_version, 'ubuntu24.04')) && github.ref == 'refs/heads/main' }}
+        if: ${{ steps.set_image_vars.outputs.run_publish == 'true' && github.ref == 'refs/heads/main' }}
         uses: slackapi/slack-github-action@v3.0.3
         with:
           token: ${{ secrets.SLACK_BOT_TOKEN }}
