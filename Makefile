@@ -54,10 +54,10 @@ OUT_IMAGE_TAG = $(OUT_IMAGE_VERSION)-$(OUT_DIST)
 OUT_IMAGE = $(OUT_IMAGE_NAME):$(OUT_IMAGE_TAG)
 
 ##### Public rules #####
-DISTRIBUTIONS := ubuntu22.04 ubuntu24.04 signed_ubuntu22.04 signed_ubuntu24.04 rhel8 rhel9 rhel10 rocky8 rocky9 rocky10 precompiled_rhcos
+DISTRIBUTIONS := ubuntu22.04 ubuntu24.04 signed_ubuntu22.04 signed_ubuntu24.04 signed_ubuntu26.04 rhel8 rhel9 rhel10 rocky8 rocky9 rocky10 precompiled_rhcos
 RHCOS_VERSIONS := rhcos4.14 rhcos4.15 rhcos4.16 rhcos4.17 rhcos4.18 rhel9.6
 PUSH_TARGETS := $(patsubst %, push-%, $(DISTRIBUTIONS))
-BASE_FROM := noble jammy
+BASE_FROM := resolute noble jammy
 PUSH_TARGETS := $(patsubst %, push-%, $(DISTRIBUTIONS))
 VGPU_GUEST_DRIVER_PUSH_TARGETS := $(patsubst %, push-vgpuguest-%, $(DISTRIBUTIONS) $(RHCOS_VERSIONS))
 VGPU_HOST_DRIVER_PUSH_TARGETS := $(patsubst %, push-vgpuhost-%, $(DISTRIBUTIONS) $(RHCOS_VERSIONS))
@@ -98,6 +98,10 @@ pull-signed_ubuntu24.04%: DIST = ubuntu24.04
 pull-signed_ubuntu24.04%: DRIVER_TAG = $(DRIVER_BRANCH)
 pull-signed_ubuntu24.04%: IMAGE_TAG = $(DRIVER_BRANCH)-$(KERNEL_VERSION)-$(DIST)
 
+pull-signed_ubuntu26.04%: DIST = ubuntu26.04
+pull-signed_ubuntu26.04%: DRIVER_TAG = $(DRIVER_BRANCH)
+pull-signed_ubuntu26.04%: IMAGE_TAG = $(DRIVER_BRANCH)-$(KERNEL_VERSION)-$(DIST)
+
 PLATFORM ?= linux/amd64
 $(DRIVER_PULL_TARGETS): pull-%:
 	$(DOCKER) pull "--platform=$(PLATFORM)" "$(IMAGE)"
@@ -115,6 +119,10 @@ archive-signed_ubuntu22.04%: IMAGE_TAG = $(if $(VERSION),$(VERSION)-)$(DRIVER_BR
 archive-signed_ubuntu24.04%: DIST = ubuntu24.04
 archive-signed_ubuntu24.04%: DRIVER_TAG = $(DRIVER_BRANCH)
 archive-signed_ubuntu24.04%: IMAGE_TAG = $(if $(VERSION),$(VERSION)-)$(DRIVER_BRANCH)-$(KERNEL_VERSION)-$(DIST)
+
+archive-signed_ubuntu26.04%: DIST = ubuntu26.04
+archive-signed_ubuntu26.04%: DRIVER_TAG = $(DRIVER_BRANCH)
+archive-signed_ubuntu26.04%: IMAGE_TAG = $(if $(VERSION),$(VERSION)-)$(DRIVER_BRANCH)-$(KERNEL_VERSION)-$(DIST)
 
 $(DRIVER_ARCHIVE_TARGETS): archive-%:
 	$(DOCKER) save "$(IMAGE)" -o "archive.tar"
@@ -138,6 +146,11 @@ push-signed_ubuntu24.04%: DIST = ubuntu24.04
 push-signed_ubuntu24.04%: DRIVER_TAG = $(DRIVER_BRANCH)
 push-signed_ubuntu24.04%: IMAGE_TAG = $(if $(VERSION),$(VERSION)-)$(DRIVER_BRANCH)-$(KERNEL_VERSION)-$(DIST)
 push-signed_ubuntu24.04%: OUT_IMAGE_TAG = $(if $(VERSION),$(VERSION)-)$(DRIVER_BRANCH)-$(KERNEL_VERSION)-$(DIST)
+
+push-signed_ubuntu26.04%: DIST = ubuntu26.04
+push-signed_ubuntu26.04%: DRIVER_TAG = $(DRIVER_BRANCH)
+push-signed_ubuntu26.04%: IMAGE_TAG = $(if $(VERSION),$(VERSION)-)$(DRIVER_BRANCH)-$(KERNEL_VERSION)-$(DIST)
+push-signed_ubuntu26.04%: OUT_IMAGE_TAG = $(if $(VERSION),$(VERSION)-)$(DRIVER_BRANCH)-$(KERNEL_VERSION)-$(DIST)
 
 # $(DRIVER_BUILD_TARGETS) is in the form of build-$(DIST)-$(DRIVER_VERSION)
 # Parse the target to set the required variables.
@@ -190,6 +203,14 @@ build-signed_ubuntu24.04%: SUBDIR = ubuntu24.04/precompiled
 build-signed_ubuntu24.04%: DRIVER_TAG = $(DRIVER_BRANCH)
 build-signed_ubuntu24.04%: IMAGE_TAG = $(if $(VERSION),$(VERSION)-)$(DRIVER_BRANCH)-$(KERNEL_VERSION)-$(DIST)
 build-signed_ubuntu24.04%: DOCKER_BUILD_ARGS =  --build-arg KERNEL_VERSION="$(KERNEL_VERSION)"
+
+# ubuntu26.04 Precompiled Driver
+build-signed_ubuntu26.04%: DIST = ubuntu26.04
+build-signed_ubuntu26.04%: SUBDIR = .
+build-signed_ubuntu26.04%: DOCKERFILE = $(CURDIR)/ubuntu26.04/precompiled/Dockerfile
+build-signed_ubuntu26.04%: DRIVER_TAG = $(DRIVER_BRANCH)
+build-signed_ubuntu26.04%: IMAGE_TAG = $(if $(VERSION),$(VERSION)-)$(DRIVER_BRANCH)-$(KERNEL_VERSION)-$(DIST)
+build-signed_ubuntu26.04%: DOCKER_BUILD_ARGS = --build-arg KERNEL_VERSION="$(KERNEL_VERSION)"
 
 # base is an image used to poll Canonical for the latest kernel version
 # LTS_KERNEL must be defined in the environment when invoking this target.
@@ -298,4 +319,3 @@ $(VGPU_HOST_DRIVER_BUILD_TARGETS):
 push-vgpuhost-%: $(if $(VGPU_HOST_DRIVER_VERSION),,$(error "VGPU_HOST_DRIVER_VERSION is not set"))
 push-vgpuhost-%: DRIVER_TAG = $(VGPU_HOST_DRIVER_VERSION)
 push-vgpuhost-%: DIST = $(word 3,$(subst -, ,$@))
-
