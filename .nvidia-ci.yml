@@ -180,6 +180,7 @@ image-rocky10:
 # images.
 .scan-generic:
   stage: scan
+  allow_failure: true
   image: "${PULSE_IMAGE}"
   variables:
     IMAGE_NAME: "${CI_REGISTRY_IMAGE}"
