@@ -606,6 +606,14 @@ release:ngc-rhel10.1:
   variables:
     OUT_DIST: "rhel10.1"
 
+release:ngc-rhel10.2:
+  extends:
+    - .release:ngc
+    - .dist-rhel10
+    - .driver-versions-rhel10
+  variables:
+    OUT_DIST: "rhel10.2"
+
 generate-build-info:
   stage: ngc-publish
   artifacts:
