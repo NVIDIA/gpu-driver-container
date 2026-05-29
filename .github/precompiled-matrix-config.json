@@ -1,5 +1,5 @@
 {
-  "driver_branch": ["535", "580"],
+  "driver_branch": ["535", "580", "595"],
   "kernel_flavors": ["aws", "azure", "azure-fde", "generic", "nvidia", "oracle"],
   "dist": ["ubuntu22.04", "ubuntu24.04"],
   "lts_kernel": ["5.15", "6.8"],
