@@ -1,13 +1,10 @@
 {
-  "driver_branch": ["535", "580", "595"],
+  "driver_branch": ["580", "595"],
   "kernel_flavors": ["aws", "azure", "azure-fde", "generic", "nvidia", "oracle"],
   "dist": ["ubuntu22.04", "ubuntu24.04"],
   "lts_kernel": ["5.15", "6.8"],
-  "exclude_build_matrix_pairs": [
-    { "dist": "ubuntu24.04", "driver_branch": "535" }
-  ],
+  "exclude_build_matrix_pairs": [],
   "exclude_precompiled_build_matrix": [
-    { "dist": "ubuntu24.04", "driver_branch": "535" },
     { "lts_kernel": "5.15", "dist": "ubuntu24.04" },
     { "flavor": "azure-fde", "dist": "ubuntu22.04" }
   ],
