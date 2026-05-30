@@ -28,7 +28,6 @@ jobs:
     strategy:
       matrix:
         driver:
-          - 535.309.01
           - 580.159.04
           - 595.71.05
         dist:
@@ -42,13 +41,6 @@ jobs:
           - rocky10
         ispr:
           - ${{github.event_name == 'pull_request'}}
-        exclude:
-          - dist: ubuntu24.04
-            driver: 535.309.01
-          - dist: rhel10
-            driver: 535.309.01
-          - dist: rocky10
-            driver: 535.309.01
       fail-fast: false
     steps:
       - uses: actions/checkout@v6
@@ -103,7 +95,6 @@ jobs:
     strategy:
       matrix:
         driver:
-          - 535
           - 580
           - 595
         flavor:
@@ -130,14 +121,10 @@ jobs:
             flavor: nvidia
           - ispr: true
             flavor: oracle
-          - driver: 535
-            dist: ubuntu24.04
           - lts_kernel: 5.15
             dist: ubuntu24.04
           - flavor: azure-fde
             dist: ubuntu22.04
-          - dist: rhel10
-            driver: 535
     steps:
       - uses: actions/checkout@v6
         name: Check out code
