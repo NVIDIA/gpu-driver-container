@@ -1,4 +1,4 @@
-ARG BASE_IMAGE=ubuntu:noble-20260410
+ARG BASE_IMAGE=dockerhub.nvidia.com/ubuntu:noble-20260410
 FROM ${BASE_IMAGE}
 
 ENV DEBIAN_FRONTEND=noninteractive

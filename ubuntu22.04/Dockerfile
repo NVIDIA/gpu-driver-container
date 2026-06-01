@@ -1,4 +1,4 @@
-ARG BASE_IMAGE=ubuntu:jammy-20260509
+ARG BASE_IMAGE=dockerhub.nvidia.com/ubuntu:jammy-20260509
 
 FROM ${BASE_IMAGE} AS build
 
