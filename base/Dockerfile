@@ -1,5 +1,5 @@
 # Ubuntu 24.04
-FROM ubuntu:noble-20260410 AS noble
+FROM ubuntu:noble-20260509.1 AS noble
 
 SHELL ["/bin/bash", "-c"]
 
