@@ -107,8 +107,10 @@ _install_prerequisites() (
     fi
 
     dnf config-manager --set-enabled rhel-10-for-$DRIVER_ARCH-baseos-eus-rpms  || true
+    dnf config-manager --set-enabled rhel-10-for-$DRIVER_ARCH-appstream-eus-rpms  || true
     if ! dnf makecache --releasever=${DNF_RELEASEVER}; then
     	dnf config-manager --set-disabled rhel-10-for-$DRIVER_ARCH-baseos-eus-rpms || true
+        dnf config-manager --set-disabled rhel-10-for-$DRIVER_ARCH-appstream-eus-rpms || true
     fi
 
     # try with EUS disabled, if it does not work, then try just major version
