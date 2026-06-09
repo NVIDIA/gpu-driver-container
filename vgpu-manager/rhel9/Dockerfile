@@ -17,6 +17,7 @@ ARG DRIVER_VERSION
 ENV DRIVER_VERSION=$DRIVER_VERSION
 ARG DRIVER_ARCH=x86_64
 ENV DRIVER_ARCH=$DRIVER_ARCH
+ARG GIT_COMMIT=""
 
 RUN mkdir -p /driver
 WORKDIR /driver
@@ -34,6 +35,7 @@ LABEL io.k8s.display-name="NVIDIA vGPU Manager Container"
 LABEL name="NVIDIA vGPU Manager Container"
 LABEL vendor="NVIDIA"
 LABEL version="${DRIVER_VERSION}"
+LABEL vcs-ref="${GIT_COMMIT}"
 LABEL release="N/A"
 LABEL summary="Provision the NVIDIA vGPU Manager through containers"
 LABEL description="See summary"

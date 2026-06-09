@@ -1,3 +1,5 @@
+GIT_COMMIT ?= $(shell git describe --match="" --dirty --long --always --abbrev=40 2> /dev/null || echo "")
+
 RHEL_VERSION ?= 10.0
 RHEL_VERSION_MAJOR = $(shell echo "${RHEL_VERSION}" | awk -F. '{print $$1}')
 
@@ -70,6 +72,7 @@ image: rhsm-register
 		--build-arg DRIVER_STREAM_TYPE=${DRIVER_STREAM_TYPE} \
 		--build-arg BASE_URL=${BASE_URL} \
 		--build-arg OS_TAG=${OS_TAG} \
+		--build-arg GIT_COMMIT=${GIT_COMMIT} \
 		--tag ${IMAGE_REGISTRY}/${IMAGE_NAME}:${DRIVER_VERSION}-${KERNEL_VERSION_TAG}-${OS_TAG} \
 		--progress=plain \
 		--file ${DOCKERFILE} .
