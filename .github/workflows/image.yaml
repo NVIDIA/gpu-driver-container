@@ -28,7 +28,7 @@ jobs:
     strategy:
       matrix:
         driver:
-          - 580.159.04
+          - 580.167.08
           - 595.71.05
         dist:
           - ubuntu22.04
