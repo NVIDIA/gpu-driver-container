@@ -170,10 +170,10 @@ $(DRIVER_BUILD_TARGETS):
 build-rhcos%: SUBDIR = rhel9
 
 build-rocky8%: SUBDIR = rhel8
-build-rocky8%: DOCKER_BUILD_ARGS = --build-arg BASE_IMAGE=nvcr.io/nvidia/cuda:13.2.1-base-rockylinux8
+build-rocky8%: DOCKER_BUILD_ARGS = --build-arg BASE_IMAGE=nvcr.io/nvidia/cuda:13.3.0-base-rockylinux8
 
 build-rocky9%: SUBDIR = rhel9
-build-rocky9%: DOCKER_BUILD_ARGS = --build-arg BASE_IMAGE=nvcr.io/nvidia/cuda:13.2.1-base-rockylinux9
+build-rocky9%: DOCKER_BUILD_ARGS = --build-arg BASE_IMAGE=nvcr.io/nvidia/cuda:13.3.0-base-rockylinux9
 
 build-rocky10%: SUBDIR = rhel10
 build-rocky10%: DOCKER_BUILD_ARGS = --build-arg BASE_IMAGE=nvcr.io/nvidia/cuda:13.2.0-base-rockylinux10
