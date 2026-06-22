@@ -37,7 +37,7 @@ jobs:
       lts_kernel: ${{ steps.generate_matrix_config.outputs.lts_kernel }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
       - name: Read driver versions
         id: generate_matrix_config
         run: |
@@ -63,7 +63,7 @@ jobs:
         exclude: ${{ fromJson(needs.set-driver-version-matrix.outputs.exclude_precompiled_build_matrix) }}
       max-parallel: 20
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         name: Check out code
       - name: Calculate build vars
         id: vars
@@ -176,7 +176,7 @@ jobs:
       - set-driver-version-matrix
     steps:
       - name: Check out code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
       - name: Login to GitHub Container Registry
         uses: docker/login-action@v4
         with:
@@ -237,7 +237,7 @@ jobs:
       exclude_matrix_values: ${{ steps.set_kernel_version.outputs.exclude_matrix_values }}
     steps:
       - name: Check out code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
       - name: Download all matrix artifacts
         uses: actions/download-artifact@v8
         with:
@@ -322,7 +322,7 @@ jobs:
       max-parallel: 5
     steps:
       - name: Check out code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
       - name: Login to GitHub Container Registry
         uses: docker/login-action@v4
         with:
@@ -429,7 +429,7 @@ jobs:
         kernel_version: ${{ fromJson(needs.collect-e2e-test-matrix.outputs.matrix_values) }}
     steps:
       - name: Check out code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
       - name: Login to GitHub Container Registry
         uses: docker/login-action@v4
         with:
