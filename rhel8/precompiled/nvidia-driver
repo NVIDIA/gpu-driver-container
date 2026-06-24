@@ -301,7 +301,7 @@ _mount_rootfs() {
     mount --rbind / ${RUN_DIR}/driver
 
     echo "Check SELinux status"
-    if [ -e /sys/fs/selinux ]; then
+    if grep -qsw "selinuxfs" /proc/mounts && [ -f /sys/fs/selinux/enforce ]; then
         echo "SELinux is enabled"
         echo "Change device files security context for selinux compatibility"
         chcon -R -t container_file_t ${RUN_DIR}/driver/dev
