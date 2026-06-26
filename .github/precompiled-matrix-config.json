@@ -1,14 +1,25 @@
 {
   "driver_branch": ["580", "595"],
   "kernel_flavors": ["aws", "azure", "azure-fde", "generic", "nvidia", "oracle"],
-  "dist": ["ubuntu22.04", "ubuntu24.04"],
-  "lts_kernel": ["5.15", "6.8"],
-  "exclude_build_matrix_pairs": [],
+  "dist": ["ubuntu22.04", "ubuntu24.04", "ubuntu26.04"],
+  "lts_kernel": ["5.15", "6.8", "7.0"],
+  "exclude_build_matrix_pairs": [
+    { "dist": "ubuntu26.04", "driver_branch": "580" }
+  ],
   "exclude_precompiled_build_matrix": [
+    { "dist": "ubuntu26.04", "driver_branch": "580" },
     { "lts_kernel": "5.15", "dist": "ubuntu24.04" },
+    { "lts_kernel": "7.0", "dist": "ubuntu24.04" },
+    { "lts_kernel": "5.15", "dist": "ubuntu26.04" },
+    { "lts_kernel": "6.8", "dist": "ubuntu26.04" },
+    { "lts_kernel": "7.0", "dist": "ubuntu22.04" },
     { "flavor": "azure-fde", "dist": "ubuntu22.04" }
   ],
   "exclude_precompiled_e2e_matrix": [
-    { "lts_kernel": "5.15", "dist": "ubuntu24.04" }
+    { "lts_kernel": "5.15", "dist": "ubuntu24.04" },
+    { "lts_kernel": "7.0", "dist": "ubuntu24.04" },
+    { "lts_kernel": "5.15", "dist": "ubuntu26.04" },
+    { "lts_kernel": "6.8", "dist": "ubuntu26.04" },
+    { "lts_kernel": "7.0", "dist": "ubuntu22.04" }
   ]
 }

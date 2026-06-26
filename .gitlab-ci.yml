@@ -137,3 +137,11 @@ image-precompiled-ubuntu24.04:
   extends:
     - .driver-versions-precompiled-ubuntu24.04
     - .image-build-precompiled
+
+image-precompiled-ubuntu26.04:
+  variables:
+    DIST: signed_ubuntu26.04
+    BASE_TARGET: resolute
+  extends:
+    - .driver-versions-precompiled-ubuntu26.04
+    - .image-build-precompiled

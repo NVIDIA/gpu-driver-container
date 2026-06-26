@@ -103,6 +103,8 @@ jobs:
             BASE_TARGET="jammy"
           elif [[ "${{ matrix.dist }}" == "ubuntu24.04" ]]; then
             BASE_TARGET="noble"
+          elif [[ "${{ matrix.dist }}" == "ubuntu26.04" ]]; then
+            BASE_TARGET="resolute"
           fi
           make DRIVER_BRANCH=${{ matrix.driver_branch }} KERNEL_FLAVOR=${{ matrix.flavor }} LTS_KERNEL=${LTS_KERNEL} build-base-${BASE_TARGET}
 
@@ -133,6 +135,8 @@ jobs:
             BASE_TARGET="jammy"
           elif [[ "${{ matrix.dist }}" == "ubuntu24.04" ]]; then
             BASE_TARGET="noble"
+          elif [[ "${{ matrix.dist }}" == "ubuntu26.04" ]]; then
+            BASE_TARGET="resolute"
           fi
           tar -cvf kernel-version-${{ matrix.driver_branch }}-${KERNEL_VERSION}-${DIST}.tar kernel_version.txt
           docker save "${PRIVATE_REGISTRY}/nvidia/driver:base-${BASE_TARGET}-${LTS_KERNEL}-${{ matrix.flavor }}-${{ matrix.driver_branch }}" \
@@ -352,6 +356,9 @@ jobs:
           if [[ "$DIST" == "ubuntu24.04" ]]; then
             yq eval '.spec.instance.os = "ubuntu-24.04"' -i tests/holodeck_ubuntu.yaml
           fi
+          if [[ "$DIST" == "ubuntu26.04" ]]; then
+            yq eval '.spec.instance.os = "ubuntu-26.04"' -i tests/holodeck_ubuntu.yaml
+          fi
 
       - name: Set up Holodeck
         uses: NVIDIA/holodeck@v0.3.6
@@ -467,6 +474,8 @@ jobs:
             BASE_TARGET="jammy"
           elif [[ "${DIST}" == "ubuntu24.04" ]]; then
             BASE_TARGET="noble"
+          elif [[ "${DIST}" == "ubuntu26.04" ]]; then
+            BASE_TARGET="resolute"
           fi
           image_path="./base-images-${{ matrix.driver_branch }}-${{ matrix.kernel_version }}.tar"
           echo "uploading  $image_path"
