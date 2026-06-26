@@ -56,3 +56,31 @@ $ docker build \
     --build-arg CUDA_VERSION=${CUDA_VERSION} \
     -t ${PRIVATE_REGISTRY}/vgpu-manager:${VERSION}-${OS_TAG} .
 ```
+
+### Building behind a TLS-intercepting (MITM) proxy
+
+If your build environment sits behind a corporate proxy that intercepts TLS
+connections with a private CA, package manager steps (``dnf``/``yum`` on RHEL,
+``apt`` on Ubuntu) will fail with SSL certificate verification errors.
+
+To trust additional CAs at build time, drop one or more PEM-encoded
+``*.crt`` files into the ``certs/`` directory inside the OS-specific build
+context (``vgpu-manager/<os>/certs/``) and rebuild — no Dockerfile edits
+required. The directory is empty by default, so the trust update is a no-op
+when no certificates are provided.
+
+Example:
+
+```
+$ cp /path/to/CorporateRootCA.crt vgpu-manager/<os>/certs/
+$ docker build \
+    --build-arg DRIVER_VERSION=${VERSION} \
+    --build-arg CUDA_VERSION=${CUDA_VERSION} \
+    -t ${PRIVATE_REGISTRY}/vgpu-manager:${VERSION}-${OS_TAG} \
+    vgpu-manager/<os>
+```
+
+To use a directory other than ``certs/``, override the ``CUSTOM_CA_CERTS_DIR``
+build arg with a path relative to the build context. When invoking the
+top-level ``Makefile`` ``build-vgpuhost-<dist>`` target, set the
+``CUSTOM_CA_CERTS_DIR`` make variable to the same effect.

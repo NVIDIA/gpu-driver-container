@@ -288,6 +288,11 @@ push-vgpuguest-%: DIST = $(word 3,$(subst -, ,$@))
 # The vGPU host driver .run file is assumed to be present in the $SUBDIR/drivers/ directory.
 # VGPU_HOST_DRIVER_VERSION must be defined in the environment when invoking this target.
 VGPU_HOST_DRIVER_VERSION ?= ""
+# CUSTOM_CA_CERTS_DIR is the path (relative to the build context
+# vgpu-manager/$(SUBDIR)) of a directory containing custom CA certificates to
+# trust at build time. Default is "certs", an empty directory shipped in the
+# repo so the COPY in the Dockerfile is a no-op out of the box.
+CUSTOM_CA_CERTS_DIR ?= certs
 build-vgpuhost-%: $(if $(VGPU_HOST_DRIVER_VERSION),,$(error "VGPU_HOST_DRIVER_VERSION is not set"))
 build-vgpuhost-%: DRIVER_VERSION := $(VGPU_HOST_DRIVER_VERSION)
 build-vgpuhost-%: DRIVER_BRANCH = $(word 1,$(subst ., ,${DRIVER_VERSION}))
@@ -310,6 +315,7 @@ $(VGPU_HOST_DRIVER_BUILD_TARGETS):
 				--build-arg GOLANG_VERSION="$(GOLANG_VERSION)" \
 				--build-arg CVE_UPDATES="$(CVE_UPDATES)" \
 				--build-arg CUDA_VERSION="$(CUDA_VERSION)" \
+				--build-arg CUSTOM_CA_CERTS_DIR="$(CUSTOM_CA_CERTS_DIR)" \
 				$(DOCKER_BUILD_ARGS) \
 				--file $(DOCKERFILE) \
 				$(CURDIR)/vgpu-manager/$(SUBDIR)
