@@ -1,5 +1,5 @@
 # Ubuntu 26.04
-FROM ubuntu:resolute-20260421 AS resolute
+FROM ubuntu:resolute-20260610 AS resolute
 
 SHELL ["/bin/bash", "-c"]
 
@@ -35,7 +35,7 @@ RUN chmod +x /usr/local/bin/generate-ci-config && \
 ENTRYPOINT ["/usr/bin/sleep","1000"]
 
 # Ubuntu 24.04
-FROM ubuntu:noble-20260509.1 AS noble
+FROM ubuntu:26.04 AS noble
 
 SHELL ["/bin/bash", "-c"]
 
@@ -69,7 +69,7 @@ RUN chmod +x /usr/local/bin/generate-ci-config && \
 ENTRYPOINT ["/usr/bin/sleep","1000"]
 
 # Ubuntu 22.04
-FROM ubuntu:jammy-20260509 AS jammy
+FROM ubuntu:26.04 AS jammy
 
 SHELL ["/bin/bash", "-c"]
 
