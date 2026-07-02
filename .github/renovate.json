@@ -26,7 +26,7 @@
             "matchFileNames": [
                 "ubuntu22.04/**"
             ],
-            "allowedVersions": "/^jammy(-\\d{8})?$/"
+            "allowedVersions": "/^jammy(-\\d{8}(\\.\\d+)?)?$/"
         },
         {
             "matchDatasources": [
@@ -38,7 +38,7 @@
             "matchFileNames": [
                 "ubuntu24.04/**"
             ],
-            "allowedVersions": "/^noble(-\\d{8})?$/"
+            "allowedVersions": "/^noble(-\\d{8}(\\.\\d+)?)?$/"
         }
     ],
     "customManagers": [
