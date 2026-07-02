@@ -21,6 +21,84 @@
                 "docker"
             ],
             "matchPackageNames": [
+                "registry.access.redhat.com/ubi8/ubi",
+                "registry.access.redhat.com/ubi9/ubi",
+                "registry.access.redhat.com/ubi10/ubi"
+            ],
+            "matchFileNames": [
+                "rhel8/Dockerfile",
+                "rhel9/Dockerfile",
+                "rhel10/Dockerfile"
+            ],
+            "groupName": "RHEL UBI base images",
+            "groupSlug": "rhel-ubi-base-images",
+            "additionalBranchPrefix": "",
+            "commitMessageTopic": "RHEL UBI base images",
+            "commitMessageSuffix": ""
+        },
+        {
+            "matchDatasources": [
+                "docker"
+            ],
+            "matchPackageNames": [
+                "ubuntu"
+            ],
+            "matchFileNames": [
+                "base/Dockerfile",
+                "ubuntu22.04/**",
+                "ubuntu24.04/**",
+                "ubuntu26.04/**"
+            ],
+            "groupName": "Ubuntu base images",
+            "groupSlug": "ubuntu-base-images",
+            "additionalBranchPrefix": "",
+            "commitMessageTopic": "Ubuntu base images",
+            "commitMessageSuffix": ""
+        },
+        {
+            "matchDatasources": [
+                "docker"
+            ],
+            "matchPackageNames": [
+                "ubuntu"
+            ],
+            "matchFileNames": [
+                "base/Dockerfile"
+            ],
+            "matchCurrentValue": "/^jammy/",
+            "allowedVersions": "/^jammy(-\\d{8}(\\.\\d+)?)?$/"
+        },
+        {
+            "matchDatasources": [
+                "docker"
+            ],
+            "matchPackageNames": [
+                "ubuntu"
+            ],
+            "matchFileNames": [
+                "base/Dockerfile"
+            ],
+            "matchCurrentValue": "/^noble/",
+            "allowedVersions": "/^noble(-\\d{8}(\\.\\d+)?)?$/"
+        },
+        {
+            "matchDatasources": [
+                "docker"
+            ],
+            "matchPackageNames": [
+                "ubuntu"
+            ],
+            "matchFileNames": [
+                "base/Dockerfile"
+            ],
+            "matchCurrentValue": "/^resolute/",
+            "allowedVersions": "/^resolute(-\\d{8}(\\.\\d+)?)?$/"
+        },
+        {
+            "matchDatasources": [
+                "docker"
+            ],
+            "matchPackageNames": [
                 "ubuntu"
             ],
             "matchFileNames": [
@@ -39,6 +117,18 @@
                 "ubuntu24.04/**"
             ],
             "allowedVersions": "/^noble(-\\d{8}(\\.\\d+)?)?$/"
+        },
+        {
+            "matchDatasources": [
+                "docker"
+            ],
+            "matchPackageNames": [
+                "ubuntu"
+            ],
+            "matchFileNames": [
+                "ubuntu26.04/**"
+            ],
+            "allowedVersions": "/^resolute(-\\d{8}(\\.\\d+)?)?$/"
         }
     ],
     "customManagers": [
