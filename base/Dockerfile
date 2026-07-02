@@ -35,7 +35,7 @@ RUN chmod +x /usr/local/bin/generate-ci-config && \
 ENTRYPOINT ["/usr/bin/sleep","1000"]
 
 # Ubuntu 24.04
-FROM ubuntu:noble-20260509.1 AS noble
+FROM ubuntu:noble-20260610 AS noble
 
 SHELL ["/bin/bash", "-c"]
 
