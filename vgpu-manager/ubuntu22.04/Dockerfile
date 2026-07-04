@@ -45,6 +45,41 @@ WORKDIR /driver
 ADD NVIDIA-Linux-${DRIVER_ARCH}-${DRIVER_VERSION}-vgpu-kvm.run .
 RUN chmod +x NVIDIA-Linux-${DRIVER_ARCH}-${DRIVER_VERSION}-vgpu-kvm.run
 
+# Install NVIDIA Fabric Manager (with its NSCQ / NVSDM / NVLink Subnet Manager
+# dependencies) so the entrypoint can start it on NVSwitch (HGX) hosts. On
+# SR-IOV vGPU systems Fabric Manager must run in vGPU multitenancy mode
+# (FABRIC_MODE=2); the entrypoint writes that mode into fabricmanager.cfg before
+# starting the daemon. This mirrors how the non-vGPU driver image installs these
+# packages (see ../../ubuntu22.04/install.sh). The daemon stays dormant on
+# non-NVSwitch hosts because the entrypoint only starts it when NVSwitch devices
+# are present.
+#
+# Packages are bounded to the driver's major branch (=<branch>.*) rather than
+# pinned to the exact driver version as the non-vGPU image does: vGPU host-driver
+# patch versions are not published one-to-one as public Fabric Manager packages,
+# so an exact pin would fail to resolve. The branch bound keeps builds
+# reproducible and avoids pulling a newer-branch Fabric Manager against an older
+# driver.
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends ca-certificates curl gnupg && \
+    curl -fSsL "https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2204/x86_64/cuda-keyring_1.1-1_all.deb" -o /tmp/cuda-keyring.deb && \
+    dpkg -i /tmp/cuda-keyring.deb && rm -f /tmp/cuda-keyring.deb && \
+    apt-get update && \
+    DRIVER_BRANCH="${DRIVER_VERSION%%.*}" && \
+    if [ "${DRIVER_BRANCH}" -ge 580 ]; then \
+        fm_pkg="nvidia-fabricmanager"; nscq_pkg="libnvidia-nscq"; nvsdm_pkg="libnvsdm"; \
+    else \
+        fm_pkg="nvidia-fabricmanager-${DRIVER_BRANCH}"; nscq_pkg="libnvidia-nscq-${DRIVER_BRANCH}"; nvsdm_pkg="libnvsdm-${DRIVER_BRANCH}"; \
+    fi && \
+    apt-get install -y --no-install-recommends "${fm_pkg}=${DRIVER_BRANCH}.*" "${nscq_pkg}=${DRIVER_BRANCH}.*" && \
+    apt-mark hold "${fm_pkg}" "${nscq_pkg}" && \
+    if [ "${DRIVER_BRANCH}" -ge 570 ]; then \
+        apt-get install -y --no-install-recommends "${nvsdm_pkg}=${DRIVER_BRANCH}.*" nvlsm infiniband-diags && \
+        apt-mark hold "${nvsdm_pkg}"; \
+    fi && \
+    rm -f /etc/apt/sources.list.d/cuda*.list /etc/apt/sources.list.d/cuda*.sources && \
+    rm -rf /var/lib/apt/lists/*
+
 COPY nvidia-driver /usr/local/bin
 
 # Install / upgrade packages here that are required to resolve CVEs
