@@ -137,29 +137,36 @@ imex_install() {
   dnf versionlock add nvidia-imex
 }
 extra_pkgs_install() {
-  if [ "$DRIVER_TYPE" != "vgpu" ]; then
-      if [ "${DRIVER_BRANCH}" -ge "615" ]; then
-        DRIVER_MODULE_STREAM="${DRIVER_BRANCH}-open"
-      else
-        DRIVER_MODULE_STREAM="${DRIVER_BRANCH}-dkms"
-      fi
-      dnf module enable -y "nvidia-driver:${DRIVER_MODULE_STREAM}"
-      dnf install -y 'dnf-command(versionlock)'
-
-      # If running on a RockyLinux base image, we enable the Code Ready Builder RPM repo (crb)
-      OS_RELEASE_ID=$(grep -oP '(?<=^ID=).+' /etc/os-release | tr -d '"')
-      if [ "$OS_RELEASE_ID" = "rocky" ]; then
-        dnf config-manager --set-enabled crb
-      fi
-
-      fabricmanager_install
-      nscq_install
-      nvsdm_install
-      nvlink5_pkgs_install
-      imex_install
-      rm -rf /usr/share/doc/*
-      dnf clean all
+  if [ "$DRIVER_TYPE" == "vgpu" ]; then
+      return 0
   fi
+
+  if [ "$LOCAL_DRIVER" == "true" ]; then
+      # TODO: install local rpm files for relevant packages
+      return 0
+  fi
+
+  if [ "${DRIVER_BRANCH}" -ge "615" ]; then
+    DRIVER_MODULE_STREAM="${DRIVER_BRANCH}-open"
+  else
+    DRIVER_MODULE_STREAM="${DRIVER_BRANCH}-dkms"
+  fi
+  dnf module enable -y "nvidia-driver:${DRIVER_MODULE_STREAM}"
+  dnf install -y 'dnf-command(versionlock)'
+
+  # If running on a RockyLinux base image, we enable the Code Ready Builder RPM repo (crb)
+  OS_RELEASE_ID=$(grep -oP '(?<=^ID=).+' /etc/os-release | tr -d '"')
+  if [ "$OS_RELEASE_ID" = "rocky" ]; then
+    dnf config-manager --set-enabled crb
+  fi
+
+  fabricmanager_install
+  nscq_install
+  nvsdm_install
+  nvlink5_pkgs_install
+  imex_install
+  rm -rf /usr/share/doc/*
+  dnf clean all
 }
 
 setup_cuda_repo() {
