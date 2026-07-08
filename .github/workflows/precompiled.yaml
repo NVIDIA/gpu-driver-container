@@ -200,6 +200,9 @@ jobs:
           DIST: ${{ matrix.dist }}
           GH_TOKEN:  ${{ secrets.GITHUB_TOKEN }}
           LTS_KERNEL: ${{ matrix.lts_kernel }}
+          # Set FORCE_PUSH=true (Settings > Secrets and variables > Actions > Variables)
+          # to rebuild/e2e/overwrite already-published precompiled images
+          FORCE_PUSH: ${{ vars.FORCE_PUSH }}
         run: |
           kernel_flavors_json='${{ needs.set-driver-version-matrix.outputs.kernel_flavors }}'
           KERNEL_FLAVORS=($(echo "$kernel_flavors_json" | jq -r '.[]'))

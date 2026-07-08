@@ -31,13 +31,18 @@ if [ -n "$artifact" ]; then
     fi
 fi
 
-# calculate driver tag
-status_nvcr=0
-status_ghcr=0
-regctl tag ls  nvcr.io/nvidia/driver | grep "^${DRIVER_BRANCH}-${KERNEL_VERSION}-${DIST}$" || status_nvcr=$?
-regctl tag ls  ghcr.io/nvidia/driver | grep "^${DRIVER_BRANCH}-${KERNEL_VERSION}-${DIST}$" || status_ghcr=$?
-if [[ $status_nvcr -eq 0 || $status_ghcr -eq 0 ]]; then
-    export should_continue=false
-else
+# When FORCE_PUSH is set, rebuild/overwrite the image even if the tag already exists
+if [[ "${FORCE_PUSH}" == "true" ]]; then
     export should_continue=true
+else
+    # calculate driver tag
+    status_nvcr=0
+    status_ghcr=0
+    regctl tag ls  nvcr.io/nvidia/driver | grep "^${DRIVER_BRANCH}-${KERNEL_VERSION}-${DIST}$" || status_nvcr=$?
+    regctl tag ls  ghcr.io/nvidia/driver | grep "^${DRIVER_BRANCH}-${KERNEL_VERSION}-${DIST}$" || status_ghcr=$?
+    if [[ $status_nvcr -eq 0 || $status_ghcr -eq 0 ]]; then
+        export should_continue=false
+    else
+        export should_continue=true
+    fi
 fi
