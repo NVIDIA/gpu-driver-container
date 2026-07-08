@@ -72,7 +72,11 @@ jobs:
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v4
         with:
-          image: tonistiigi/binfmt:qemu-v6.2.0
+          # The Ubuntu 26.04 arm64 userland needs a newer emulator than the qemu-v6.2.0
+          # used for every other distribution: v6.2.0 hangs on it, and on the
+          # resolute-20260707 userland v8.1.5 fails with ENOSYS and v9.2.2 with EINVAL
+          # (tar file extraction), so it is pinned to qemu-v10.1.3.
+          image: tonistiigi/binfmt:${{ matrix.dist == 'ubuntu26.04' && 'qemu-v10.1.3' || 'qemu-v6.2.0' }}
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
         with:
@@ -155,7 +159,11 @@ jobs:
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v4
         with:
-          image: tonistiigi/binfmt:qemu-v6.2.0
+          # The Ubuntu 26.04 arm64 userland needs a newer emulator than the qemu-v6.2.0
+          # used for every other distribution: v6.2.0 hangs on it, and on the
+          # resolute-20260707 userland v8.1.5 fails with ENOSYS and v9.2.2 with EINVAL
+          # (tar file extraction), so it is pinned to qemu-v10.1.3.
+          image: tonistiigi/binfmt:${{ matrix.dist == 'ubuntu26.04' && 'qemu-v10.1.3' || 'qemu-v6.2.0' }}
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
         with:
