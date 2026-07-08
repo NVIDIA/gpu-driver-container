@@ -8,6 +8,11 @@ ARG GOLANG_VERSION
 ARG DRIVER_TYPE=passthrough
 ENV DRIVER_TYPE=$DRIVER_TYPE
 
+# Args needed when using a local driver
+ARG DRIVER_VERSION
+ARG DRIVER_TYPE=passthrough
+ARG LOCAL_DRIVER=false
+
 SHELL ["/bin/bash", "-c"]
 
 RUN dnf install -y --nodocs git wget && dnf clean all
@@ -26,6 +31,17 @@ RUN if [ "$DRIVER_TYPE" = "vgpu" ]; then \
     cd driver/vgpu/src && \
     go build -o vgpu-util && \
     mv vgpu-util /work; fi
+
+ADD drivers local-driver/
+
+RUN if [ "$DRIVER_TYPE" != "vgpu" ] && [ "$LOCAL_DRIVER" == "false" ]; then \
+        rm local-driver/*; \
+    elif [ "$TARGETARCH" == "amd64" ]; then \
+        chmod +x local-driver/NVIDIA-Linux-x86_64-${DRIVER_VERSION}.run; \
+        rm local-driver/NVIDIA-Linux-aarch64-${DRIVER_VERSION}.run || true; \
+    else \
+        chmod +x local-driver/NVIDIA-Linux-x86_64-${DRIVER_VERSION}.run; \
+        rm local-driver/NVIDIA-Linux-aarch64-${DRIVER_VERSION}.run || true; fi
 
 FROM ${BASE_IMAGE}
 
@@ -55,6 +71,9 @@ ENV DISABLE_VGPU_VERSION_CHECK=$DISABLE_VGPU_VERSION_CHECK
 # Avoid dependency of container-toolkit for driver container
 ENV NVIDIA_VISIBLE_DEVICES=void
 
+# Args needed when using a local driver
+ARG LOCAL_DRIVER=false
+
 ADD install.sh /tmp/
 
 RUN NVIDIA_GPGKEY_SUM=d0664fbbdb8c32356d45de36c5984617217b2d0bef41b93ccecd326ba3b80c87 && \
@@ -69,10 +88,10 @@ RUN sh /tmp/install.sh depinstall && \
     chmod +x /usr/local/bin/donkey /usr/local/bin/extract-vmlinux && \
     ln -s /sbin/ldconfig /sbin/ldconfig.real
 
-ADD drivers drivers/
+COPY --from=build /work/local-driver drivers/
 
 # Fetch the installer, fabricmanager and libnvidia-nscq automatically for passthrough/baremetal types
-RUN if [ "$DRIVER_TYPE" != "vgpu" ]; then \
+RUN if [ "$DRIVER_TYPE" != "vgpu" ] && [ "$LOCAL_DRIVER" == "false" ]; then \
     cd drivers && \
     DRIVER_ARCH=${TARGETARCH/amd64/x86_64} && DRIVER_ARCH=${DRIVER_ARCH/arm64/aarch64} && \
     curl -fSsl -O $BASE_URL/$DRIVER_VERSION/NVIDIA-Linux-$DRIVER_ARCH-$DRIVER_VERSION.run && \
