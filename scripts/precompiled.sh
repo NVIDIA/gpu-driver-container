@@ -42,7 +42,11 @@ function buildBaseImage(){
 }
 
 function buildImage(){
-    # Build the image
+    # Build the image. Build multi-arch (amd64+arm64) for ubuntu24.04 except azure-fde
+    # (linux-objects-nvidia-*-azure-fde is not available for arm64).
+    if [[ "$DIST" == "signed_ubuntu24.04" ]] && [[ "$KERNEL_FLAVOR" != "azure-fde" ]]; then
+        export DOCKER_BUILD_PLATFORM_OPTIONS="--platform=linux/amd64,linux/arm64"
+    fi
     make DRIVER_VERSIONS=${DRIVER_VERSIONS} DRIVER_BRANCH=${DRIVER_BRANCH} build-${DIST}-${DRIVER_VERSION}
 }
 

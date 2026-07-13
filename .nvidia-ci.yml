@@ -369,6 +369,15 @@ scan-precompiled-ubuntu26.04-amd64:
   needs:
     - image-precompiled-ubuntu26.04
 
+scan-precompiled-ubuntu24.04-arm64:
+  variables:
+    PLATFORM: linux/arm64
+  extends:
+    - .scan-precompiled-ubuntu24.04
+    - .platform-arm64
+  needs:
+    - image-precompiled-ubuntu24.04
+
 scan-precompiled-ubuntu22.04-amd64:
   variables:
     PLATFORM: linux/amd64
