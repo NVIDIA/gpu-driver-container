@@ -527,6 +527,10 @@ _unload_driver() {
         rmmod_args+=("nvidia-peermem")
         ((++nvidia_deps))
     fi
+    if [ -f /sys/module/gdrdrv/refcnt ]; then
+        rmmod_args+=("gdrdrv")
+        ((++nvidia_deps))
+    fi
     if [ ${nvidia_refs} -gt ${nvidia_deps} ] || [ ${nvidia_uvm_refs} -gt 0 ] || [ ${nvidia_modeset_refs} -gt 0 ] || [ ${nvidia_peermem_refs} -gt 0 ]; then
         echo "Could not unload NVIDIA driver kernel modules, driver is in use" >&2
         return 1
