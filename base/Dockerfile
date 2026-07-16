@@ -1,5 +1,5 @@
 # Ubuntu 26.04
-FROM ubuntu:resolute-20260627 AS resolute
+FROM ubuntu:resolute-20260707 AS resolute
 
 SHELL ["/bin/bash", "-c"]
 
