@@ -222,6 +222,7 @@ jobs:
       matrix_values_not_empty: ${{ steps.set_kernel_version.outputs.matrix_values_not_empty }}
       matrix_values: ${{ steps.set_kernel_version.outputs.matrix_values }}
       exclude_matrix_values: ${{ steps.set_kernel_version.outputs.exclude_matrix_values }}
+      publish_matrix_values: ${{ steps.set_kernel_version.outputs.publish_matrix_values }}
     steps:
       - name: Check out code
         uses: actions/checkout@v7
@@ -260,6 +261,10 @@ jobs:
           fi
           echo "matrix_values=$combined_values" >> $GITHUB_OUTPUT
           echo "exclude_matrix_values=$exclude_combined_values" >> $GITHUB_OUTPUT
+          # Deduplicate for publish: strip -arm64 suffix and remove duplicates
+          publish_versions=($(printf '%s\n' "${kernel_versions[@]}" | sed 's/-arm64$//' | sort -u))
+          publish_values=$(printf '%s\n' "${publish_versions[@]}" | jq -R . | jq -s -c . | tr -d ' \n')
+          echo "publish_matrix_values=$publish_values" >> $GITHUB_OUTPUT
           published_kernels=$(printf " %s " "${kernel_versions[@]}")
           echo "published_kernels=${published_kernels}" >> $GITHUB_OUTPUT
 
@@ -417,7 +422,7 @@ jobs:
       max-parallel: 5
       matrix:
         driver_branch: ${{ fromJson(needs.set-driver-version-matrix.outputs.driver_branch) }}
-        kernel_version: ${{ fromJson(needs.collect-e2e-test-matrix.outputs.matrix_values) }}
+        kernel_version: ${{ fromJson(needs.collect-e2e-test-matrix.outputs.publish_matrix_values) }}
     steps:
       - name: Check out code
         uses: actions/checkout@v7
@@ -433,9 +438,6 @@ jobs:
         run: |
           echo "PRIVATE_REGISTRY=ghcr.io" >> $GITHUB_ENV
           KERNEL_VERSION="${{ matrix.kernel_version }}"
-          if [[ "$KERNEL_VERSION" == *-arm64 ]]; then
-            KERNEL_VERSION="${KERNEL_VERSION%-arm64}"
-          fi
           echo "KERNEL_VERSION=$KERNEL_VERSION" >> $GITHUB_ENV
           DIST="${KERNEL_VERSION##*-}"
           echo "run_publish=true" >> $GITHUB_OUTPUT
