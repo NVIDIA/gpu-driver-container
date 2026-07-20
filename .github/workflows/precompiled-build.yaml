@@ -42,7 +42,9 @@ on:
 
 jobs:
   discover-kernel:
-    runs-on: linux-amd64-cpu4
+    runs-on: linux-${{ inputs.flavor == 'nvidia-64k' && 'arm64' || 'amd64' }}-cpu4
+    env:
+      DISCOVERY_ARCH: ${{ inputs.flavor == 'nvidia-64k' && 'arm64' || 'amd64' }}
     outputs:
       kernel_version: ${{ steps.discover.outputs.kernel_version }}
       driver_version: ${{ steps.discover.outputs.driver_version }}
@@ -74,10 +76,13 @@ jobs:
             echo "Unsupported platforms: $PLATFORMS (expected a JSON array of amd64 and arm64)" >&2
             exit 1
           fi
-          # Jammy and azure-fde have no arm64 precompiled packages; multi-arch.mk and
-          # tests/scripts/build-kernel-matrix.sh encode the same limit.
-          ARCHITECTURES=$(jq -c --arg dist "$DIST" --arg flavor "$FLAVOR" \
-            '[.[] | select(. == "amd64" or ($dist != "ubuntu22.04" and $flavor != "azure-fde"))] | unique' <<< "$PLATFORMS")
+          # Jammy and azure-fde have no arm64 precompiled packages and nvidia-64k has no amd64
+          # ones; multi-arch.mk and tests/scripts/build-kernel-matrix.sh encode the same limits.
+          ARCHITECTURES=$(jq -c --arg dist "$DIST" --arg flavor "$FLAVOR" '
+            [.[] | select(
+              if $flavor == "nvidia-64k" then . == "arm64"
+              else . == "amd64" or ($dist != "ubuntu22.04" and $flavor != "azure-fde") end
+            )] | unique' <<< "$PLATFORMS")
           if [[ "$ARCHITECTURES" == "[]" ]]; then
             echo "No supported architecture in $PLATFORMS for $DIST/$FLAVOR" >&2
             exit 1
@@ -101,12 +106,14 @@ jobs:
           OUTPUT_TYPE: ${{ inputs.output }}
         run: |
           set -euo pipefail
-          # The base image queries only the amd64 archive; arm64 is assumed to publish the
-          # same kernel/driver pair, so one discovery serves both native builds.
+          # The base image queries only the archive of the runner's architecture. arm64 is
+          # assumed to publish the same kernel/driver pair as amd64, so one amd64 discovery
+          # serves both native builds; nvidia-64k is published for arm64 only, so it
+          # discovers on arm64.
           # The Makefile's build-% rule parses DRIVER_BRANCH from the target name
           # ("noble" for build-base-noble); only a command-line value overrides it.
           make DRIVER_BRANCH="$DRIVER_BRANCH" KERNEL_FLAVOR="$KERNEL_FLAVOR" LTS_KERNEL="$LTS_KERNEL" \
-            DOCKER_BUILD_PLATFORM_OPTIONS=--platform=linux/amd64 \
+            DOCKER_BUILD_PLATFORM_OPTIONS="--platform=linux/${DISCOVERY_ARCH}" \
             DOCKER_BUILD_OPTIONS="--load --provenance=false --sbom=false" "build-base-${BASE_TARGET}"
           BASE_IMAGE="${IMAGE_NAME}:base-${BASE_TARGET}-${LTS_KERNEL}-${KERNEL_FLAVOR}-${DRIVER_BRANCH}"
           BASE_CONTAINER_ID=$(docker create "$BASE_IMAGE")
