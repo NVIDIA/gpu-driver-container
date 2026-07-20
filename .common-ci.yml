@@ -112,7 +112,7 @@ trigger-pipeline:
   parallel:
     matrix:
       - DRIVER_BRANCH: [580, 595]
-        KERNEL_FLAVOR: [aws, azure, azure-fde, generic, nvidia, oracle]
+        KERNEL_FLAVOR: [aws, azure, azure-fde, generic, nvidia, nvidia-64k, oracle]
         LTS_KERNEL: ["6.8"]
 
 # Define the matrix of precompiled jobs that can be run in parallel for ubuntu26.04
