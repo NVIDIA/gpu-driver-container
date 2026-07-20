@@ -26,7 +26,12 @@ DRIVER_VERSION=$(apt-cache show nvidia-utils-${DRIVER_BRANCH}-server |grep Versi
 # Get the latest kernel from linux-signatures-list and linux-images-list
 # As list is already sorted , compare the kernel version and find exact match
 # get the latest kernel version with tail
-SK=$(grep -Fxf <(echo "$SUPPORTED_KERNELS_LINUX_SIGNATURES_LIST") <(echo "$SUPPORTED_KERNELS_LINUX_IMAGE_LIST") | tail -n1)
+# linux-signatures-nvidia is not available for arm64 (e.g. nvidia-64k flavor); fall back to linux-image list only
+if [ -n "$SUPPORTED_KERNELS_LINUX_SIGNATURES_LIST" ]; then
+  SK=$(grep -Fxf <(echo "$SUPPORTED_KERNELS_LINUX_SIGNATURES_LIST") <(echo "$SUPPORTED_KERNELS_LINUX_IMAGE_LIST") | tail -n1)
+else
+  SK=$(echo "$SUPPORTED_KERNELS_LINUX_IMAGE_LIST" | tail -n1)
+fi
 
 # Write to file
 echo "export KERNEL_VERSION=$SK DRIVER_VERSION=$DRIVER_VERSION DRIVER_VERSIONS=$DRIVER_VERSION" > /var/kernel_version.txt
