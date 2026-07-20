@@ -492,9 +492,29 @@ jobs:
         if: steps.set_image_vars.outputs.run_publish == 'true'
         run: |
           image_path="./driver-images-${{ matrix.driver_branch }}-${{ env.KERNEL_VERSION }}.tar"
+          IMAGE="${PRIVATE_REGISTRY}/nvidia/driver:${{ matrix.driver_branch }}-${{ env.KERNEL_VERSION }}"
           echo "uploading  $image_path"
           if [[ "${{ github.ref == 'refs/heads/main' }}" == "true" ]]; then
-            skopeo copy --authfile "${REGISTRY_AUTH_FILE}" "oci-archive:${image_path}" docker://${PRIVATE_REGISTRY}/nvidia/driver:${{ matrix.driver_branch }}-${{ env.KERNEL_VERSION }}
+            mkdir -p /tmp/oci-image
+            tar -xf "${image_path}" -C /tmp/oci-image
+            skopeo copy --all --authfile "${REGISTRY_AUTH_FILE}" "oci:/tmp/oci-image" docker://${IMAGE}
+
+            # Verify published manifest matches the built OCI artifact by comparing
+            # platform digests — ensures skopeo copy pushed all manifests correctly
+            LOCAL=$(skopeo inspect --raw "oci:/tmp/oci-image" | \
+              jq -c '[.manifests[]? | {arch: .platform.architecture, digest: .digest}] | sort_by(.arch)')
+            REMOTE=$(skopeo inspect --raw "docker://${IMAGE}" | \
+              jq -c '[.manifests[]? | {arch: .platform.architecture, digest: .digest}] | sort_by(.arch)')
+            if [[ "$LOCAL" == "$REMOTE" ]]; then
+              echo "OK: published manifest matches built artifact"
+            else
+              echo "ERROR: manifest mismatch between artifact and published image"
+              echo "Local:  $LOCAL"
+              echo "Remote: $REMOTE"
+              exit 1
+            fi
+
+            rm -rf /tmp/oci-image
           else
             echo "Skipping image push for non-main branch ${{ github.ref }}"
           fi
