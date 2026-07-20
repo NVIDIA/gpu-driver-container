@@ -191,6 +191,7 @@ jobs:
           - azure-fde
           - generic
           - nvidia
+          - nvidia-64k
           - oracle
         dist:
           - ubuntu22.04
@@ -210,6 +211,13 @@ jobs:
             flavor: aws
           - ispr: true
             flavor: nvidia
+          # PRs build a single nvidia-64k combination (595, 6.8) to cover the arm64-only path
+          - ispr: true
+            flavor: nvidia-64k
+            driver: 580
+          - ispr: true
+            flavor: nvidia-64k
+            lts_kernel: "7.0"
           - ispr: true
             flavor: oracle
           - lts_kernel: 5.15
@@ -224,6 +232,12 @@ jobs:
             dist: ubuntu26.04
           - flavor: azure-fde
             dist: ubuntu22.04
+          - flavor: nvidia-64k
+            dist: ubuntu22.04
+          - flavor: nvidia-64k
+            dist: ubuntu26.04
+          - flavor: nvidia-64k
+            lts_kernel: 5.15
     steps:
       - uses: actions/checkout@v7
         name: Check out code
@@ -283,7 +297,12 @@ jobs:
             BASE_TARGET="resolute"
           fi
           # kernel version is the same for amd64 and arm64, so base image is always built for amd64
-          export DOCKER_BUILD_PLATFORM_OPTIONS="--platform=linux/amd64"
+          # nvidia-64k is arm64-only, so its base image must be built for arm64
+          if [[ "${{ matrix.flavor }}" == "nvidia-64k" ]]; then
+            export DOCKER_BUILD_PLATFORM_OPTIONS="--platform=linux/arm64"
+          else
+            export DOCKER_BUILD_PLATFORM_OPTIONS="--platform=linux/amd64"
+          fi
           make DRIVER_BRANCH=${{ matrix.driver }} KERNEL_FLAVOR=${{ matrix.flavor }} LTS_KERNEL=${LTS_KERNEL} build-base-${BASE_TARGET}
 
           trap "docker rm -f base-${BASE_TARGET}-${{ matrix.flavor }}" EXIT
@@ -301,8 +320,10 @@ jobs:
           DIST: signed_${{ matrix.dist }}
         run: |
           source kernel_version.txt
-          # linux-objects-nvidia-*-azure-fde is published for amd64 only.
-          if [[ "${{ matrix.dist }}" == "ubuntu24.04" || "${{ matrix.dist }}" == "ubuntu26.04" ]] \
+          # nvidia-64k is arm64-only; linux-objects-nvidia-*-azure-fde is published for amd64 only.
+          if [[ "${{ matrix.flavor }}" == "nvidia-64k" ]]; then
+            export DOCKER_BUILD_PLATFORM_OPTIONS="--platform=linux/arm64"
+          elif [[ "${{ matrix.dist }}" == "ubuntu24.04" || "${{ matrix.dist }}" == "ubuntu26.04" ]] \
              && [[ "${{ matrix.flavor }}" != "azure-fde" ]]; then
             export DOCKER_BUILD_PLATFORM_OPTIONS="--platform=linux/amd64,linux/arm64"
           else
