@@ -400,6 +400,11 @@ scan-precompiled-ubuntu24.04-amd64:
     - .platform-amd64
   needs:
     - image-precompiled-ubuntu24.04
+  rules:
+    - if: $KERNEL_FLAVOR == "nvidia-64k"
+      when: never
+    - !reference [.scan-rules-common, rules]
+    - !reference [.precompiled-rules, rules]
 
 scan-precompiled-ubuntu26.04-amd64:
   variables:
