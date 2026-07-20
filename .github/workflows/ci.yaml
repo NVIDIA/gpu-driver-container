@@ -34,7 +34,7 @@ jobs:
       uses: actions/checkout@v7
 
     - name: Set up Holodeck
-      uses: NVIDIA/holodeck@v0.3.6
+      uses: NVIDIA/holodeck@v0.3.7
       env:
         AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
