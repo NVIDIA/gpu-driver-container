@@ -74,7 +74,24 @@ imex_install() {
 }
 
 extra_pkgs_install() {
-  if [ "$DRIVER_TYPE" != "vgpu" ]; then
+  if [ "$DRIVER_TYPE" == "vgpu" ]; then
+      return 0
+  fi
+
+  if [ "${LOCAL_DRIVER:-false}" == "true" ]; then
+      # Matching extra-package versions are not in the public CUDA repository;
+      # install them from the local driver repo package bind-mounted at
+      # /tmp/local-repo.
+      local repo_deb repo_pkg
+      repo_deb=$(ls /tmp/local-repo/nvidia-driver-local-repo-*.deb 2>/dev/null | head -1 || true)
+      if [ -z "${repo_deb}" ]; then
+          echo "No local driver repo package found, skipping extra packages"
+          return 0
+      fi
+      repo_pkg=$(dpkg-deb -f "${repo_deb}" Package)
+      dpkg -i "${repo_deb}"
+      cp /var/${repo_pkg}/nvidia-driver-local-*-keyring.gpg /usr/share/keyrings/
+
       apt-get update
 
       fabricmanager_install
@@ -87,8 +104,25 @@ extra_pkgs_install() {
       nvlink5_pkgs_install
       imex_install
 
+      apt-get purge -y "${repo_pkg}"
+      rm -rf /var/${repo_pkg}
       rm -rf /var/lib/apt/lists/*
+      return 0
   fi
+
+  apt-get update
+
+  fabricmanager_install
+  nscq_install
+
+  if [ "$TARGETARCH" = "amd64" ]; then
+    nvsdm_install
+  fi
+
+  nvlink5_pkgs_install
+  imex_install
+
+  rm -rf /var/lib/apt/lists/*
 }
 
 if [ "$1" = "depinstall" ]; then
