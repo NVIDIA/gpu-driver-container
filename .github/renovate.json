@@ -41,6 +41,49 @@
                 "docker"
             ],
             "matchPackageNames": [
+                "rockylinux/rockylinux"
+            ],
+            "groupName": "Rocky Linux base images",
+            "groupSlug": "rocky-base-images",
+            "additionalBranchPrefix": "",
+            "commitMessageTopic": "Rocky Linux base images",
+            "commitMessageSuffix": ""
+        },
+        {
+            "matchDatasources": [
+                "docker"
+            ],
+            "matchPackageNames": [
+                "rockylinux/rockylinux"
+            ],
+            "matchCurrentValue": "/^8\\./",
+            "allowedVersions": "/^8\\.\\d+-ubi$/"
+        },
+        {
+            "matchDatasources": [
+                "docker"
+            ],
+            "matchPackageNames": [
+                "rockylinux/rockylinux"
+            ],
+            "matchCurrentValue": "/^9\\./",
+            "allowedVersions": "/^9\\.\\d+-ubi$/"
+        },
+        {
+            "matchDatasources": [
+                "docker"
+            ],
+            "matchPackageNames": [
+                "rockylinux/rockylinux"
+            ],
+            "matchCurrentValue": "/^10\\./",
+            "allowedVersions": "/^10\\.\\d+-ubi$/"
+        },
+        {
+            "matchDatasources": [
+                "docker"
+            ],
+            "matchPackageNames": [
                 "ubuntu"
             ],
             "matchFileNames": [
