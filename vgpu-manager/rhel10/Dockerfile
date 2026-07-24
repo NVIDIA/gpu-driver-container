@@ -1,0 +1,59 @@
+# Copyright (c) 2026, NVIDIA CORPORATION.  All rights reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+FROM registry.access.redhat.com/ubi10/ubi:10.2-1784668814
+
+ARG DRIVER_VERSION
+ENV DRIVER_VERSION=$DRIVER_VERSION
+ARG DRIVER_ARCH=x86_64
+ENV DRIVER_ARCH=$DRIVER_ARCH
+ARG GIT_COMMIT=""
+
+# Optional: inject custom CA certificates so package managers (dnf/yum) can
+# verify TLS when building behind a corporate MITM proxy. Drop one or more
+# *.crt files into the build context's "certs/" directory (the default), or
+# override CUSTOM_CA_CERTS_DIR with a path to a different directory inside
+# the build context. When the directory is empty, this is a no-op.
+ARG CUSTOM_CA_CERTS_DIR=certs
+COPY ${CUSTOM_CA_CERTS_DIR}/ /etc/pki/ca-trust/source/anchors/
+RUN update-ca-trust
+
+RUN mkdir -p /driver
+WORKDIR /driver
+COPY NVIDIA-Linux-${DRIVER_ARCH}-${DRIVER_VERSION}-vgpu-kvm.run .
+RUN chmod +x NVIDIA-Linux-${DRIVER_ARCH}-${DRIVER_VERSION}-vgpu-kvm.run
+
+COPY nvidia-driver /usr/local/bin
+COPY ocp_dtk_entrypoint /usr/local/bin
+
+RUN dnf install -y pciutils && \
+    dnf clean all && \
+    rm -rf /var/cache/dnf/*
+
+LABEL io.k8s.display-name="NVIDIA vGPU Manager Container"
+LABEL name="NVIDIA vGPU Manager Container"
+LABEL vendor="NVIDIA"
+LABEL version="${DRIVER_VERSION}"
+LABEL vcs-ref="${GIT_COMMIT}"
+LABEL release="N/A"
+LABEL summary="Provision the NVIDIA vGPU Manager through containers"
+LABEL description="See summary"
+
+# Install / upgrade packages here that are required to resolve CVEs
+ARG CVE_UPDATES
+RUN if [ -n "${CVE_UPDATES}" ]; then \
+    dnf update -y ${CVE_UPDATES} && \
+    dnf clean all; \
+    fi
+
+ENTRYPOINT ["nvidia-driver", "init"]
