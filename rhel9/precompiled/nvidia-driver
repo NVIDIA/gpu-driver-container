@@ -267,16 +267,15 @@ _load_driver() {
     nvidia-persistenced --persistence-mode
 
     if [ "${DRIVER_TYPE}" = "vgpu" ]; then
-        echo "Copying gridd.conf..."
-        cp /drivers/gridd.conf /etc/nvidia/gridd.conf
-        if [ "${VGPU_LICENSE_SERVER_TYPE}" = "NLS" ]; then
-            echo "Copying ClientConfigToken..."
-            mkdir -p  /etc/nvidia/ClientConfigToken/
-            cp /drivers/ClientConfigToken/* /etc/nvidia/ClientConfigToken/
-        fi
+        # The nvidia-gridd libraries live in a distribution specific location.
+        VGPU_GRIDD_LD_LIBRARY_PATH=/usr/lib64/nvidia/gridd
 
-        echo "Starting nvidia-gridd.."
-        LD_LIBRARY_PATH=/usr/lib64/nvidia/gridd nvidia-gridd
+        _copy_vgpu_licensing_config
+        _start_nvidia_gridd
+
+        # nvidia-gridd has no reload signal, so watch the licensing
+        # configuration and restart nvidia-gridd when it actually changes.
+        _start_vgpu_license_watcher
 
         # Start virtual topology daemon
         _start_vgpu_topology_daemon
@@ -416,7 +415,370 @@ _unmount_rootfs() {
 
 
 
+# vGPU licensing configuration handling.
+#
+# nvidia-gridd reads /etc/nvidia/gridd.conf and /etc/nvidia/ClientConfigToken/*
+# once, when it starts, and it offers no reload signal. To pick up a rotated NLS
+# license token the process has to be restarted. Restarting the whole driver
+# container would unload the kernel module and evict every GPU workload on the
+# node, so instead we watch the licensing configuration and bounce nvidia-gridd
+# on its own. That is safe because a vGPU license is a lease with a 20 minute
+# grace period before any performance degradation, so a restart taking a couple
+# of seconds is invisible to running workloads.
+#
+# The GPU operator projects the licensing Secret/ConfigMap as a whole directory
+# at VGPU_LICENSING_CONFIG_DIR (no subPath, so kubelet propagates updates in
+# place). Older operators only provide the legacy subPath mounts; in that case
+# we fall back to them and the watcher simply never observes a change.
+VGPU_LICENSING_CONFIG_DIR="/drivers/licensing-config"
+VGPU_LICENSING_LEGACY_GRIDD_CONF="/drivers/gridd.conf"
+VGPU_LICENSING_LEGACY_TOKEN_DIR="/drivers/ClientConfigToken"
+VGPU_LICENSING_TOKEN_NAME="client_configuration_token.tok"
+VGPU_LICENSING_BACKUP_DIR="/run/nvidia/vgpu-licensing-backup"
+VGPU_GRIDD_CONF="/etc/nvidia/gridd.conf"
+VGPU_GRIDD_TOKEN_DIR="/etc/nvidia/ClientConfigToken"
+VGPU_GRIDD_PID_FILE="/var/run/nvidia-gridd/nvidia-gridd.pid"
+VGPU_LICENSE_WATCHER_PID=""
+VGPU_LICENSING_APPLIED_DIGEST=""
+
+# _vgpu_licensing_config_dir_has_gridd_conf reports whether gridd.conf is
+# available from the directory mount projected by a recent GPU operator.
+_vgpu_licensing_config_dir_has_gridd_conf() {
+    [ -d "${VGPU_LICENSING_CONFIG_DIR}" ] && [ -f "${VGPU_LICENSING_CONFIG_DIR}/gridd.conf" ]
+}
+
+# _vgpu_licensing_config_dir_has_token reports whether the NLS client
+# configuration token is available from the directory mount.
+_vgpu_licensing_config_dir_has_token() {
+    [ -d "${VGPU_LICENSING_CONFIG_DIR}" ] && [ -f "${VGPU_LICENSING_CONFIG_DIR}/${VGPU_LICENSING_TOKEN_NAME}" ]
+}
+
+# _vgpu_licensing_gridd_conf_source echoes the path to read gridd.conf from,
+# preferring the directory mount and falling back to the legacy subPath mount.
+_vgpu_licensing_gridd_conf_source() {
+    if _vgpu_licensing_config_dir_has_gridd_conf; then
+        echo "${VGPU_LICENSING_CONFIG_DIR}/gridd.conf"
+    else
+        echo "${VGPU_LICENSING_LEGACY_GRIDD_CONF}"
+    fi
+    return 0
+}
+
+# _vgpu_licensing_digest echoes a digest of the licensing configuration that is
+# currently visible under /drivers.
+#
+# Content is compared rather than mtimes: kubelet swaps a projected volume
+# atomically by relinking the '..data' symlink, which makes timestamps an
+# unreliable change signal. Comparing content also makes a broken configuration
+# non-looping, since a configuration that does not change again is not applied
+# again.
+#
+# The digest is the raw file content, read with the bash '$(< file)' builtin
+# redirection that this entrypoint already uses to read pid files. That is
+# deliberate: sha256sum/md5sum come from coreutils and cmp from diffutils, and
+# neither is guaranteed across every base image these entrypoints ship in
+# (ubuntu, UBI, and the CUDA UBI images used by the precompiled variants), while
+# the builtin needs no external binary at all. The files involved are a few KB
+# of text, so reading them in full every poll is cheap.
+_vgpu_licensing_digest() {
+    local gridd_conf token digest
+    digest=""
+
+    gridd_conf="$(_vgpu_licensing_gridd_conf_source)"
+    if [ -f "${gridd_conf}" ]; then
+        digest="gridd.conf:$(< "${gridd_conf}")"
+    fi
+
+    if [ "${VGPU_LICENSE_SERVER_TYPE:-}" = "NLS" ]; then
+        if _vgpu_licensing_config_dir_has_token; then
+            digest="${digest}"$'\n'"${VGPU_LICENSING_TOKEN_NAME}:$(< "${VGPU_LICENSING_CONFIG_DIR}/${VGPU_LICENSING_TOKEN_NAME}")"
+        else
+            for token in "${VGPU_LICENSING_LEGACY_TOKEN_DIR}"/*; do
+                [ -f "${token}" ] || continue
+                digest="${digest}"$'\n'"${token##*/}:$(< "${token}")"
+            done
+        fi
+    fi
+
+    echo "${digest}"
+    return 0
+}
+
+# _copy_vgpu_licensing_config installs the licensing configuration into
+# /etc/nvidia, where nvidia-gridd reads it from, and records what was installed
+# so that the watcher knows what nvidia-gridd is actually running with.
+#
+# The digest is taken before the copy on purpose. If the configuration changes
+# in between, the watcher sees a difference and applies it again, which costs
+# one extra nvidia-gridd restart. Taking it afterwards would instead make the
+# watcher believe an update it never copied had already been applied, and the
+# rotated license would be silently missed until the next change.
+_copy_vgpu_licensing_config() {
+    VGPU_LICENSING_APPLIED_DIGEST="$(_vgpu_licensing_digest)"
+
+    echo "Copying gridd.conf..."
+    cp "$(_vgpu_licensing_gridd_conf_source)" "${VGPU_GRIDD_CONF}"
+
+    if [ "${VGPU_LICENSE_SERVER_TYPE:-}" = "NLS" ]; then
+        echo "Copying ClientConfigToken..."
+        mkdir -p "${VGPU_GRIDD_TOKEN_DIR}"
+        if _vgpu_licensing_config_dir_has_token; then
+            cp "${VGPU_LICENSING_CONFIG_DIR}/${VGPU_LICENSING_TOKEN_NAME}" "${VGPU_GRIDD_TOKEN_DIR}/"
+        else
+            cp "${VGPU_LICENSING_LEGACY_TOKEN_DIR}"/* "${VGPU_GRIDD_TOKEN_DIR}/"
+        fi
+    fi
+
+    return 0
+}
+
+# _backup_vgpu_licensing_config snapshots the licensing configuration that
+# nvidia-gridd is currently running with, so that it can be rolled back to.
+_backup_vgpu_licensing_config() {
+    rm -rf "${VGPU_LICENSING_BACKUP_DIR}"
+    mkdir -p "${VGPU_LICENSING_BACKUP_DIR}"
+
+    if [ -f "${VGPU_GRIDD_CONF}" ]; then
+        cp "${VGPU_GRIDD_CONF}" "${VGPU_LICENSING_BACKUP_DIR}/gridd.conf"
+    fi
+    if [ -d "${VGPU_GRIDD_TOKEN_DIR}" ]; then
+        mkdir -p "${VGPU_LICENSING_BACKUP_DIR}/ClientConfigToken"
+        cp -a "${VGPU_GRIDD_TOKEN_DIR}/." "${VGPU_LICENSING_BACKUP_DIR}/ClientConfigToken/" 2> /dev/null || true
+    fi
+
+    return 0
+}
+
+# _restore_vgpu_licensing_config puts the last known good licensing
+# configuration back in place.
+_restore_vgpu_licensing_config() {
+    if [ -f "${VGPU_LICENSING_BACKUP_DIR}/gridd.conf" ]; then
+        cp "${VGPU_LICENSING_BACKUP_DIR}/gridd.conf" "${VGPU_GRIDD_CONF}"
+    fi
+    if [ -d "${VGPU_LICENSING_BACKUP_DIR}/ClientConfigToken" ]; then
+        mkdir -p "${VGPU_GRIDD_TOKEN_DIR}"
+        cp -a "${VGPU_LICENSING_BACKUP_DIR}/ClientConfigToken/." "${VGPU_GRIDD_TOKEN_DIR}/" 2> /dev/null || true
+    fi
+
+    return 0
+}
+
+# _start_nvidia_gridd starts nvidia-gridd. VGPU_GRIDD_LD_LIBRARY_PATH is set by
+# the caller because the gridd libraries live in a distribution specific path.
+_start_nvidia_gridd() {
+    echo "Starting nvidia-gridd.."
+    LD_LIBRARY_PATH="${VGPU_GRIDD_LD_LIBRARY_PATH}" nvidia-gridd
+}
+
+# _nvidia_gridd_running reports whether the pid recorded by nvidia-gridd is
+# alive. This is a liveness check only, license acquisition is deliberately not
+# verified: the 20 minute grace period makes a failure to acquire non-urgent.
+_nvidia_gridd_running() {
+    local pid
+    [ -f "${VGPU_GRIDD_PID_FILE}" ] || return 1
+    pid=$(< "${VGPU_GRIDD_PID_FILE}")
+    [ -n "${pid}" ] || return 1
+    kill -0 "${pid}" 2> /dev/null
+}
+
+# _stop_nvidia_gridd stops nvidia-gridd with SIGTERM and waits for it to exit.
+# Never SIGKILL: a clean shutdown returns the license lease to the server, while
+# an abrupt kill may leak the seat until the lease expires, which cluster wide
+# would double count a seat on every node at once.
+_stop_nvidia_gridd() {
+    local pid remaining
+    [ -f "${VGPU_GRIDD_PID_FILE}" ] || return 0
+    pid=$(< "${VGPU_GRIDD_PID_FILE}")
+    [ -n "${pid}" ] || return 0
+
+    echo "Stopping nvidia-gridd (pid ${pid})..."
+    kill -SIGTERM "${pid}" 2> /dev/null || true
+    remaining=50
+    while [ "${remaining}" -gt 0 ]; do
+        if ! kill -0 "${pid}" 2> /dev/null; then
+            # Drop the pid file so that the restart below only ever observes a
+            # pid file freshly written by the new nvidia-gridd process.
+            rm -f "${VGPU_GRIDD_PID_FILE}"
+            return 0
+        fi
+        sleep 0.1
+        remaining=$(( remaining - 1 ))
+    done
+
+    echo "WARNING: nvidia-gridd (pid ${pid}) did not stop within 5s" >&2
+    return 0
+}
+
+# _restart_nvidia_gridd bounces nvidia-gridd and reports whether it came back.
+_restart_nvidia_gridd() {
+    local remaining
+    _stop_nvidia_gridd
+    _start_nvidia_gridd || true
+
+    remaining=100
+    while [ "${remaining}" -gt 0 ]; do
+        if _nvidia_gridd_running; then
+            return 0
+        fi
+        sleep 0.1
+        remaining=$(( remaining - 1 ))
+    done
+
+    return 1
+}
+
+# _reload_vgpu_licensing_config installs the new licensing configuration and
+# restarts nvidia-gridd. If nvidia-gridd does not come back, for example because
+# the new gridd.conf is malformed, the previous configuration is restored and
+# nvidia-gridd is restarted with that instead. Failures are logged loudly and
+# never propagated: exiting would fail the DaemonSet pod, unload the kernel
+# module and evict every GPU workload on the node, which is a wildly
+# disproportionate response to a typo in a secret.
+_reload_vgpu_licensing_config() {
+    _backup_vgpu_licensing_config
+    _copy_vgpu_licensing_config
+
+    if _restart_nvidia_gridd; then
+        echo "Reloaded the vGPU licensing configuration and restarted nvidia-gridd"
+        return 0
+    fi
+
+    echo "ERROR: nvidia-gridd did not come back after the vGPU licensing configuration changed" >&2
+    echo "ERROR: restoring the previous vGPU licensing configuration" >&2
+    _restore_vgpu_licensing_config
+
+    if _restart_nvidia_gridd; then
+        echo "ERROR: nvidia-gridd was restarted with the previous vGPU licensing configuration, fix the licensing configuration and it will be picked up automatically" >&2
+    else
+        echo "ERROR: nvidia-gridd could not be restarted at all, vGPU licensing is degraded on this node, the driver and running GPU workloads are unaffected" >&2
+    fi
+
+    return 0
+}
+
+# _vgpu_license_watcher_sleep sleeps for $1 seconds in one second increments so
+# that a stop request is noticed promptly instead of after a full poll interval.
+# It returns non zero once the watcher has been asked to stop.
+_vgpu_license_watcher_sleep() {
+    local remaining="$1"
+    while [ "${remaining}" -gt 0 ]; do
+        [ -z "${VGPU_LICENSE_WATCHER_STOPPING:-}" ] || return 1
+        sleep 1
+        remaining=$(( remaining - 1 ))
+    done
+    [ -z "${VGPU_LICENSE_WATCHER_STOPPING:-}" ]
+}
+
+# _vgpu_license_reload_jitter waits for a random part of the poll interval
+# before acting on a change. kubelet propagates a projected volume update to
+# every node in the same one to two minute window, so without jitter every
+# driver pod in the cluster would bounce nvidia-gridd at the same instant and
+# hit the license server as one synchronized burst.
+_vgpu_license_reload_jitter() {
+    local max="$1"
+    local jitter=0
+    if [ "${max}" -gt 0 ] 2> /dev/null; then
+        jitter=$(( RANDOM % max ))
+    fi
+    echo "Waiting ${jitter}s before reloading the vGPU licensing configuration (jitter)"
+    _vgpu_license_watcher_sleep "${jitter}"
+}
+
+# _vgpu_license_watcher polls the licensing configuration and restarts
+# nvidia-gridd whenever its content actually changes. It runs in the background
+# for the lifetime of the container and must never exit non zero into the parent
+# shell, so it disables errexit/nounset for itself.
+_vgpu_license_watcher() {
+    set +e
+    set +u
+
+    local interval current_digest
+
+    VGPU_LICENSE_WATCHER_STOPPING=""
+    # The handler only records the request, it never exits. Bash runs a trap
+    # between commands, so an in flight nvidia-gridd restart always runs to
+    # completion before the watcher stops. Together with _shutdown waiting for
+    # this process to exit, that guarantees the watcher can never be relaunching
+    # nvidia-gridd while _shutdown is trying to stop it.
+    trap 'VGPU_LICENSE_WATCHER_STOPPING=yes' TERM INT HUP QUIT
+
+    interval="${VGPU_LICENSE_RELOAD_INTERVAL:-30}"
+    if ! [ "${interval}" -gt 0 ] 2> /dev/null; then
+        echo "WARNING: ignoring invalid VGPU_LICENSE_RELOAD_INTERVAL='${interval}', using 30" >&2
+        interval=30
+    fi
+
+    if [ -z "${VGPU_LICENSING_APPLIED_DIGEST}" ]; then
+        VGPU_LICENSING_APPLIED_DIGEST="$(_vgpu_licensing_digest)"
+    fi
+    echo "Watching the vGPU licensing configuration for changes every ${interval}s"
+
+    while _vgpu_license_watcher_sleep "${interval}"; do
+        current_digest="$(_vgpu_licensing_digest)"
+        if [ "${current_digest}" = "${VGPU_LICENSING_APPLIED_DIGEST}" ]; then
+            continue
+        fi
+
+        echo "Detected a change in the vGPU licensing configuration"
+        _vgpu_license_reload_jitter "${interval}" || break
+
+        # _reload_vgpu_licensing_config records the content it applies, so a
+        # configuration that fails to start nvidia-gridd is not retried in a
+        # loop. The next real change gets a fresh attempt.
+        _reload_vgpu_licensing_config
+    done
+
+    echo "vGPU licensing configuration watcher stopped"
+    return 0
+}
+
+# _start_vgpu_license_watcher starts the watcher in the background unless it has
+# been disabled. Both knobs reach the container through the operator's existing
+# driver.env passthrough.
+_start_vgpu_license_watcher() {
+    if [ "${VGPU_LICENSE_AUTO_RELOAD:-true}" != "true" ]; then
+        echo "Automatic vGPU licensing configuration reload is disabled, not starting the watcher"
+        return 0
+    fi
+
+    _vgpu_license_watcher &
+    VGPU_LICENSE_WATCHER_PID=$!
+    echo "Started the vGPU licensing configuration watcher (pid ${VGPU_LICENSE_WATCHER_PID})"
+    return 0
+}
+
+# _stop_vgpu_license_watcher asks the watcher to stop and waits for it to exit
+# before the caller touches nvidia-gridd itself.
+_stop_vgpu_license_watcher() {
+    local pid remaining
+    pid="${VGPU_LICENSE_WATCHER_PID:-}"
+    VGPU_LICENSE_WATCHER_PID=""
+    [ -n "${pid}" ] || return 0
+    kill -0 "${pid}" 2> /dev/null || return 0
+
+    echo "Stopping the vGPU licensing configuration watcher (pid ${pid})..."
+    kill -SIGTERM "${pid}" 2> /dev/null || true
+    remaining=300
+    while [ "${remaining}" -gt 0 ]; do
+        if ! kill -0 "${pid}" 2> /dev/null; then
+            wait "${pid}" 2> /dev/null || true
+            return 0
+        fi
+        sleep 0.1
+        remaining=$(( remaining - 1 ))
+    done
+
+    echo "WARNING: the vGPU licensing configuration watcher (pid ${pid}) did not stop, killing it" >&2
+    kill -SIGKILL "${pid}" 2> /dev/null || true
+    wait "${pid}" 2> /dev/null || true
+    return 0
+}
+
 _shutdown() {
+    # Stop the watcher first and wait for it to exit, so that it cannot restart
+    # nvidia-gridd while _unload_driver is stopping it.
+    _stop_vgpu_license_watcher
+
     if _unload_driver; then
         _unmount_rootfs
         rm -f ${PID_FILE} ${KERNEL_UPDATE_HOOK}
