@@ -89,6 +89,11 @@ trigger-pipeline:
     matrix:
       - DRIVER_VERSION: [580.173.02, 595.71.05]
 
+.driver-versions-ubuntu26.04:
+  parallel:
+    matrix:
+      - DRIVER_VERSION: [595.71.05]
+
 .driver-versions-rhel10:
   parallel:
     matrix:
@@ -126,6 +131,10 @@ trigger-pipeline:
 .dist-ubuntu24.04:
   variables:
     DIST: ubuntu24.04
+
+.dist-ubuntu26.04:
+  variables:
+    DIST: ubuntu26.04
 
 .dist-rhel8:
   variables:
@@ -223,6 +232,13 @@ trigger-pipeline:
   rules:
     - if: $CI_PIPELINE_SOURCE != "schedule" && $CI_COMMIT_TAG == null
 
+.release-ubuntu26.04:
+  extends:
+    - .release-generic
+    - .driver-versions-ubuntu26.04
+  rules:
+    - if: $CI_PIPELINE_SOURCE != "schedule" && $CI_COMMIT_TAG == null
+
 .release-rhel9:
   # Perform for each DRIVER_VERSION
   extends:
@@ -295,6 +311,15 @@ trigger-pipeline:
 .release:staging-ubuntu24.04:
   extends:
     - .release-ubuntu24.04
+  variables:
+    OUT_REGISTRY_USER: "${NGC_REGISTRY_USER}"
+    OUT_REGISTRY_TOKEN: "${NGC_REGISTRY_TOKEN}"
+    OUT_REGISTRY: "${NGC_REGISTRY}"
+    OUT_IMAGE_NAME: "${NGC_STAGING_REGISTRY}/driver"
+
+.release:staging-ubuntu26.04:
+  extends:
+    - .release-ubuntu26.04
   variables:
     OUT_REGISTRY_USER: "${NGC_REGISTRY_USER}"
     OUT_REGISTRY_TOKEN: "${NGC_REGISTRY_TOKEN}"
@@ -390,6 +415,13 @@ release:staging-ubuntu24.04:
     - .dist-ubuntu24.04
   needs:
     - image-ubuntu24.04
+
+release:staging-ubuntu26.04:
+  extends:
+    - .release:staging-ubuntu26.04
+    - .dist-ubuntu26.04
+  needs:
+    - image-ubuntu26.04
 
 release:staging-rhel8:
   extends:
