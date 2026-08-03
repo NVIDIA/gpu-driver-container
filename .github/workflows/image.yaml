@@ -28,8 +28,9 @@ jobs:
     strategy:
       matrix:
         driver:
-          - 580.173.02
-          - 595.71.05
+          - 580.178.04
+          - 595.91.07
+          - 610.57.04
         dist:
           - ubuntu22.04
           - ubuntu24.04
@@ -44,7 +45,7 @@ jobs:
           - ${{github.event_name == 'pull_request'}}
         exclude:
           - dist: ubuntu26.04
-            driver: 580.173.02
+            driver: 580.178.04
       fail-fast: false
     steps:
       - uses: actions/checkout@v7
