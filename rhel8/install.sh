@@ -93,59 +93,29 @@ nvidia_installer () {
 }
 
 fabricmanager_install() {
-  local fabricmanager_package_name
-  if [ "$DRIVER_BRANCH" -ge "580" ]; then
-    fabricmanager_package_name=nvidia-fabricmanager
-  else
-    fabricmanager_package_name=nvidia-fabric-manager
-  fi
-  dnf install -y ${fabricmanager_package_name}-${DRIVER_VERSION}
-  dnf versionlock add ${fabricmanager_package_name}
+  dnf install -y nvidia-fabricmanager-${DRIVER_VERSION} nvidia-fabric-manager-devel-${DRIVER_VERSION}
+  dnf versionlock add nvidia-fabricmanager nvidia-fabric-manager-devel
 }
 
 nscq_install() {
-  local nscq_package_name
-  if [ "$DRIVER_BRANCH" -ge "580" ]; then
-    nscq_package_name=libnvidia-nscq
-  else
-    nscq_package_name=libnvidia-nscq-${DRIVER_BRANCH}
-  fi
-  dnf install -y ${nscq_package_name}-${DRIVER_VERSION}
-  dnf versionlock add ${nscq_package_name}
+  dnf install -y libnvidia-nscq-${DRIVER_VERSION}
+  dnf versionlock add libnvidia-nscq
 }
 
 nvsdm_install() {
-  local nvsdm_package_name
   if [ "$TARGETARCH" = "amd64" ]; then
-    if [ "$DRIVER_BRANCH" -ge "580" ]; then
-      nvsdm_package_name=libnvsdm
-    elif [ "$DRIVER_BRANCH" -ge "570" ]; then
-      nvsdm_package_name=libnvsdm-${DRIVER_BRANCH}
-    else
-      return 0
-    fi
-    dnf install -y ${nvsdm_package_name}-${DRIVER_VERSION}
-    dnf versionlock add ${nvsdm_package_name}
+    dnf install -y libnvsdm-${DRIVER_VERSION}
+    dnf versionlock add libnvsdm
   fi
 }
 
 nvlink5_pkgs_install() {
-  if [ "$DRIVER_BRANCH" -ge "550" ]; then
-    dnf install -y infiniband-diags nvlsm
-  fi
+  dnf install -y infiniband-diags nvlsm
 }
 
 imex_install() {
-  local imex_package_name
-  if [ "$DRIVER_BRANCH" -ge "580" ]; then
-    imex_package_name=nvidia-imex
-  elif [ "$DRIVER_BRANCH" -ge "550" ]; then
-    imex_package_name=nvidia-imex-${DRIVER_BRANCH}
-  else
-    return 0
-  fi
-  dnf install -y ${imex_package_name}-${DRIVER_VERSION}
-  dnf versionlock add ${imex_package_name}
+  dnf install -y nvidia-imex-${DRIVER_VERSION}
+  dnf versionlock add nvidia-imex
 }
 
 extra_pkgs_install() {

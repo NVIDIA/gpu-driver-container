@@ -69,6 +69,7 @@ extra_pkgs_install() {
     # to DRIVER_VERSION; nvlsm and infiniband-diags are versioned independently of the driver.
     apt-get install -y --no-install-recommends \
         nvidia-fabricmanager \
+        nvidia-fabricmanager-dev \
         libnvidia-nscq \
         nvidia-imex \
         nvlsm \

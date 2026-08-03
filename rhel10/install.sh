@@ -152,23 +152,20 @@ nvidia_installer () {
 }
 
 fabricmanager_install() {
-  local fabricmanager_package_name=nvidia-fabricmanager
-  dnf install -y ${fabricmanager_package_name}-${DRIVER_VERSION}
-  dnf versionlock add ${fabricmanager_package_name}
+  dnf install -y nvidia-fabricmanager-${DRIVER_VERSION} nvidia-fabric-manager-devel-${DRIVER_VERSION}
+  dnf versionlock add nvidia-fabricmanager nvidia-fabric-manager-devel
 }
 
 nscq_install() {
-  local nscq_package_name=libnvidia-nscq
-  dnf install -y ${nscq_package_name}-${DRIVER_VERSION}
-  dnf versionlock add ${nscq_package_name}
+  dnf install -y libnvidia-nscq-${DRIVER_VERSION}
+  dnf versionlock add libnvidia-nscq
 }
 
 # libnvsdm packages are not available for arm64
 nvsdm_install() {
-  local nvsdm_package_name=libnvsdm
   if [ "$TARGETARCH" = "amd64" ]; then
-    dnf install -y ${nvsdm_package_name}-${DRIVER_VERSION}
-    dnf versionlock add ${nvsdm_package_name}
+    dnf install -y libnvsdm-${DRIVER_VERSION}
+    dnf versionlock add libnvsdm
   fi
 }
 
@@ -177,9 +174,8 @@ nvlink5_pkgs_install() {
 }
 
 imex_install() {
-  local imex_package_name=nvidia-imex
-  dnf install -y ${imex_package_name}-${DRIVER_VERSION}
-  dnf versionlock add ${imex_package_name}
+  dnf install -y nvidia-imex-${DRIVER_VERSION}
+  dnf versionlock add nvidia-imex
 }
 
 extra_pkgs_install() {
