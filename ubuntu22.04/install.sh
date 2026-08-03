@@ -69,8 +69,8 @@ nvlink5_pkgs_install() {
 }
 
 imex_install() {
-  apt-get install -y --no-install-recommends nvidia-imex=${DRIVER_VERSION}*
-  apt-mark hold nvidia-imex
+  apt-get install -y --no-install-recommends nvidia-modprobe=${DRIVER_VERSION}* nvidia-imex=${DRIVER_VERSION}*
+  apt-mark hold nvidia-modprobe nvidia-imex
 }
 
 extra_pkgs_install() {
