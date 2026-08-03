@@ -45,60 +45,32 @@ setup_cuda_repo() {
 }
 
 fabricmanager_install() {
-  local fabricmanager_package_name
-  if [ "$DRIVER_BRANCH" -ge "580" ]; then
-    fabricmanager_package_name=nvidia-fabricmanager
-  else
-    fabricmanager_package_name=nvidia-fabricmanager-${DRIVER_BRANCH}
-  fi
-  apt-get install -y --no-install-recommends ${fabricmanager_package_name}=${DRIVER_VERSION}*
-  apt-mark hold ${fabricmanager_package_name}
+  apt-get install -y --no-install-recommends \
+      nvidia-fabricmanager=${DRIVER_VERSION}* \
+      nvidia-fabricmanager-dev=${DRIVER_VERSION}*
+  apt-mark hold nvidia-fabricmanager nvidia-fabricmanager-dev
 }
 
 nscq_install() {
-  local nscq_package_name
-  if [ "$DRIVER_BRANCH" -ge "580" ]; then
-    nscq_package_name=libnvidia-nscq
-  else
-    nscq_package_name=libnvidia-nscq-${DRIVER_BRANCH}
-  fi
-  apt-get install -y --no-install-recommends ${nscq_package_name}=${DRIVER_VERSION}*
-  apt-mark hold ${nscq_package_name}
+  apt-get install -y --no-install-recommends libnvidia-nscq=${DRIVER_VERSION}*
+  apt-mark hold libnvidia-nscq
 }
 
 # libnvsdm packages are not available for arm64
 nvsdm_install() {
-  local nvsdm_package_name
   if [ "$TARGETARCH" = "amd64" ]; then
-    if [ "$DRIVER_BRANCH" -ge "580" ]; then
-      nvsdm_package_name=libnvsdm
-    elif [ "$DRIVER_BRANCH" -ge "570" ]; then
-      nvsdm_package_name=libnvsdm-${DRIVER_BRANCH}
-    else
-      return 0
-    fi
-    apt-get install -y --no-install-recommends ${nvsdm_package_name}=${DRIVER_VERSION}*
-    apt-mark hold ${nvsdm_package_name}
+    apt-get install -y --no-install-recommends libnvsdm=${DRIVER_VERSION}*
+    apt-mark hold libnvsdm
   fi
 }
 
 nvlink5_pkgs_install() {
-  if [ "$DRIVER_BRANCH" -ge "570" ]; then
-    apt-get install -y --no-install-recommends nvlsm infiniband-diags
-  fi
+  apt-get install -y --no-install-recommends nvlsm infiniband-diags
 }
 
 imex_install() {
-  local imex_package_name
-  if [ "$DRIVER_BRANCH" -ge "580" ]; then
-    imex_package_name=nvidia-imex
-  elif [ "$DRIVER_BRANCH" -ge "550" ]; then
-    imex_package_name=nvidia-imex-${DRIVER_BRANCH}
-  else
-    return 0
-  fi
-  apt-get install -y --no-install-recommends ${imex_package_name}=${DRIVER_VERSION}*
-  apt-mark hold ${imex_package_name}
+  apt-get install -y --no-install-recommends nvidia-imex=${DRIVER_VERSION}*
+  apt-mark hold nvidia-imex
 }
 
 extra_pkgs_install() {
