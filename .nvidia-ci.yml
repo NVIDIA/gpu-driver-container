@@ -591,34 +591,6 @@ release:ngc-precompiled-ubuntu22.04:
   rules:
     - !reference [.precompiled-rules, rules]
 
-release:ngc-rhcos4.14:
-  extends:
-    - .release:ngc
-    - .dist-rhel9
-  variables:
-    OUT_DIST: "rhcos4.14"
-
-release:ngc-rhcos4.15:
-  extends:
-    - .release:ngc
-    - .dist-rhel9
-  variables:
-    OUT_DIST: "rhcos4.15"
-
-release:ngc-rhcos4.16:
-  extends:
-    - .release:ngc
-    - .dist-rhel9
-  variables:
-    OUT_DIST: "rhcos4.16"
-
-release:ngc-rhcos4.17:
-  extends:
-    - .release:ngc
-    - .dist-rhel9
-  variables:
-    OUT_DIST: "rhcos4.17"
-
 release:ngc-rhcos4.18:
   extends:
     - .release:ngc
