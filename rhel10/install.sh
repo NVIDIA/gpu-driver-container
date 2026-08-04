@@ -8,7 +8,7 @@ echo "DRIVER_ARCH is $DRIVER_ARCH"
 
 dep_installer () {
   if [ "$DRIVER_ARCH" = "x86_64" ]; then
-    dnf install -y \
+    dnf install -y --nodocs \
         libglvnd-glx \
         ca-certificates \
         curl-minimal \
@@ -19,7 +19,7 @@ dep_installer () {
         file \
         kmod
   elif [ "$DRIVER_ARCH" = "ppc64le" ]; then
-    dnf install -y \
+    dnf install -y --nodocs \
         libglvnd-glx \
         ca-certificates \
         curl-minimal \
@@ -30,7 +30,7 @@ dep_installer () {
         file \
         kmod
   elif [ "$DRIVER_ARCH" = "aarch64" ]; then
-    dnf install -y \
+    dnf install -y --nodocs \
         libglvnd-glx \
         ca-certificates \
         curl-minimal \
@@ -42,8 +42,8 @@ dep_installer () {
         kmod
   fi
 
-  if ! dnf install -y 'dnf-command(config-manager)'; then
-    dnf install -y dnf5-plugins
+  if ! dnf install -y --nodocs 'dnf-command(config-manager)'; then
+    dnf install -y --nodocs dnf5-plugins
   fi
 
   OS_RELEASE_ID=$(grep -oP '(?<=^ID=).+' /etc/os-release | tr -d '"')
@@ -57,15 +57,15 @@ dep_installer () {
   # unzboot is only available on the EPEL RPM repo
   if [ "$DRIVER_ARCH" = "aarch64" ]; then
     rpm --import https://dl.fedoraproject.org/pub/epel/RPM-GPG-KEY-EPEL-10
-    dnf install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-10.noarch.rpm
+    dnf install -y --nodocs https://dl.fedoraproject.org/pub/epel/epel-release-latest-10.noarch.rpm
     dnf config-manager --enable epel
     # Try to install unzboot from EPEL. If it is not available yet, build it
     # from source because RHEL/Rocky 10 arm64 kernel images require it.
-    if ! dnf install -y unzboot; then
+    if ! dnf install -y --nodocs unzboot; then
       echo "unzboot package not available in current EPEL version; building from source."
 
       # Install meson build dependencies
-      if dnf install -y git gcc meson ninja-build glib2-devel zlib-devel libzstd-devel; then
+      if dnf install -y --nodocs git gcc meson ninja-build glib2-devel zlib-devel libzstd-devel; then
         if command -v meson >/dev/null 2>&1 && command -v ninja >/dev/null 2>&1; then
           if git clone https://github.com/eballetbo/unzboot.git /tmp/unzboot-src 2>/dev/null; then
             if meson setup /tmp/unzboot-src/build /tmp/unzboot-src && meson compile -C /tmp/unzboot-src/build; then
@@ -73,7 +73,7 @@ dep_installer () {
               chmod +x /usr/bin/unzboot
               runtime_pkgs=$(ldd /usr/bin/unzboot | awk '/=> \// { print $3 } /^\// { print $1 }' | xargs -r rpm -q --whatprovides | sort -u)
               if [ -n "$runtime_pkgs" ]; then
-                dnf install -y $runtime_pkgs
+                dnf install -y --nodocs $runtime_pkgs
               fi
               echo "Built and installed unzboot from source"
             else
@@ -152,35 +152,35 @@ nvidia_installer () {
 }
 
 fabricmanager_install() {
-  dnf install -y nvidia-fabricmanager-${DRIVER_VERSION} nvidia-fabric-manager-devel-${DRIVER_VERSION}
+  dnf install -y --nodocs nvidia-fabricmanager-${DRIVER_VERSION} nvidia-fabric-manager-devel-${DRIVER_VERSION}
   dnf versionlock add nvidia-fabricmanager nvidia-fabric-manager-devel
 }
 
 nscq_install() {
-  dnf install -y libnvidia-nscq-${DRIVER_VERSION}
+  dnf install -y --nodocs libnvidia-nscq-${DRIVER_VERSION}
   dnf versionlock add libnvidia-nscq
 }
 
 # libnvsdm packages are not available for arm64
 nvsdm_install() {
   if [ "$TARGETARCH" = "amd64" ]; then
-    dnf install -y libnvsdm-${DRIVER_VERSION}
+    dnf install -y --nodocs libnvsdm-${DRIVER_VERSION}
     dnf versionlock add libnvsdm
   fi
 }
 
 nvlink5_pkgs_install() {
-  dnf install -y infiniband-diags nvlsm
+  dnf install -y --nodocs infiniband-diags nvlsm
 }
 
 imex_install() {
-  dnf install -y nvidia-imex-${DRIVER_VERSION}
+  dnf install -y --nodocs nvidia-imex-${DRIVER_VERSION}
   dnf versionlock add nvidia-imex
 }
 
 extra_pkgs_install() {
   if [ "$DRIVER_TYPE" != "vgpu" ]; then
-    dnf install -y 'dnf-command(versionlock)'
+    dnf install -y --nodocs 'dnf-command(versionlock)'
 
     fabricmanager_install
     nscq_install

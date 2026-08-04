@@ -23,6 +23,14 @@ on:
       - release-*
 
 jobs:
+  check-nodocs:
+    runs-on: linux-amd64-cpu4
+    steps:
+      - uses: actions/checkout@v7
+        name: Check out code
+      - name: Check dnf transactions pass --nodocs
+        run: ./tests/check-nodocs.sh
+
   image:
     runs-on: linux-amd64-cpu4
     strategy:
