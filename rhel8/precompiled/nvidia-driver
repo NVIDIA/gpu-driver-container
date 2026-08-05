@@ -210,7 +210,7 @@ _load_driver() {
 
     if _assert_nvswitch_system; then
         echo "Starting NVIDIA fabric manager daemon..."
-        nv-fabricmanager -c /usr/share/nvidia/nvswitch/fabricmanager.cfg
+        nv-fabricmanager -c /usr/share/nvidia/nvswitch/fabricmanager.cfg || return 1
     fi
 }
 
