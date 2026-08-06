@@ -715,6 +715,9 @@ _start_daemons() {
                                                --fm-pid-file $fm_pid_file \
                                                --nvlsm-config-file $nvlsm_config_file \
                                                --nvlsm-pid-file $nvlsm_pid_file
+        # We reset the GPU devices after Fabric Manager startup to clear stale FM
+        # partition data that may have carried over previous driver container runs
+        nvidia-smi -r
 
     # If not a NVLink5+ switch, check for the presence of NVLink4 (or below) switches
     elif _assert_nvswitch_system; then
