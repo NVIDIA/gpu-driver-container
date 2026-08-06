@@ -47,6 +47,15 @@ RUN if [ -n "${CVE_UPDATES}" ]; then \
         rm -rf /var/lib/apt/lists/*; \
     fi
 
+# The Ubuntu 26.04 (resolute) base image ships /usr/bin/pebble (Canonical's service
+# manager), which is built against a vulnerable golang.org/x/net (CVE-2026-39821).
+# This container's entrypoint is nvidia-driver, so pebble is never used,delete pebble to address the CVE.
+# Toggle off (REMOVE_PEBBLE=false) once the base image ships a patched pebble.
+ARG REMOVE_PEBBLE=true
+RUN if [ "${REMOVE_PEBBLE}" = "true" ] && [ -e /usr/bin/pebble ]; then \
+        rm -f /usr/bin/pebble; \
+    fi
+
 COPY nvidia-driver /usr/local/bin
 
 ADD local-repo.sh /tmp
