@@ -773,13 +773,13 @@ _start_daemons() {
                                                --fm-config-file $fm_config_file \
                                                --fm-pid-file $fm_pid_file \
                                                --nvlsm-config-file $nvlsm_config_file \
-                                               --nvlsm-pid-file $nvlsm_pid_file
+                                               --nvlsm-pid-file $nvlsm_pid_file || return 1
 
     # If not a NVLink5+ switch, check for the presence of NVLink4 (or below) switches
     elif _assert_nvswitch_system; then
         _configure_fabric_manager
         echo "Starting NVIDIA fabric manager daemon..."
-        nv-fabricmanager -c /usr/share/nvidia/nvswitch/fabricmanager.cfg
+        nv-fabricmanager -c /usr/share/nvidia/nvswitch/fabricmanager.cfg || return 1
     fi
 }
 
