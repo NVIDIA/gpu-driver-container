@@ -107,6 +107,11 @@ _resolve_kernel_version() {
     return 0
 }
 
+_set_daemons_status() {
+    mkdir -p /run/nvidia/validations
+    echo "${1}" > /run/nvidia/validations/.driver-daemons-status
+}
+
 # Install the kernel modules header/builtin/order files and generate the kernel version string.
 _install_prerequisites() (
     local tmp_dir=$(mktemp -d)
@@ -315,7 +320,6 @@ _load_driver() {
 
     echo "Loading ipmi and i2c_core kernel modules..."
     modprobe -a i2c_core ipmi_msghandler ipmi_devintf
-
     echo "Loading NVIDIA driver kernel modules..."
     set -o xtrace +o nounset
     modprobe nvidia
@@ -714,6 +718,7 @@ _start_daemons() {
         echo "Starting NVIDIA fabric manager daemon..."
         nv-fabricmanager -c /usr/share/nvidia/nvswitch/fabricmanager.cfg || return 1
     fi
+    _set_daemons_status "Ready"
 }
 
 # Check if fast path should be used (driver already loaded with matching config)
@@ -844,6 +849,8 @@ init() {
 
     trap "echo 'Caught signal'; exit 1" HUP INT QUIT PIPE TERM
     trap "_shutdown" EXIT
+
+    _set_daemons_status "NotReady"
 
     if _should_skip_kernel_module_reload; then
         echo "The NVIDIA driver is already loaded with the desired configuration, performing userspace-only install"
