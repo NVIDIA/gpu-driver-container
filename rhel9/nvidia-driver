@@ -1045,8 +1045,8 @@ KERNEL_VERSION=$(uname -r)
 PRIVATE_KEY=""
 PACKAGE_TAG=""
 
-for opt in ${options}; do
-    case "$opt" in
+while [ $# -gt 0 ]; do
+    case "$1" in
     -a | --accept-license) ACCEPT_LICENSE="yes"; shift 1 ;;
     -k | --kernel) KERNEL_VERSION=$2; shift 2 ;;
     -m | --max-threads) MAX_THREADS=$2; shift 2 ;;
