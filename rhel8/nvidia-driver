@@ -81,8 +81,12 @@ _resolve_rhel_version() {
 # Resolve the kernel version to the form major.minor.patch-revision.
 _resolve_kernel_version() {
     echo "Resolving Linux kernel version..."
-    local version=$(yum -q list available --showduplicates kernel-headers |
-      awk -v arch=$(uname -m) 'NR>1 {print $2"."arch}' | tac | grep -E -m1 "^${KERNEL_VERSION/latest/.*}")
+    local version
+    if ! version=$(yum -q list available --showduplicates kernel-headers |
+      awk -v arch=$(uname -m) 'NR>1 {print $2"."arch}' | tac | grep -E -m1 "^${KERNEL_VERSION/latest/.*}"); then
+        echo "Could not resolve Linux kernel version" >&2
+        return 1
+    fi
 
     if [ -z "${version}" ]; then
         echo "Could not resolve Linux kernel version" >&2
