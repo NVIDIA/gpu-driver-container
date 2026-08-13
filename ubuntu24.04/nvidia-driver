@@ -269,19 +269,19 @@ _create_module_params_conf() {
 
     if [ ${#NVIDIA_MODULE_PARAMS[@]} -gt 0 ]; then
         echo "Configuring nvidia module parameters in ${MODPROBE_CONFIG_DIR}/nvidia.conf"
-        echo "options nvidia ${NVIDIA_MODULE_PARAMS[@]}" > ${MODPROBE_CONFIG_DIR}/nvidia.conf
+        echo "options nvidia ${NVIDIA_MODULE_PARAMS[*]}" > "${MODPROBE_CONFIG_DIR}/nvidia.conf"
     fi
     if [ ${#NVIDIA_UVM_MODULE_PARAMS[@]} -gt 0 ]; then
         echo "Configuring nvidia-uvm module parameters in ${MODPROBE_CONFIG_DIR}/nvidia-uvm.conf"
-        echo "options nvidia-uvm ${NVIDIA_UVM_MODULE_PARAMS[@]}" > ${MODPROBE_CONFIG_DIR}/nvidia-uvm.conf
+        echo "options nvidia-uvm ${NVIDIA_UVM_MODULE_PARAMS[*]}" > "${MODPROBE_CONFIG_DIR}/nvidia-uvm.conf"
     fi
     if [ ${#NVIDIA_MODESET_MODULE_PARAMS[@]} -gt 0 ]; then
         echo "Configuring nvidia-modeset module parameters in ${MODPROBE_CONFIG_DIR}/nvidia-modeset.conf"
-        echo "options nvidia-modeset ${NVIDIA_MODESET_MODULE_PARAMS[@]}" > ${MODPROBE_CONFIG_DIR}/nvidia-modeset.conf
+        echo "options nvidia-modeset ${NVIDIA_MODESET_MODULE_PARAMS[*]}" > "${MODPROBE_CONFIG_DIR}/nvidia-modeset.conf"
     fi
     if [ ${#NVIDIA_PEERMEM_MODULE_PARAMS[@]} -gt 0 ]; then
         echo "Configuring nvidia-peermem module parameters in ${MODPROBE_CONFIG_DIR}/nvidia-peermem.conf"
-        echo "options nvidia-peermem ${NVIDIA_PEERMEM_MODULE_PARAMS[@]}" > ${MODPROBE_CONFIG_DIR}/nvidia-peermem.conf
+        echo "options nvidia-peermem ${NVIDIA_PEERMEM_MODULE_PARAMS[*]}" > "${MODPROBE_CONFIG_DIR}/nvidia-peermem.conf"
     fi
 }
 
