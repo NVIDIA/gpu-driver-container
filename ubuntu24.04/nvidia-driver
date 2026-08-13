@@ -845,7 +845,7 @@ usage() {
 Usage: $0 COMMAND [ARG...]
 
 Commands:
-  init   [-a | --accept-license] [-m | --max-threads MAX_THREADS]
+  init   [-a | --accept-license] [-m | --max-threads MAX_THREADS] [-k | --kernel KERNEL_VERSION] [-t | --tag PACKAGE_TAG]
 EOF
     exit 1
 }
@@ -855,14 +855,11 @@ if [ $# -eq 0 ]; then
 fi
 command=$1; shift
 case "${command}" in
-    init) options=$(getopt -l accept-license,max-threads: -o am: -- "$@") ;;
+    init) if ! options=$(getopt -l accept-license,max-threads:,kernel:,tag: -o am:k:t: -- "$@"); then usage; fi ;;
     reload_nvidia_peermem) options="" ;;
     probe_nvidia_peermem) options="" ;;
     *) usage ;;
 esac
-if [ $? -ne 0 ]; then
-    usage
-fi
 eval set -- "${options}"
 
 ACCEPT_LICENSE=""
