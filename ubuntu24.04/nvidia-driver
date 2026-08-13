@@ -457,7 +457,7 @@ _install_driver() {
     if [[ "${KERNEL_MODULE_TYPE}" == "open"  || "${KERNEL_MODULE_TYPE}" == "proprietary" ]]; then
         [[ "${KERNEL_MODULE_TYPE}" == "open" ]] && kernel_type=kernel-open || kernel_type=kernel
         echo "Proceeding with user-specified kernel module type ${KERNEL_MODULE_TYPE}"
-        install_args+=("-m=${kernel_type}")
+        install_args+=("--kernel-module-type=${kernel_type}")
     fi
 
     # Specify the --skip-module-load flag for versions of the nvidia-installer that
