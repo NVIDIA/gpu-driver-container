@@ -840,6 +840,7 @@ init() {
     echo -e "Starting installation of NVIDIA driver version ${DRIVER_VERSION} for Linux kernel version ${KERNEL_VERSION}"
     echo -e "Kernel module type: ${KERNEL_MODULE_TYPE}\n"
 
+    mkdir -p ${RUN_DIR}
     exec 3> ${PID_FILE}
     if ! flock -n 3; then
         echo "An instance of the NVIDIA driver is already running, aborting"
