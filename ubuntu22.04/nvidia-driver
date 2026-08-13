@@ -622,8 +622,7 @@ _find_vgpu_driver_version() {
         return 0
     fi
     # check if vgpu devices are present
-    count=$(vgpu-util count)
-    if [ $? -ne 0 ]; then
+    if ! count=$(vgpu-util count); then
          echo "cannot find vgpu devices on host, pleae check /var/log/vgpu-util.log for more details..."
          return 0
     fi
