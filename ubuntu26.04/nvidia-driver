@@ -941,7 +941,7 @@ usage() {
 Usage: $0 COMMAND [ARG...]
 
 Commands:
-  init   [-a | --accept-license] [-m | --max-threads MAX_THREADS]
+  init   [-a | --accept-license] [-k | --kernel KERNEL_VERSION] [-m | --max-threads MAX_THREADS] [-t | --tag PACKAGE_TAG]
 EOF
     exit 1
 }
@@ -951,7 +951,7 @@ if [ $# -eq 0 ]; then
 fi
 command=$1; shift
 case "${command}" in
-    init) options=$(getopt -l accept-license,max-threads: -o am: -- "$@") ;;
+    init) options=$(getopt -l accept-license,max-threads:,kernel:,tag: -o am:k:t: -- "$@") ;;
     reload_nvidia_peermem) options="" ;;
     probe_nvidia_peermem) options="" ;;
     *) usage ;;
