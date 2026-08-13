@@ -193,11 +193,10 @@ _ensure_nvlink5_prerequisites() (
 
 # Check if mellanox devices are present
 _mellanox_devices_present() {
-    devices_found=0
     for dev in /sys/bus/pci/devices/*; do
-        read vendor < $dev/vendor
+        read vendor < "$dev/vendor"
         if [ "$vendor" = "0x15b3" ]; then
-            echo "Mellanox device found at $(basename $dev)"
+            echo "Mellanox device found at $(basename "$dev")"
             return 0
         fi
     done
