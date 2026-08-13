@@ -246,7 +246,7 @@ _create_driver_package() (
         fi
     fi
 
-    make -s -j ${MAX_THREADS} SYSSRC=/lib/modules/${KERNEL_VERSION}/build nv-linux.o nv-modeset-linux.o > /dev/null
+    make -s -j ${MAX_THREADS} SYSSRC=/lib/modules/${KERNEL_VERSION}/build nv-linux.o nv-modeset-linux.o nvidia-uvm.ko > /dev/null
 
     echo "Relinking NVIDIA driver kernel modules..."
     rm -f nvidia.ko nvidia-modeset.ko
