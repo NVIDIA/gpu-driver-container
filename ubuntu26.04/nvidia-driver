@@ -766,15 +766,17 @@ _resolve_kernel_type() {
   elif [ "${KERNEL_MODULE_TYPE}" == "open" ]; then
     KERNEL_TYPE=kernel-open
   elif [ "${KERNEL_MODULE_TYPE}" == "auto" ]; then
-    kernel_module_type=$(nvidia-installer --print-recommended-kernel-module-type)
-    if [ $? -ne 0 ]; then
+    local kernel_module_type
+    local rc=0
+    kernel_module_type=$(nvidia-installer --print-recommended-kernel-module-type) || rc=$?
+    if [ $rc -ne 0 ]; then
       echo "failed to retrieve the recommended kernel module type from nvidia-installer, falling back to using the driver branch"
       _resolve_kernel_type_from_driver_branch
       return 0
     fi
     [[ "${kernel_module_type}" == "open" ]] && KERNEL_TYPE=kernel-open || KERNEL_TYPE=kernel
   else
-    echo "invalid value for the KERNEL_MODULE_TYPE variable: ${KERNEL_MODULE_TYPE}"
+    echo "invalid value for the KERNEL_MODULE_TYPE variable: ${KERNEL_MODULE_TYPE}" >&2
     return 1
   fi
 }
