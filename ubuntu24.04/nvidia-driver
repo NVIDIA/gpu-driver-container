@@ -124,7 +124,7 @@ _install_prerequisites() (
 
     echo "Generating Linux kernel version string..."
 
-    ls -1 boot/vmlinuz-* | sed  's/\/boot\/vmlinuz-//g' - > version
+    ls -1 boot/vmlinuz-* | sed  's/\/boot\/vmlinuz-//g' > version
     if [ -z "$(<version)" ]; then
         echo "Could not locate Linux kernel version string" >&2
         return 1
