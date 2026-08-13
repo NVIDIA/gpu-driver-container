@@ -951,7 +951,7 @@ if [ $# -eq 0 ]; then
 fi
 command=$1; shift
 case "${command}" in
-    init) options=$(getopt -l accept-license,max-threads: -o am: -- "$@") ;;
+    init) options=$(getopt -l accept-license,max-threads:,kernel:,tag: -o am:k:t: -- "$@") ;;
     reload_nvidia_peermem) options="" ;;
     probe_nvidia_peermem) options="" ;;
     *) usage ;;
@@ -966,13 +966,14 @@ MAX_THREADS=""
 KERNEL_VERSION=$(uname -r)
 PACKAGE_TAG=""
 
-for opt in ${options}; do
-    case "$opt" in
-    -a | --accept-license) ACCEPT_LICENSE="yes"; shift 1 ;;
+while [ $# -gt 0 ]; do
+    case "$1" in
+    -a | --accept-license) ACCEPT_LICENSE="yes"; shift ;;
     -k | --kernel) KERNEL_VERSION=$2; shift 2 ;;
     -m | --max-threads) MAX_THREADS=$2; shift 2 ;;
     -t | --tag) PACKAGE_TAG=$2; shift 2 ;;
     --) shift; break ;;
+    *) usage ;;
     esac
 done
 if [ $# -ne 0 ]; then
