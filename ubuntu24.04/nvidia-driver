@@ -855,7 +855,7 @@ if [ $# -eq 0 ]; then
 fi
 command=$1; shift
 case "${command}" in
-    init) options=$(getopt -l accept-license,max-threads: -o am: -- "$@") ;;
+    init) options=$(getopt -l accept-license,max-threads:,kernel:,tag: -o am:k:t: -- "$@") ;;
     reload_nvidia_peermem) options="" ;;
     probe_nvidia_peermem) options="" ;;
     *) usage ;;
