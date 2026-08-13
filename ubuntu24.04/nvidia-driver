@@ -144,7 +144,10 @@ _remove_prerequisites() {
 # or kernel-version folder.
 _link_ofa_kernel() (
     if _gpu_direct_rdma_enabled; then
-        ln -s /run/mellanox/drivers/usr/src/ofa_kernel /usr/src/
+        # Only create the top-level symlink if it doesn't already exist.
+        if [[ ! -e /usr/src/ofa_kernel ]]; then
+            ln -s /run/mellanox/drivers/usr/src/ofa_kernel /usr/src/
+        fi
         # if arch directory exists(MOFED >=5.5) then create a symlink as expected by GPU driver installer
         # ls -ltr /usr/src/ofa_kernel/
         # lrwxrwxrwx 1 root root   36 Dec  8 20:10 default -> /etc/alternatives/ofa_kernel_headers
