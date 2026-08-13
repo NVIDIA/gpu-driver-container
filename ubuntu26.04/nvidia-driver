@@ -75,7 +75,7 @@ _update_local_repo_lists() {
 }
 
 _update_ca_certificates() {
-    if [ ! -z "$(ls -A /usr/local/share/ca-certificates)" ]; then
+    if [ -n "$(ls -A /usr/local/share/ca-certificates)" ]; then
         update-ca-certificates
     fi
 }
