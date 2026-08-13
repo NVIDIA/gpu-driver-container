@@ -635,8 +635,7 @@ _find_vgpu_driver_version() {
     echo "found $NUM_VGPU_DEVICES vgpu devices on host"
 
     # find compatible guest driver using drive catalog
-    version=$(vgpu-util match -i /drivers -c /drivers/vgpuDriverCatalog.yaml)
-    if [ $? -ne 0 ]; then
+    if ! version=$(vgpu-util match -i /drivers -c /drivers/vgpuDriverCatalog.yaml); then
         echo "cannot find match for compatible vgpu driver from available list, please check /var/log/vgpu-util.log for more details..."
         return 1
     fi
