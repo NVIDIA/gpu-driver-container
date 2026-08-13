@@ -568,7 +568,13 @@ trap 'echo "ERROR: Failed to update the NVIDIA driver" >&2; exit 0' ERR
 
 NVIDIA_DRIVER_PID=$(< /run/nvidia/nvidia-driver.pid)
 
-export "$(grep -z DRIVER_VERSION /proc/${NVIDIA_DRIVER_PID}/environ)"
+# Mirror the driver container's environment; the update command is started by
+# the host kernel postinst context and would otherwise lack required variables
+# such as TARGETARCH and KERNEL_TYPE.
+while IFS= read -r -d '' var; do
+    [[ -n "${var}" ]] && export "${var}"
+done < /proc/${NVIDIA_DRIVER_PID}/environ
+
 nsenter -t "${NVIDIA_DRIVER_PID}" -m -- nvidia-driver update --kernel "$1"
 EOF
     chmod +x ${KERNEL_UPDATE_HOOK}
@@ -592,9 +598,9 @@ _shutdown() {
 # When 'auto' is configured, we use the nvidia-installer to recommend the module type to install.
 _resolve_kernel_type() {
   if [ "${KERNEL_MODULE_TYPE}" == "proprietary" ]; then
-    KERNEL_TYPE=kernel
+    export KERNEL_TYPE=kernel
   elif [ "${KERNEL_MODULE_TYPE}" == "open" ]; then
-    KERNEL_TYPE=kernel-open
+    export KERNEL_TYPE=kernel-open
   elif [ "${KERNEL_MODULE_TYPE}" == "auto" ]; then
     kernel_module_type=$(nvidia-installer --print-recommended-kernel-module-type)
     if [ $? -ne 0 ]; then
@@ -602,7 +608,7 @@ _resolve_kernel_type() {
       _resolve_kernel_type_from_driver_branch
       return 0
     fi
-    [[ "${kernel_module_type}" == "open" ]] && KERNEL_TYPE=kernel-open || KERNEL_TYPE=kernel
+    [[ "${kernel_module_type}" == "open" ]] && export KERNEL_TYPE=kernel-open || export KERNEL_TYPE=kernel
   else
     echo "invalid value for the KERNEL_MODULE_TYPE variable: ${KERNEL_MODULE_TYPE}"
     return 1
@@ -610,7 +616,7 @@ _resolve_kernel_type() {
 }
 
 _resolve_kernel_type_from_driver_branch() {
-  [[ "${DRIVER_BRANCH}" -lt 560 ]] && KERNEL_TYPE=kernel || KERNEL_TYPE=kernel-open
+  [[ "${DRIVER_BRANCH}" -lt 560 ]] && export KERNEL_TYPE=kernel || export KERNEL_TYPE=kernel-open
 }
 
 _find_vgpu_driver_version() {
