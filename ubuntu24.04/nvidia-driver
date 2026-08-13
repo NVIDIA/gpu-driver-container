@@ -65,7 +65,7 @@ _cleanup_package_cache() {
 }
 
 _update_ca_certificates() {
-    if [ ! -z "$(ls -A /usr/local/share/ca-certificates)" ]; then
+    if [ -n "$(ls -A /usr/local/share/ca-certificates)" ]; then
         update-ca-certificates
     fi
 }
@@ -298,7 +298,7 @@ _load_driver() {
 
     if [[ "$set_fw_path" == "true" ]]; then
         echo "Configuring the following firmware search path in '$fw_path_config_file': $nv_fw_search_path"
-        if [[ ! -z $(grep '[^[:space:]]' $fw_path_config_file) ]]; then
+        if [[ -n $(grep '[^[:space:]]' $fw_path_config_file) ]]; then
             echo "WARNING: A search path is already configured in $fw_path_config_file"
             echo "         Retaining the current configuration"
         else
