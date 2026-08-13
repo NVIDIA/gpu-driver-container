@@ -604,27 +604,28 @@ _shutdown() {
 _find_vgpu_driver_version() {
     local count=""
     local version=""
+    local rc=0
 
     if [ "${DISABLE_VGPU_VERSION_CHECK}" = "true" ]; then
         echo "vgpu version compatibility check is disabled"
         return 0
     fi
     # check if vgpu devices are present
-    count=$(vgpu-util count)
-    if [ $? -ne 0 ]; then
-         echo "cannot find vgpu devices on host, pleae check /var/log/vgpu-util.log for more details..."
+    count=$(vgpu-util count) || rc=$?
+    if [ $rc -ne 0 ]; then
+         echo "cannot find vgpu devices on host, please check /var/log/vgpu-util.log for more details..."
          return 0
     fi
     NUM_VGPU_DEVICES=$(echo "$count" | awk -F= '{print $2}')
-    if [ $NUM_VGPU_DEVICES -eq 0 ]; then
+    if [ "${NUM_VGPU_DEVICES:-0}" -eq 0 ]; then
         # no vgpu devices found, treat as passthrough
         return 0
     fi
     echo "found $NUM_VGPU_DEVICES vgpu devices on host"
 
-    # find compatible guest driver using drive catalog
-    version=$(vgpu-util match -i /drivers -c /drivers/vgpuDriverCatalog.yaml)
-    if [ $? -ne 0 ]; then
+    # find compatible guest driver using driver catalog
+    version=$(vgpu-util match -i /drivers -c /drivers/vgpuDriverCatalog.yaml) || rc=$?
+    if [ $rc -ne 0 ]; then
         echo "cannot find match for compatible vgpu driver from available list, please check /var/log/vgpu-util.log for more details..."
         return 1
     fi
