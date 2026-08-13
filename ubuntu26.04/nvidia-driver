@@ -966,13 +966,14 @@ MAX_THREADS=""
 KERNEL_VERSION=$(uname -r)
 PACKAGE_TAG=""
 
-for opt in ${options}; do
-    case "$opt" in
-    -a | --accept-license) ACCEPT_LICENSE="yes"; shift 1 ;;
-    -k | --kernel) KERNEL_VERSION=$2; shift 2 ;;
-    -m | --max-threads) MAX_THREADS=$2; shift 2 ;;
-    -t | --tag) PACKAGE_TAG=$2; shift 2 ;;
+while true; do
+    case "$1" in
+    -a | --accept-license) ACCEPT_LICENSE="yes"; shift ;;
+    -k | --kernel) KERNEL_VERSION="$2"; shift 2 ;;
+    -m | --max-threads) MAX_THREADS="$2"; shift 2 ;;
+    -t | --tag) PACKAGE_TAG="$2"; shift 2 ;;
     --) shift; break ;;
+    *) usage ;;
     esac
 done
 if [ $# -ne 0 ]; then
