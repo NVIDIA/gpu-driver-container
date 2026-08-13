@@ -58,3 +58,57 @@ Use your real name (sorry, no pseudonyms or anonymous contributions.)
 If you set your `user.name` and `user.email` git configs, you can sign your
 commit automatically with `git commit -s`.
 
+## Pull Request Guidelines
+
+### One PR per root cause, not per file
+
+If the same bug appears in multiple OS-specific directories
+(ubuntu22.04, ubuntu24.04, rhel8, rhel9, rhel10), fix all instances
+in a single PR. Title the PR around the root cause:
+
+- Good: `fix: set -e suppresses command-substitution exit codes`
+- Avoid: one PR per distro for the same one-liner change
+
+### Open an issue before bulk fixes
+
+If you find five or more instances of the same pattern, open one
+GitHub issue first. Describe the pattern and your proposed fix.
+Wait for a maintainer response before opening any PR. This avoids
+flooding CI with work the team may not want.
+
+### Do not open more than three PRs per day
+
+Each PR triggers a CI run that uses shared compute. Submitting many
+PRs in a single session blocks CI for every other contributor.
+If you have many fixes, batch them or stagger them across days.
+
+### Check for conflicts before opening
+
+Search for open PRs that touch the same file before opening a new one:
+
+```
+is:open is:pr <filename>
+```
+
+A PR that conflicts with an already-open PR will stall on review.
+
+### Separate cosmetic from correctness changes
+
+Put style fixes (variable naming, deprecated test syntax) in their
+own PR, separate from behavioral bug fixes. Reviewers triage
+correctness issues first; cosmetic changes buried inside bug fixes
+slow the queue.
+
+### Write tests that execute the code
+
+A test that greps for absence of old text is a linter check, not a
+regression test. Tests should invoke the function being fixed (even
+via a stub harness) and verify the correct behavior. A test that
+passes on the unchanged code is not useful.
+
+### Link every PR to an issue
+
+Every PR must include a `Fixes #NNN` or `Related to #NNN` reference.
+If no issue exists, open one first (see above). PRs without an issue
+link are harder to triage and may be closed without review.
+
