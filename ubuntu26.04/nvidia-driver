@@ -537,6 +537,7 @@ _install_driver_runfile() {
     install_args+=("--skip-module-load")
 
     # Install the NVIDIA driver in one step
+    cd /drivers
     sh NVIDIA-Linux-$DRIVER_ARCH-$DRIVER_VERSION.run --silent \
                     --ui=none \
                     --no-drm \
