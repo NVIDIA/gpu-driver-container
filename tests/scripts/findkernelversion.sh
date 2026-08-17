@@ -11,7 +11,7 @@ export DIST="${3}"
 export LTS_KERNEL="${4}"
 export PLATFORM_SUFFIX="${5}"
 
-export REGCTL_VERSION=v0.7.1
+export REGCTL_VERSION=v0.11.5
 mkdir -p bin
 curl -sSLo bin/regctl https://github.com/regclient/regclient/releases/download/${REGCTL_VERSION}/regctl-linux-amd64
 chmod a+x bin/regctl
