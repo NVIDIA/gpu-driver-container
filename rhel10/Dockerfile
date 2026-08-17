@@ -35,7 +35,7 @@ ENV TARGETARCH=$TARGETARCH
 
 SHELL ["/bin/bash", "-c"]
 
-RUN dnf update -y && dnf clean all
+RUN dnf update -y --nodocs && dnf clean all
 
 #ARG BASE_URL=http://us.download.nvidia.com/XFree86/Linux-x86_64
 ARG BASE_URL=https://us.download.nvidia.com/tesla
@@ -108,7 +108,7 @@ LABEL description="See summary"
 # Install / upgrade packages here that are required to resolve CVEs
 ARG CVE_UPDATES
 RUN if [ -n "${CVE_UPDATES}" ]; then \
-    dnf update -y ${CVE_UPDATES} && \
+    dnf update -y --nodocs ${CVE_UPDATES} && \
     dnf clean all; \
     fi
 

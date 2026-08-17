@@ -23,7 +23,7 @@ RUN chmod +x NVIDIA-Linux-${DRIVER_ARCH}-${DRIVER_VERSION}-vgpu-kvm.run
 COPY nvidia-driver /usr/local/bin
 COPY ocp_dtk_entrypoint /usr/local/bin
 
-RUN dnf install -y pciutils && \
+RUN dnf install -y --nodocs pciutils && \
     dnf clean all && \
     rm -rf /var/cache/dnf/*
 
@@ -39,7 +39,7 @@ LABEL description="See summary"
 # Install / upgrade packages here that are required to resolve CVEs
 ARG CVE_UPDATES
 RUN if [ -n "${CVE_UPDATES}" ]; then \
-    dnf update -y ${CVE_UPDATES} && \
+    dnf update -y --nodocs ${CVE_UPDATES} && \
     dnf clean all; \
     fi
 

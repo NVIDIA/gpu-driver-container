@@ -8,7 +8,7 @@ echo "DRIVER_ARCH is $DRIVER_ARCH"
 
 dep_installer () {
   if [ "$DRIVER_ARCH" = "x86_64" ]; then
-    dnf install -y \
+    dnf install -y --nodocs \
         libglvnd-glx \
         ca-certificates \
         curl \
@@ -18,7 +18,7 @@ dep_installer () {
         cpio \
         kmod
   elif [ "$DRIVER_ARCH" = "ppc64le" ]; then
-    dnf install -y \
+    dnf install -y --nodocs \
         libglvnd-glx \
         ca-certificates \
         curl \
@@ -28,7 +28,7 @@ dep_installer () {
         cpio \
         kmod
   elif [ "$DRIVER_ARCH" = "aarch64" ]; then
-    dnf install -y \
+    dnf install -y --nodocs \
         libglvnd-glx \
         ca-certificates \
         curl \
@@ -39,7 +39,7 @@ dep_installer () {
         kmod
   fi
 
-  dnf install -y 'dnf-command(config-manager)'
+  dnf install -y --nodocs 'dnf-command(config-manager)'
   rm -rf /var/cache/yum/*
 }
 
@@ -93,35 +93,35 @@ nvidia_installer () {
 }
 
 fabricmanager_install() {
-  dnf install -y nvidia-fabricmanager-${DRIVER_VERSION} nvidia-fabric-manager-devel-${DRIVER_VERSION}
+  dnf install -y --nodocs nvidia-fabricmanager-${DRIVER_VERSION} nvidia-fabric-manager-devel-${DRIVER_VERSION}
   dnf versionlock add nvidia-fabricmanager nvidia-fabric-manager-devel
 }
 
 nscq_install() {
-  dnf install -y libnvidia-nscq-${DRIVER_VERSION}
+  dnf install -y --nodocs libnvidia-nscq-${DRIVER_VERSION}
   dnf versionlock add libnvidia-nscq
 }
 
 nvsdm_install() {
   if [ "$TARGETARCH" = "amd64" ]; then
-    dnf install -y libnvsdm-${DRIVER_VERSION}
+    dnf install -y --nodocs libnvsdm-${DRIVER_VERSION}
     dnf versionlock add libnvsdm
   fi
 }
 
 nvlink5_pkgs_install() {
-  dnf install -y infiniband-diags nvlsm
+  dnf install -y --nodocs infiniband-diags nvlsm
 }
 
 imex_install() {
-  dnf install -y nvidia-imex-${DRIVER_VERSION}
+  dnf install -y --nodocs nvidia-imex-${DRIVER_VERSION}
   dnf versionlock add nvidia-imex
 }
 
 extra_pkgs_install() {
   if [ "$DRIVER_TYPE" != "vgpu" ]; then
       dnf module enable -y nvidia-driver:${DRIVER_BRANCH}-dkms
-      dnf install -y 'dnf-command(versionlock)'
+      dnf install -y --nodocs 'dnf-command(versionlock)'
 
       fabricmanager_install
       nscq_install
