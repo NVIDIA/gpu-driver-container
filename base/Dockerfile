@@ -54,11 +54,20 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         apt-utils git curl && \
     rm -rf /var/lib/apt/lists/*
 
-RUN echo "deb [arch=amd64] http://archive.ubuntu.com/ubuntu/ noble main universe" > /etc/apt/sources.list && \
-    echo "deb [arch=amd64] http://archive.ubuntu.com/ubuntu/ noble-updates main universe" >> /etc/apt/sources.list && \
-    echo "deb [arch=amd64] http://archive.ubuntu.com/ubuntu/ noble-security main universe" >> /etc/apt/sources.list && \
-    echo "deb [arch=amd64] http://us.archive.ubuntu.com/ubuntu noble-updates main restricted" >> /etc/apt/sources.list && \
-    echo "deb [arch=amd64] http://us.archive.ubuntu.com/ubuntu noble-security main restricted" >> /etc/apt/sources.list && \
+RUN ARCH=$(dpkg --print-architecture) && \
+    # kernel version is the same for amd64 and arm64, so base image is always built for amd64 ( non-nvidia-64k)
+    # for nvidia-64k is arm64-only, so its base image must be built for arm64
+    if [ "$ARCH" = "arm64" ]; then \
+      echo "deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports/ noble main universe" > /etc/apt/sources.list && \
+      echo "deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports/ noble-updates main universe" >> /etc/apt/sources.list && \
+      echo "deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports/ noble-security main universe" >> /etc/apt/sources.list; \
+    else \
+      echo "deb [arch=amd64] http://archive.ubuntu.com/ubuntu/ noble main universe" > /etc/apt/sources.list && \
+      echo "deb [arch=amd64] http://archive.ubuntu.com/ubuntu/ noble-updates main universe" >> /etc/apt/sources.list && \
+      echo "deb [arch=amd64] http://archive.ubuntu.com/ubuntu/ noble-security main universe" >> /etc/apt/sources.list && \
+      echo "deb [arch=amd64] http://us.archive.ubuntu.com/ubuntu noble-updates main restricted" >> /etc/apt/sources.list && \
+      echo "deb [arch=amd64] http://us.archive.ubuntu.com/ubuntu noble-security main restricted" >> /etc/apt/sources.list; \
+    fi && \
     usermod -o -u 0 -g 0 _apt
 
 COPY generate-ci-config /usr/local/bin/generate-ci-config
