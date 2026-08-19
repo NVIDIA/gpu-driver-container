@@ -51,6 +51,9 @@ RUN if [ -n "${CVE_UPDATES}" ]; then \
 # Add NGC DL license from the CUDA image
 RUN mkdir /licenses && mv /NGC-DL-CONTAINER-LICENSE /licenses/NGC-DL-CONTAINER-LICENSE
 
+ARG DIST=ubuntu24.04
+ARG BUILD_TIMESTAMP
+
 LABEL io.k8s.display-name="NVIDIA vGPU Manager Container"
 LABEL name="NVIDIA vGPU Manager Container"
 LABEL vendor="NVIDIA"
@@ -58,6 +61,15 @@ LABEL version="${DRIVER_VERSION}"
 LABEL vcs-ref="${GIT_COMMIT}"
 LABEL release="N/A"
 LABEL summary="Provision the NVIDIA vGPU Manager (host driver) through containers"
-LABEL description="See summary"
+LABEL description="Provision the NVIDIA vGPU Manager (host driver) through containers"
+LABEL org.opencontainers.image.base.name="nvcr.io/nvidia/cuda"
+LABEL org.opencontainers.image.created="${BUILD_TIMESTAMP}"
+LABEL org.opencontainers.image.description="Provision the NVIDIA vGPU Manager (host driver) through containers"
+LABEL org.opencontainers.image.documentation="https://docs.nvidia.com/datacenter/cloud-native/gpu-operator"
+LABEL org.opencontainers.image.revision="${GIT_COMMIT}"
+LABEL org.opencontainers.image.source="https://github.com/NVIDIA/gpu-driver-container.git"
+LABEL org.opencontainers.image.title="NVIDIA vGPU Manager Container"
+LABEL org.opencontainers.image.vendor="NVIDIA"
+LABEL org.opencontainers.image.version="${DRIVER_VERSION}-${DIST}"
 
 ENTRYPOINT ["nvidia-driver", "init"]

@@ -57,6 +57,7 @@ FROM nvcr.io/nvidia/cuda:12.6.2-base-${CUDA_DIST}
 
 ARG KERNEL_VERSION=''
 ARG RHEL_VERSION=''
+ARG OS_TAG=''
 
 ARG DRIVER_TYPE=passthrough
 ENV DRIVER_TYPE=${DRIVER_TYPE}
@@ -144,6 +145,8 @@ RUN if [ -n "${CVE_UPDATES}" ]; then \
     && dnf clean all \
     && subscription-manager unregister
 
+ARG BUILD_TIMESTAMP
+
 LABEL io.k8s.display-name="NVIDIA Driver Container"
 LABEL name="NVIDIA Driver Container"
 LABEL vendor="NVIDIA"
@@ -151,7 +154,17 @@ LABEL version="${DRIVER_VERSION}"
 LABEL vcs-ref="${GIT_COMMIT}"
 LABEL release="N/A"
 LABEL summary="Provision the NVIDIA driver through containers"
-LABEL description="See summary"
+LABEL description="Provision the NVIDIA driver through containers"
+LABEL org.opencontainers.image.base.name="nvcr.io/nvidia/cuda"
+LABEL org.opencontainers.image.created="${BUILD_TIMESTAMP}"
+LABEL org.opencontainers.image.description="Provision the NVIDIA driver through containers"
+LABEL org.opencontainers.image.documentation="https://docs.nvidia.com/datacenter/cloud-native/gpu-operator"
+LABEL org.opencontainers.image.revision="${GIT_COMMIT}"
+LABEL org.opencontainers.image.source="https://github.com/NVIDIA/gpu-driver-container.git"
+LABEL org.opencontainers.image.title="NVIDIA Driver Container"
+LABEL org.opencontainers.image.url="https://catalog.ngc.nvidia.com/orgs/nvidia/containers/driver"
+LABEL org.opencontainers.image.vendor="NVIDIA"
+LABEL org.opencontainers.image.version="${DRIVER_VERSION}-${KERNEL_VERSION}-${OS_TAG}"
 
 # Add NGC DL license from the CUDA image
 RUN mkdir /licenses && mv /NGC-DL-CONTAINER-LICENSE /licenses/NGC-DL-CONTAINER-LICENSE

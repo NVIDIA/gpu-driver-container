@@ -53,7 +53,9 @@ image: rhsm-register
 		--build-arg DRIVER_TOOLKIT_IMAGE=${DRIVER_TOOLKIT_IMAGE} \
 		--build-arg DRIVER_TYPE=${DRIVER_TYPE} \
 		--build-arg BASE_URL=${BASE_URL} \
+		--build-arg OS_TAG=${OS_TAG} \
 		--build-arg GIT_COMMIT=${GIT_COMMIT} \
+		--build-arg BUILD_TIMESTAMP="$(shell date -u +"%Y-%m-%dT%H:%M:%SZ")" \
 		--tag ${IMAGE_REGISTRY}/${IMAGE_NAME}:${DRIVER_VERSION}-${KERNEL_VERSION}-${OS_TAG} \
 		--progress=plain \
 		--file ${DOCKERFILE} .

@@ -40,6 +40,9 @@ RUN dnf install -y pciutils && \
     dnf clean all && \
     rm -rf /var/cache/dnf/*
 
+ARG DIST=rhel9
+ARG BUILD_TIMESTAMP
+
 LABEL io.k8s.display-name="NVIDIA vGPU Manager Container"
 LABEL name="NVIDIA vGPU Manager Container"
 LABEL vendor="NVIDIA"
@@ -47,7 +50,16 @@ LABEL version="${DRIVER_VERSION}"
 LABEL vcs-ref="${GIT_COMMIT}"
 LABEL release="N/A"
 LABEL summary="Provision the NVIDIA vGPU Manager through containers"
-LABEL description="See summary"
+LABEL description="Provision the NVIDIA vGPU Manager through containers"
+LABEL org.opencontainers.image.base.name="nvcr.io/nvidia/cuda"
+LABEL org.opencontainers.image.created="${BUILD_TIMESTAMP}"
+LABEL org.opencontainers.image.description="Provision the NVIDIA vGPU Manager through containers"
+LABEL org.opencontainers.image.documentation="https://docs.nvidia.com/datacenter/cloud-native/gpu-operator"
+LABEL org.opencontainers.image.revision="${GIT_COMMIT}"
+LABEL org.opencontainers.image.source="https://github.com/NVIDIA/gpu-driver-container.git"
+LABEL org.opencontainers.image.title="NVIDIA vGPU Manager Container"
+LABEL org.opencontainers.image.vendor="NVIDIA"
+LABEL org.opencontainers.image.version="${DRIVER_VERSION}-${DIST}"
 
 # Install / upgrade packages here that are required to resolve CVEs
 ARG CVE_UPDATES
