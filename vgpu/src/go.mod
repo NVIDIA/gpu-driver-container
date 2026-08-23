@@ -1,9 +1,9 @@
 module vgpu-util
 
-go 1.22.2
+go 1.23
 
 require (
-	github.com/sirupsen/logrus v1.9.4
+	github.com/sirupsen/logrus v1.10.1
 	github.com/urfave/cli/v2 v2.27.7
 	gopkg.in/yaml.v2 v2.4.0
 )
