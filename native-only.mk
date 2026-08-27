@@ -14,7 +14,9 @@
 
 PUSH_ON_BUILD ?= false
 DOCKER_BUILD_OPTIONS ?= --output=type=image,push=$(PUSH_ON_BUILD)
-DOCKER_BUILD_PLATFORM_OPTIONS ?= --platform=linux/amd64
+HOST_ARCH ?= $(shell uname -m)
+NATIVE_ARCH ?= $(if $(filter x86_64 amd64,$(HOST_ARCH)),amd64,$(if $(filter aarch64 arm64,$(HOST_ARCH)),arm64,$(HOST_ARCH)))
+DOCKER_BUILD_PLATFORM_OPTIONS ?= --platform=linux/$(NATIVE_ARCH)
 
 $(DRIVER_PUSH_TARGETS): push-%:
 	$(DOCKER) tag "$(IMAGE)" "$(OUT_IMAGE)"
