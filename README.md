@@ -23,3 +23,8 @@ docker build -t mydriver --build-arg DRIVER_VERSION="510.85.02" --build-arg CUDA
 
 [Apache License 2.0](LICENSE)
 [License For Customer Use of NVIDIA Software](https://www.nvidia.com/content/DriverDownload-March2009/licence.php?lang=us)
+
+## Contributions
+[Read the document on contributions](CONTRIBUTING.md). 
+You can contribute by opening a [pull request](https://help.github.com/en/articles/about-pull-requests).
+Contributions must adhere to the [Code of Conduct](CODE_OF_CONDUCT.md).
