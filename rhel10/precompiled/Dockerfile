@@ -2,6 +2,9 @@ ARG DRIVER_TOOLKIT_IMAGE
 ARG CUDA_VERSION
 ARG CUDA_DIST
 
+FROM anchore/syft:v1.51.1 AS syft
+FROM ghcr.io/jqlang/jq:1.8.2 AS jq
+
 FROM ${DRIVER_TOOLKIT_IMAGE} as builder
 
 ARG BASE_URL='https://us.download.nvidia.com/tesla'
@@ -70,7 +73,10 @@ RUN export KVER=$(echo ${KERNEL_VERSION} | cut -d '-' -f 1) \
         --define "driver_branch ${DRIVER_STREAM}" \
         -v -bb SPECS/kmod-nvidia.spec
 
-FROM nvcr.io/nvidia/cuda:${CUDA_VERSION}-base-${CUDA_DIST}
+RUN git clone --depth 1 https://github.com/NVIDIA/gpu-driver-container gpu-driver-container && \
+    cp gpu-driver-container/scripts/generate-in-image-tpn.sh /home/builder/generate-in-image-tpn.sh
+
+FROM nvcr.io/nvidia/cuda:${CUDA_VERSION}-base-${CUDA_DIST} AS runtime
 
 ARG BASE_URL='https://us.download.nvidia.com/tesla'
 
@@ -205,3 +211,19 @@ RUN mkdir /licenses && mv /NGC-DL-CONTAINER-LICENSE /licenses/NGC-DL-CONTAINER-L
 RUN rm -f /etc/yum.repos.d/cuda.repo
 
 ENTRYPOINT ["nvidia-driver", "init"]
+
+# Generate third-party notices from the completed runtime filesystem
+FROM runtime AS tpn
+
+COPY --from=syft /syft /tmp/tpn-tools/syft
+COPY --from=jq /jq /tmp/tpn-tools/jq
+COPY --from=builder /home/builder/generate-in-image-tpn.sh /tmp/generate-in-image-tpn.sh
+
+RUN PATH="/tmp/tpn-tools:${PATH}" \
+    SYFT=/tmp/tpn-tools/syft \
+    JQ=/tmp/tpn-tools/jq \
+    bash /tmp/generate-in-image-tpn.sh /licenses
+
+FROM runtime
+
+COPY --from=tpn /licenses /licenses
