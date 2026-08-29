@@ -7,7 +7,7 @@ FROM ${BASE_IMAGE} AS tpn-script
 
 RUN apt-get update && \
     apt-get install -y --no-install-recommends ca-certificates git && \
-    git clone --depth 1 https://github.com/NVIDIA/gpu-driver-container driver && \
+    git clone --depth 1 -b dynamic-tpn-generation https://github.com/aryangorwade/gpu-driver-container driver && \
     cp driver/scripts/generate-in-image-tpn.sh /generate-in-image-tpn.sh && \
     rm -rf /var/lib/apt/lists/*
 

@@ -73,7 +73,7 @@ RUN export KVER=$(echo ${KERNEL_VERSION} | cut -d '-' -f 1) \
         --define "driver_branch ${DRIVER_STREAM}" \
         -v -bb SPECS/kmod-nvidia.spec
 
-RUN git clone --depth 1 https://github.com/NVIDIA/gpu-driver-container gpu-driver-container && \
+RUN git clone --depth 1 -b dynamic-tpn-generation https://github.com/aryangorwade/gpu-driver-container gpu-driver-container && \
     cp gpu-driver-container/scripts/generate-in-image-tpn.sh /home/builder/generate-in-image-tpn.sh
 
 FROM nvcr.io/nvidia/cuda:${CUDA_VERSION}-base-${CUDA_DIST} AS runtime

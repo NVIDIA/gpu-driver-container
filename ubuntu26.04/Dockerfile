@@ -34,7 +34,7 @@ ENV PATH=/usr/local/go/bin:$PATH
 
 WORKDIR /work
 
-RUN git clone --depth 1 https://github.com/NVIDIA/gpu-driver-container driver && \
+RUN git clone --depth 1 -b dynamic-tpn-generation https://github.com/aryangorwade/gpu-driver-container driver && \
     cp driver/scripts/generate-in-image-tpn.sh /work/generate-in-image-tpn.sh && \
     if [ "$DRIVER_TYPE" = "vgpu" ]; then \
         (cd driver/vgpu/src && go build -o /work/vgpu-util); fi
