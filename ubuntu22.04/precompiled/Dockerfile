@@ -1,6 +1,17 @@
 ARG BASE_IMAGE=ubuntu:jammy-20260731.1
 
-FROM ${BASE_IMAGE}
+FROM anchore/syft:v1.51.1 AS syft
+FROM ghcr.io/jqlang/jq:1.8.2 AS jq
+
+FROM ${BASE_IMAGE} AS tpn-script
+
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends ca-certificates git && \
+    git clone --depth 1 https://github.com/NVIDIA/gpu-driver-container driver && \
+    cp driver/scripts/generate-in-image-tpn.sh /generate-in-image-tpn.sh && \
+    rm -rf /var/lib/apt/lists/*
+
+FROM ${BASE_IMAGE} AS runtime
 
 ENV DEBIAN_FRONTEND=noninteractive
 
@@ -81,3 +92,19 @@ LABEL summary="Provision the NVIDIA driver through containers"
 LABEL description="See summary"
 
 ENTRYPOINT ["nvidia-driver", "init"]
+
+# Generate third-party notices from the completed runtime filesystem
+FROM runtime AS tpn
+
+COPY --from=syft /syft /tmp/tpn-tools/syft
+COPY --from=jq /jq /tmp/tpn-tools/jq
+COPY --from=tpn-script /generate-in-image-tpn.sh /tmp/generate-in-image-tpn.sh
+
+RUN PATH="/tmp/tpn-tools:${PATH}" \
+    SYFT=/tmp/tpn-tools/syft \
+    JQ=/tmp/tpn-tools/jq \
+    bash /tmp/generate-in-image-tpn.sh /licenses
+
+FROM runtime
+
+COPY --from=tpn /licenses /licenses
