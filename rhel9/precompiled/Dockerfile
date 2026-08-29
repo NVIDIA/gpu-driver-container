@@ -2,7 +2,7 @@ ARG DRIVER_TOOLKIT_IMAGE
 ARG CUDA_VERSION
 ARG CUDA_DIST
 
-FROM anchore/syft:v1.51.1 AS syft
+FROM anchore/syft:v1.42.1 AS syft
 FROM ghcr.io/jqlang/jq:1.8.2 AS jq
 
 FROM ${DRIVER_TOOLKIT_IMAGE} as builder

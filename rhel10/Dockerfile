@@ -1,6 +1,6 @@
 ARG BASE_IMAGE=registry.access.redhat.com/ubi10/ubi:10.2-1786960026
 
-FROM anchore/syft:v1.51.1 AS syft
+FROM anchore/syft:v1.42.1 AS syft
 FROM ghcr.io/jqlang/jq:1.8.2 AS jq
 
 FROM ${BASE_IMAGE} as build

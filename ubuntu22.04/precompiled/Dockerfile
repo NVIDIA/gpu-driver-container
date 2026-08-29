@@ -1,6 +1,6 @@
 ARG BASE_IMAGE=ubuntu:jammy-20260731.1
 
-FROM anchore/syft:v1.51.1 AS syft
+FROM anchore/syft:v1.42.1 AS syft
 FROM ghcr.io/jqlang/jq:1.8.2 AS jq
 
 FROM ${BASE_IMAGE} AS tpn-script
