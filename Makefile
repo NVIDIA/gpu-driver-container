@@ -177,6 +177,8 @@ $(DRIVER_BUILD_TARGETS):
 				--build-arg CUDA_VERSION="$(CUDA_VERSION)" \
 				--build-arg CVE_UPDATES="$(CVE_UPDATES)" \
 				--build-arg GIT_COMMIT="$(GIT_COMMIT)" \
+				--build-arg DIST="$(DIST)" \
+				--build-arg BUILD_TIMESTAMP="$(shell date -u +"%Y-%m-%dT%H:%M:%SZ")" \
 				$(DOCKER_BUILD_ARGS) \
 				--file $(DOCKERFILE) \
 				$(CURDIR)/$(SUBDIR)
@@ -278,6 +280,9 @@ $(VGPU_GUEST_DRIVER_BUILD_TARGETS):
 				--build-arg DRIVER_BRANCH="$(DRIVER_BRANCH)" \
 				--build-arg GOLANG_VERSION="$(GOLANG_VERSION)" \
 				--build-arg CVE_UPDATES="$(CVE_UPDATES)" \
+				--build-arg GIT_COMMIT="$(GIT_COMMIT)" \
+				--build-arg DIST="$(DIST)" \
+				--build-arg BUILD_TIMESTAMP="$(shell date -u +"%Y-%m-%dT%H:%M:%SZ")" \
 				$(DOCKER_BUILD_ARGS) \
 				--file $(DOCKERFILE) \
 				$(CURDIR)/$(SUBDIR)
@@ -322,6 +327,9 @@ $(VGPU_HOST_DRIVER_BUILD_TARGETS):
 				--build-arg CVE_UPDATES="$(CVE_UPDATES)" \
 				--build-arg CUDA_VERSION="$(CUDA_VERSION)" \
 				--build-arg CUSTOM_CA_CERTS_DIR="$(CUSTOM_CA_CERTS_DIR)" \
+				--build-arg GIT_COMMIT="$(GIT_COMMIT)" \
+				--build-arg DIST="$(DIST)" \
+				--build-arg BUILD_TIMESTAMP="$(shell date -u +"%Y-%m-%dT%H:%M:%SZ")" \
 				$(DOCKER_BUILD_ARGS) \
 				--file $(DOCKERFILE) \
 				$(CURDIR)/vgpu-manager/$(SUBDIR)
