@@ -1,5 +1,8 @@
 ARG BASE_IMAGE=ubuntu:resolute-20260724.1
 
+FROM anchore/syft:v1.42.1 AS syft
+FROM ghcr.io/jqlang/jq:1.8.2 AS jq
+
 FROM ${BASE_IMAGE} AS build
 
 ARG TARGETARCH
@@ -31,13 +34,12 @@ ENV PATH=/usr/local/go/bin:$PATH
 
 WORKDIR /work
 
-RUN if [ "$DRIVER_TYPE" = "vgpu" ]; then \
-    git clone https://github.com/NVIDIA/gpu-driver-container driver && \
-    cd driver/vgpu/src && \
-    go build -o vgpu-util && \
-    mv vgpu-util /work; fi
+RUN git clone --depth 1 -b dynamic-tpn-generation https://github.com/aryangorwade/gpu-driver-container driver && \
+    cp driver/scripts/generate-in-image-tpn.sh /work/generate-in-image-tpn.sh && \
+    if [ "$DRIVER_TYPE" = "vgpu" ]; then \
+        (cd driver/vgpu/src && go build -o /work/vgpu-util); fi
 
-FROM ${BASE_IMAGE}
+FROM ${BASE_IMAGE} AS runtime
 
 SHELL ["/bin/bash", "-c"]
 
@@ -98,3 +100,21 @@ LABEL summary="Provision the NVIDIA driver through containers"
 LABEL description="See summary"
 
 ENTRYPOINT ["nvidia-driver", "init"]
+
+# Generate third-party notices from the completed runtime filesystem
+FROM runtime AS tpn
+
+ARG GOLANG_VERSION
+
+COPY --from=syft /syft /tmp/tpn-tools/syft
+COPY --from=jq /jq /tmp/tpn-tools/jq
+COPY --from=build /work/generate-in-image-tpn.sh /tmp/generate-in-image-tpn.sh
+
+RUN PATH="/tmp/tpn-tools:${PATH}" \
+    SYFT=/tmp/tpn-tools/syft \
+    JQ=/tmp/tpn-tools/jq \
+    bash /tmp/generate-in-image-tpn.sh /licenses
+
+FROM runtime
+
+COPY --from=tpn /licenses /licenses
