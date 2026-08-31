@@ -1,4 +1,4 @@
-ARG BASE_IMAGE=ubuntu:resolute-20260724.1
+ARG BASE_IMAGE=ubuntu:resolute-20260811.1
 FROM ${BASE_IMAGE}
 
 ENV DEBIAN_FRONTEND=noninteractive
