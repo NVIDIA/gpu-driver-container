@@ -1,7 +1,9 @@
-# Contribute to the GPU Operator Project
+# Contribute to the gpu-driver-container Project
 
-Want to hack on the NVIDIA Container Toolkit Project? Awesome!
+Want to hack on the NVIDIA gpu-driver-container project? Awesome!
 We only require you to sign your work, the below section describes this!
+
+All contributions must adhere to the [Code of Conduct](CODE_OF_CONDUCT.md).
 
 ## Sign your work
 
