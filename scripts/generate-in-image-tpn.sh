@@ -14,8 +14,7 @@
 # limitations under the License.
 # Generate a third-party notice directly from an already-built container
 # root filesystem. Syft is the source of truth for package inventory, package
-# ownership, declared licenses, Go modules, and license content it can recover.
-# Package archives remain a last-resort source of missing notice text.
+# ownership, declared licenses, Go modules, and available license content.
 
 set -euo pipefail
 
@@ -25,7 +24,6 @@ OUTPUT_DIR="${1:-${TPN_OUTPUT_DIR:-/licenses}}"
 DOCUMENT_NAME="${TPN_DOCUMENT_NAME:-THIRD_PARTY_NOTICES.md}"
 INVENTORY_NAME="${TPN_INVENTORY_NAME:-third-party-packages.tsv}"
 TPN_SYFT_ALL_CATALOGERS="${TPN_SYFT_ALL_CATALOGERS:-0}"
-TPN_RECOVER_ARCHIVES="${TPN_RECOVER_ARCHIVES:-1}"
 TPN_FETCH_UPSTREAM="${TPN_FETCH_UPSTREAM:-1}"
 TPN_STRICT="${TPN_STRICT:-0}"
 
@@ -155,7 +153,6 @@ validate_vgpu_binary_modules() {
 scan_rootfs() {
     local records="$1"
     local json="${WORK_ROOT}/rootfs.syft.json"
-    local remote_go_licenses=0
     local include_vgpu=false
     local -a syft_args=(
         "dir:/" --scope squashed
@@ -165,7 +162,6 @@ scan_rootfs() {
     )
 
     if [[ "${DRIVER_TYPE:-passthrough}" == vgpu ]]; then
-        remote_go_licenses="${TPN_FETCH_UPSTREAM}"
         include_vgpu=true
     fi
     if [[ "${TPN_SYFT_ALL_CATALOGERS}" != 1 && "${include_vgpu}" != true ]]; then
@@ -178,7 +174,7 @@ scan_rootfs() {
     log "Scanning the final root filesystem with Syft..."
     SYFT_CHECK_FOR_APP_UPDATE=false \
     SYFT_LICENSE_CONTENT=all \
-    SYFT_GOLANG_SEARCH_REMOTE_LICENSES="${remote_go_licenses}" \
+    SYFT_GOLANG_SEARCH_REMOTE_LICENSES=false \
         "${SYFT}" "${syft_args[@]}"
 
     # Emit one normalized stream. P is a component, F is a package-owned file,
@@ -272,28 +268,19 @@ scan_rootfs() {
 }
 
 process_syft_records() {
-    local records="$1" inventory="$2" package_keys="$3" ownership="$4"
-    local source_map="$5" staged="$6"
+    local records="$1" inventory="$2" ownership="$3" staged="$4"
     local tag name version type package_arch field5 field6 field7
-    local path flags source license_id content destination decoded suffix=0
+    local path flags license_id content destination decoded suffix=0
     local coverage="${PLATFORM} (${DRIVER_LABEL})"
 
     : > "${inventory}"
-    : > "${package_keys}"
     : > "${ownership}"
-    : > "${source_map}"
     while IFS=$'\t' read -r tag name version type package_arch field5 field6 field7; do
         case "${tag}" in
             P)
                 printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\n' \
                     "${name}" "${version}" "${type}" "${package_arch}" \
                     "${field5}" "${field6}" "${coverage}" >> "${inventory}"
-                if [[ "${type}" == rpm || "${type}" == deb ]]; then
-                    printf '%s\t%s\t%s\n' \
-                        "${name}" "${version}" "${package_arch}" >> "${package_keys}"
-                    source="${field7:-${name}}"
-                    printf '%s\t%s\n' "${name}" "${source}" >> "${source_map}"
-                fi
                 ;;
             F)
                 path="$(printf '%s' "${package_arch}" | base64 -d)"
@@ -317,9 +304,7 @@ process_syft_records() {
         esac
     done < "${records}"
 
-    LC_ALL=C sort -u -o "${package_keys}" "${package_keys}"
     LC_ALL=C sort -u -o "${ownership}" "${ownership}"
-    LC_ALL=C sort -u -o "${source_map}" "${source_map}"
     [[ -s "${ownership}" ]] || die \
         "Syft did not emit RPM/DPKG package ownership data." \
         "Use a current Syft release with metadata.files support."
@@ -562,144 +547,6 @@ collect_vgpu_additional_notices() {
     fi
 }
 
-recover_missing_package_licenses() {
-    local distribution="$1" package_keys="$2" license_root="$3"
-    local missing="${WORK_ROOT}/missing.tsv" archives="${WORK_ROOT}/archives"
-    local name version package_arch package_archives nevra archive
-    local archive_name archive_version archive_arch
-    local extract path relative suffix="archive.$(safe_component "${PLATFORM}")"
-
-    : > "${missing}"
-    while IFS=$'\t' read -r name version package_arch; do
-        directory_has_files "${license_root}/${name}/${version}/${package_arch}" \
-            || printf '%s\t%s\t%s\n' "${name}" "${version}" "${package_arch}" >> "${missing}"
-    done < "${package_keys}"
-    [[ "${TPN_RECOVER_ARCHIVES}" == 1 && -s "${missing}" ]] || return 0
-
-    log "Recovering license text from exact installed package archives..."
-    mkdir -p "${archives}"
-    if [[ "${distribution}" == rhel* ]]; then
-        (dnf install -y 'dnf-command(download)' cpio \
-            || dnf install -y dnf-plugins-core cpio) >/dev/null
-    else
-        apt-get update >/dev/null
-    fi
-
-    while IFS=$'\t' read -r name version package_arch; do
-        package_archives="${archives}/${name}/${package_arch}"
-        mkdir -p "${package_archives}"
-        if [[ "${distribution}" == rhel* ]]; then
-            while IFS= read -r nevra; do
-                dnf download --destdir "${package_archives}" "${nevra}" || true
-            done < <(rpm -q --qf '%{NAME}-%|EPOCH?{%{EPOCH}:}:{}|%{VERSION}-%{RELEASE}.%{ARCH}\n' \
-                "${name}.${package_arch}" 2>/dev/null || true)
-        else
-            if [[ -d /usr/local/repos ]]; then
-                while IFS= read -r archive; do
-                    archive_name="$(dpkg-deb -f "${archive}" Package)"
-                    archive_version="$(dpkg-deb -f "${archive}" Version)"
-                    archive_arch="$(dpkg-deb -f "${archive}" Architecture)"
-                    [[ "${archive_name}" == "${name}" \
-                        && "${archive_version}" == "${version}" \
-                        && "${archive_arch}" == "${package_arch}" ]] \
-                        && cp "${archive}" "${package_archives}/"
-                done < <(find /usr/local/repos -maxdepth 1 -type f -name '*.deb' 2>/dev/null)
-            fi
-            directory_has_files "${package_archives}" \
-                || (cd "${package_archives}" \
-                    && apt-get download "${name}:${package_arch}=${version}") || true
-        fi
-
-        while IFS= read -r -d '' archive; do
-            extract="${WORK_ROOT}/archive-extract/$(safe_component \
-                "${distribution}-${name}-${version}-${package_arch}-${RANDOM}")"
-            mkdir -p "${extract}"
-            case "${archive}" in
-                *.rpm) rpm2cpio "${archive}" | (cd "${extract}" && cpio -idm --quiet) ;;
-                *.deb) dpkg-deb -x "${archive}" "${extract}" ;;
-            esac
-            while IFS= read -r -d '' path; do
-                relative="${path#${extract}/}"
-                is_license_path "/${relative}" "" || continue
-                save_license_file "${path}" \
-                    "${license_root}/${name}/${version}/${package_arch}/${relative}" "${suffix}"
-            done < <(find "${extract}" -type f -print0)
-            chmod -R u+w "${extract}"
-            rm -rf "${extract}"
-        done < <(find "${package_archives}" \
-            -type f \( -name '*.rpm' -o -name '*.deb' \) -print0)
-    done < "${missing}"
-}
-
-# Some packages intentionally share notice text through a same-source sibling.
-# That sharing is intentional; the link can become dangling when the sibling is
-# absent or renamed. Archive extraction cannot repair a cross-package link, so
-# this addition copies the sibling's recovered text and identifier.
-# If a package's license text is unknown, this is a best-effort fallback.
-recover_license_text_from_siblings() {
-    local inventory="$1" license_root="$2" source_map="$3"
-    local haves="${WORK_ROOT}/source-haves.tsv"
-    local inherited="${WORK_ROOT}/source-inherited.tsv"
-    local name version _type package_arch license _rest
-    local source sibling_root sibling_license package_root recovered=0
-
-    [[ -s "${source_map}" ]] || return 0
-
-    : > "${haves}"
-    while IFS=$'\t' read -r name version _type package_arch license _rest; do
-        package_root="${license_root}/${name}/${version}/${package_arch}"
-        directory_has_files "${package_root}" || continue
-        source="$(awk -F '\t' -v name="${name}" '$1 == name { print $2; exit }' "${source_map}")"
-        [[ -n "${source}" ]] || continue
-        printf '%s\t%s\t%s\n' "${source}" "${package_root}" "${license}" >> "${haves}"
-    done < "${inventory}"
-    [[ -s "${haves}" ]] || return 0
-
-    : > "${inherited}"
-    while IFS=$'\t' read -r name version _type package_arch license _rest; do
-        package_root="${license_root}/${name}/${version}/${package_arch}"
-        directory_has_files "${package_root}" && continue
-        source="$(awk -F '\t' -v name="${name}" '$1 == name { print $2; exit }' "${source_map}")"
-        [[ -n "${source}" ]] || continue
-        sibling_root="$(awk -F '\t' -v source="${source}" '$1 == source { print $2; exit }' "${haves}")"
-        [[ -n "${sibling_root}" && -d "${sibling_root}" ]] || continue
-        mkdir -p "${package_root}"
-        cp -R "${sibling_root}/." "${package_root}/" 2>/dev/null || continue
-        recovered=$((recovered + 1))
-
-        if [[ "${license}" == Unknown || "${license}" == NOASSERTION ]]; then
-            sibling_license="$(awk -F '\t' -v source="${source}" '
-                $1 == source && $3 != "" && $3 != "Unknown" && $3 != "NOASSERTION" {
-                    print $3
-                    exit
-                }
-            ' "${haves}")"
-            [[ -n "${sibling_license}" ]] \
-                && printf '%s\t%s\n' "${name}" "${sibling_license}" >> "${inherited}"
-        fi
-    done < "${inventory}"
-
-    if [[ -s "${inherited}" ]]; then
-        awk -F '\t' -v inherited="${inherited}" '
-            BEGIN {
-                OFS = "\t"
-                while ((getline line < inherited) > 0) {
-                    split(line, field, "\t")
-                    license[field[1]] = field[2]
-                }
-                close(inherited)
-            }
-            { if ($1 in license) $5 = license[$1]; print }
-        ' "${inventory}" > "${inventory}.new"
-        mv "${inventory}.new" "${inventory}"
-        log "Adopted a same-source license identifier for $(wc -l < "${inherited}" | tr -d ' ') component(s)."
-    fi
-
-    (( recovered > 0 )) \
-        && log "Recovered license text for ${recovered} component(s) from same-source siblings."
-    return 0
-}
-
 collapse_inventory() {
     LC_ALL=C sort -t $'\t' -k1,1 -k2,2 -k3,3 -k4,4 -k5,5 -k7,7 -u "$1" | awk -F '\t' '
         {
@@ -861,7 +708,7 @@ report_gaps() {
 }
 
 main() {
-    local records raw_inventory package_keys ownership source_map staged_content
+    local records raw_inventory ownership staged_content
     local license_root index
     local command
 
@@ -869,7 +716,6 @@ main() {
         require_command "${command}"
     done
     check_boolean TPN_SYFT_ALL_CATALOGERS "${TPN_SYFT_ALL_CATALOGERS}"
-    check_boolean TPN_RECOVER_ARCHIVES "${TPN_RECOVER_ARCHIVES}"
     check_boolean TPN_FETCH_UPSTREAM "${TPN_FETCH_UPSTREAM}"
     check_boolean TPN_STRICT "${TPN_STRICT}"
 
@@ -881,9 +727,7 @@ main() {
     WORK_ROOT="$(mktemp -d "${TMPDIR:-/tmp}/in-image-tpn.XXXXXX")"
     records="${WORK_ROOT}/syft-records.tsv"
     raw_inventory="${WORK_ROOT}/inventory.tsv"
-    package_keys="${WORK_ROOT}/packages.tsv"
     ownership="${WORK_ROOT}/ownership.tsv"
-    source_map="${WORK_ROOT}/source-map.tsv"
     staged_content="${WORK_ROOT}/syft-license-content"
     license_root="${WORK_ROOT}/licenses"
     index="${WORK_ROOT}/index.tsv"
@@ -891,10 +735,7 @@ main() {
 
     scan_rootfs "${records}"
     process_syft_records \
-        "${records}" "${raw_inventory}" "${package_keys}" "${ownership}" \
-        "${source_map}" "${staged_content}"
-    [[ -s "${package_keys}" ]] \
-        || die "Syft found no RPM/DEB packages in the final root filesystem."
+        "${records}" "${raw_inventory}" "${ownership}" "${staged_content}"
     if [[ "${DRIVER_TYPE:-passthrough}" == vgpu ]]; then
         validate_vgpu_binary_modules "${raw_inventory}"
     fi
@@ -906,16 +747,6 @@ main() {
         collect_vgpu_additional_notices "${raw_inventory}" "${license_root}"
     fi
 
-    # Resolve cross-package symlinks before archive recovery so only packages
-    # that genuinely still lack text are downloaded.
-    recover_license_text_from_siblings \
-        "${raw_inventory}" "${license_root}" "${source_map}"
-    recover_missing_package_licenses \
-        "${DISTRIBUTION}" "${package_keys}" "${license_root}"
-
-    # An archive may provide the first usable text for a source-package family.
-    recover_license_text_from_siblings \
-        "${raw_inventory}" "${license_root}" "${source_map}"
     collapse_inventory "${raw_inventory}" > "${index}"
     [[ -s "${index}" ]] || die "Syft produced an empty component index."
 
