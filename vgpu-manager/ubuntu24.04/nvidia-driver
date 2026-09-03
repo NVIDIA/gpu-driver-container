@@ -289,7 +289,127 @@ _unload_driver() {
     return 0
 }
 
+# Returns success if the host exposes NVSwitch devices (an HGX / NVSwitch system).
+_assert_nvswitch_system() {
+    [ -d /proc/driver/nvidia-nvswitch/devices ] || return 1
+    if [ -z "$(ls -A /proc/driver/nvidia-nvswitch/devices)" ]; then
+        return 1
+    fi
+    return 0
+}
+
+# Returns success on an NVLink5+ system (NVSwitch with an in-band NVLink Subnet
+# Manager), detected via the SW_MNG marker in an InfiniBand VPD. Mirrors the
+# non-vGPU driver image.
+_assert_nvlink5_system() (
+    for dir in /sys/class/infiniband/*/device; do
+        vpd_file="$dir/vpd"
+        if [ -f "$vpd_file" ]; then
+            if grep -q "SW_MNG" "$vpd_file"; then
+                echo "Detected NVLink5+ system"
+                return 0
+            fi
+        fi
+    done
+    return 1
+)
+
+# Wait for the NVLink5 in-band prerequisites (mlx5_core and ib_umad kernel
+# modules). Mirrors the non-vGPU driver image.
+_ensure_nvlink5_prerequisites() (
+    until lsmod | grep mlx5_core > /dev/null 2>&1 && lsmod | grep ib_umad > /dev/null 2>&1; do
+        echo "waiting for the mlx5_core and ib_umad kernel modules to be loaded"
+        sleep 10
+    done
+)
+
+# Start NVIDIA Fabric Manager on NVSwitch (HGX) hosts. On SR-IOV vGPU systems
+# Fabric Manager must run in vGPU multitenancy mode (FABRIC_MODE=2); the mode is
+# taken from the FABRIC_MODE environment variable when set, otherwise the value
+# packaged in fabricmanager.cfg is used unchanged (backward compatible). The
+# NVSwitch / NVLink5 detection and start paths mirror the non-vGPU driver image;
+# the only addition here is writing FABRIC_MODE into the config before starting.
+# This is a no-op on non-NVSwitch hosts and when Fabric Manager is not installed.
+_start_fabric_manager() {
+    local fm_config_file=/usr/share/nvidia/nvswitch/fabricmanager.cfg
+    local is_nvlink5=false
+
+    if _assert_nvlink5_system; then
+        is_nvlink5=true
+    elif ! _assert_nvswitch_system; then
+        return 0
+    fi
+
+    if ! type nv-fabricmanager > /dev/null 2>&1; then
+        echo "NVSwitch system detected but Fabric Manager is not installed; skipping startup"
+        return 0
+    fi
+
+    if [ -n "${FABRIC_MODE:-}" ]; then
+        # FABRIC_MODE is a small non-negative integer; validate it so a stray
+        # value cannot break the sed expression (and abort init under set -e).
+        if [[ "${FABRIC_MODE}" =~ ^[0-9]+$ ]]; then
+            echo "Setting Fabric Manager mode to FABRIC_MODE=${FABRIC_MODE} in ${fm_config_file}"
+            if grep -q '^FABRIC_MODE=' "${fm_config_file}"; then
+                sed -i "s/^FABRIC_MODE=.*/FABRIC_MODE=${FABRIC_MODE}/" "${fm_config_file}"
+            else
+                echo "FABRIC_MODE=${FABRIC_MODE}" >> "${fm_config_file}"
+            fi
+        else
+            echo "WARNING: ignoring non-numeric FABRIC_MODE='${FABRIC_MODE}'"
+        fi
+    fi
+
+    if [ "${is_nvlink5}" = true ]; then
+        _ensure_nvlink5_prerequisites || return 1
+        echo "Starting NVIDIA fabric manager daemon for NVLink5+..."
+        local fm_pid_file=/var/run/nvidia-fabricmanager/nv-fabricmanager.pid
+        local nvlsm_config_file=/usr/share/nvidia/nvlsm/nvlsm.conf
+        local nvlsm_pid_file=/var/run/nvidia-fabricmanager/nvlsm.pid
+        /usr/bin/nvidia-fabricmanager-start.sh --mode start \
+                                               --fm-config-file "${fm_config_file}" \
+                                               --fm-pid-file "${fm_pid_file}" \
+                                               --nvlsm-config-file "${nvlsm_config_file}" \
+                                               --nvlsm-pid-file "${nvlsm_pid_file}"
+    else
+        echo "Starting NVIDIA fabric manager daemon..."
+        nv-fabricmanager -c "${fm_config_file}"
+    fi
+}
+
+# Stop NVIDIA Fabric Manager (and the NVLink Subnet Manager on NVLink5+) if
+# running. Fabric Manager holds references to the NVIDIA kernel modules, so it
+# must stop before the driver is unloaded.
+_stop_fabric_manager() {
+    local pid
+    if [ -f /var/run/nvidia-fabricmanager/nv-fabricmanager.pid ]; then
+        echo "Stopping NVIDIA fabric manager daemon..."
+        pid=$(< /var/run/nvidia-fabricmanager/nv-fabricmanager.pid)
+        kill -SIGTERM "${pid}" 2> /dev/null || true
+        for i in $(seq 1 50); do
+            kill -0 "${pid}" 2> /dev/null || break
+            sleep 0.1
+        done
+        if [ "$i" -eq 50 ]; then
+            echo "Could not stop NVIDIA fabric manager daemon" >&2
+        fi
+    fi
+    if [ -f /var/run/nvidia-fabricmanager/nvlsm.pid ]; then
+        echo "Stopping NVLink Subnet Manager daemon..."
+        pid=$(< /var/run/nvidia-fabricmanager/nvlsm.pid)
+        kill -SIGTERM "${pid}" 2> /dev/null || true
+        for i in $(seq 1 50); do
+            kill -0 "${pid}" 2> /dev/null || break
+            sleep 0.1
+        done
+        if [ "$i" -eq 50 ]; then
+            echo "Could not stop NVLink Subnet Manager daemon" >&2
+        fi
+    fi
+}
+
 _shutdown() {
+    _stop_fabric_manager
     if _disable_vfs && _unload_driver; then
         _unmount_rootfs
         return 0
@@ -335,6 +455,9 @@ init() {
   # Re-run nvdidia-vgpud to ensure /sys/class/mdev_bus is populated correctly. And restart nvidia-vgpu-mgr if previously killed.
   nvidia-vgpud &
   pgrep nvidia-vgpu-mgr >/dev/null || (echo "Restarting nvidia-vgpu-mgr after previously killed" && nvidia-vgpu-mgr &)
+
+  # Start NVIDIA Fabric Manager on NVSwitch (HGX) hosts. No-op on other systems.
+  _start_fabric_manager
 
   set +x
   echo "Done, now waiting for signal"
