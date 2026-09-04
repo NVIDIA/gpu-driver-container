@@ -37,15 +37,22 @@ function sourceVersions(){
 }
 
 function buildBaseImage(){
-    # Build the base image
+    # nvidia-64k is arm64-only; its base image must be built for arm64 to find arm64-only kernel packages
+    if [[ "${KERNEL_FLAVOR}" == "nvidia-64k" ]]; then
+        export DOCKER_BUILD_PLATFORM_OPTIONS="--platform=linux/arm64"
+    fi
     make DRIVER_BRANCH=${DRIVER_BRANCH} KERNEL_FLAVOR=${KERNEL_FLAVOR} build-base-${BASE_TARGET}
 }
 
 function buildImage(){
-    # Build the image. Build multi-arch (amd64+arm64) for ubuntu24.04 except azure-fde
-    # (linux-objects-nvidia-*-azure-fde is not available for arm64).
-    if [[ "$DIST" == "signed_ubuntu24.04" ]] && [[ "$KERNEL_FLAVOR" != "azure-fde" ]]; then
-        export DOCKER_BUILD_PLATFORM_OPTIONS="--platform=linux/amd64,linux/arm64"
+    # Build multi-arch (amd64+arm64) for ubuntu24.04 except azure-fde and nvidia-64k.
+    # nvidia-64k is arm64-only; azure-fde is not available for arm64.
+    if [[ "$DIST" == "signed_ubuntu24.04" ]]; then
+        if [[ "$KERNEL_FLAVOR" == "nvidia-64k" ]]; then
+            export DOCKER_BUILD_PLATFORM_OPTIONS="--platform=linux/arm64"
+        elif [[ "$KERNEL_FLAVOR" != "azure-fde" ]]; then
+            export DOCKER_BUILD_PLATFORM_OPTIONS="--platform=linux/amd64,linux/arm64"
+        fi
     fi
     make DRIVER_VERSIONS=${DRIVER_VERSIONS} DRIVER_BRANCH=${DRIVER_BRANCH} build-${DIST}-${DRIVER_VERSION}
 }
@@ -76,12 +83,10 @@ function pushImage(){
 }
 
 function pullImage(){
-    # pull the image
     make DRIVER_VERSIONS=${DRIVER_VERSIONS} DRIVER_BRANCH=${DRIVER_BRANCH} pull-${DIST}-${DRIVER_VERSION}
 }
 
 function archiveImage(){
-    # archive the image
     make DRIVER_VERSIONS=${DRIVER_VERSIONS} DRIVER_BRANCH=${DRIVER_BRANCH} archive-${DIST}-${DRIVER_VERSION}
 }
 
