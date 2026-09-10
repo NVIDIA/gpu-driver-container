@@ -24,7 +24,7 @@ done
 source ./tests/scripts/ci-precompiled-helpers.sh
 
 for PLATFORM in "${PLATFORMS[@]}"; do
-  if [[ "$PLATFORM" == "arm64" && ( "$DIST" == "ubuntu22.04" || "$DIST" == "ubuntu26.04" ) ]]; then
+  if [[ "$PLATFORM" == "arm64" && "$DIST" == "ubuntu22.04" ]]; then
     continue
   fi
   if [[ "$PLATFORM" == "arm64" ]]; then

@@ -208,8 +208,9 @@ jobs:
           DIST: signed_${{ matrix.dist }}
         run: |
           source kernel_version.txt
-          # arm64 does not support azure-fde (package linux-objects-nvidia-*-azure-fde not available for arm64)
-          if [[ "${{ matrix.dist }}" == "ubuntu24.04" ]] && [[ "${{ matrix.flavor }}" != "azure-fde" ]]; then
+          # linux-objects-nvidia-*-azure-fde is published for amd64 only.
+          if [[ "${{ matrix.dist }}" == "ubuntu24.04" || "${{ matrix.dist }}" == "ubuntu26.04" ]] \
+             && [[ "${{ matrix.flavor }}" != "azure-fde" ]]; then
             export DOCKER_BUILD_PLATFORM_OPTIONS="--platform=linux/amd64,linux/arm64"
           else
             export DOCKER_BUILD_PLATFORM_OPTIONS="--platform=linux/amd64"
