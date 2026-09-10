@@ -120,7 +120,12 @@ imex_install() {
 
 extra_pkgs_install() {
   if [ "$DRIVER_TYPE" != "vgpu" ]; then
-      dnf module enable -y nvidia-driver:${DRIVER_BRANCH}-dkms
+      if [ "${DRIVER_BRANCH}" -ge "615" ]; then
+        DRIVER_MODULE_STREAM="${DRIVER_BRANCH}-open"
+      else
+        DRIVER_MODULE_STREAM="${DRIVER_BRANCH}-dkms"
+      fi
+      dnf module enable -y "nvidia-driver:${DRIVER_MODULE_STREAM}"
       dnf install -y 'dnf-command(versionlock)'
 
       fabricmanager_install
