@@ -24,14 +24,17 @@ on:
 
 jobs:
   image:
-    runs-on: linux-amd64-cpu4
+    runs-on: linux-${{ matrix.arch }}-cpu4
     strategy:
       matrix:
-        driver:
+        arch:
+          - amd64
+          - arm64
+        driver: &driver-versions
           - 580.178.04
           - 595.91.07
           - 610.57.04
-        dist:
+        dist: &distributions
           - ubuntu22.04
           - ubuntu24.04
           - ubuntu26.04
@@ -43,7 +46,7 @@ jobs:
           - rocky10
         ispr:
           - ${{github.event_name == 'pull_request'}}
-        exclude:
+        exclude: &unsupported-images
           - dist: ubuntu26.04
             driver: 580.178.04
       fail-fast: false
@@ -68,20 +71,13 @@ jobs:
             GENERATE_ARTIFACTS="true"
           fi
           echo "PUSH_ON_BUILD=${GENERATE_ARTIFACTS}" >> $GITHUB_ENV
-          echo "BUILD_MULTI_ARCH_IMAGES=${GENERATE_ARTIFACTS}" >> $GITHUB_ENV
+          echo "BUILD_MULTI_ARCH_IMAGES=true" >> $GITHUB_ENV
+          echo "DOCKER_BUILD_PLATFORM_OPTIONS=--platform=linux/${{ matrix.arch }}" >> $GITHUB_ENV
 
       - name: Set CVE updates
         uses: ./.github/actions/set-cve-updates
         with:
           dist: ${{ matrix.dist }}
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v4
-        with:
-          # The Ubuntu 26.04 arm64 userland needs a newer emulator than the qemu-v6.2.0
-          # used for every other distribution: v6.2.0 hangs on it, and on the
-          # resolute-20260707 userland v8.1.5 fails with ENOSYS and v9.2.2 with EINVAL
-          # (tar file extraction), so it is pinned to qemu-v10.1.3.
-          image: tonistiigi/binfmt:${{ matrix.dist == 'ubuntu26.04' && 'qemu-v10.1.3' || 'qemu-v6.2.0' }}
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v4
         with:
@@ -95,9 +91,42 @@ jobs:
       - name: Build image
         env:
           IMAGE_NAME: ghcr.io/${LOWERCASE_REPO_OWNER}/driver
-          VERSION: ${COMMIT_SHORT_SHA}
+          VERSION: ${COMMIT_SHORT_SHA}-${{ matrix.arch }}
         run: |
           DRIVER_VERSIONS=${{ matrix.driver }} make build-${{ matrix.dist }}-${{ matrix.driver }}
+
+  image-manifest:
+    if: github.actor != 'dependabot[bot]'
+    needs: image
+    runs-on: linux-amd64-cpu4
+    strategy:
+      matrix:
+        driver: *driver-versions
+        dist: *distributions
+        exclude: *unsupported-images
+      fail-fast: false
+    steps:
+      - name: Calculate manifest vars
+        run: |
+          echo "COMMIT_SHORT_SHA=${GITHUB_SHA:0:8}" >> "$GITHUB_ENV"
+          echo "LOWERCASE_REPO_OWNER=$(echo "${GITHUB_REPOSITORY_OWNER}" | awk '{print tolower($0)}')" >> "$GITHUB_ENV"
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+        with:
+          buildkitd-config: /etc/buildkit/buildkitd.toml
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v4.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Create multi-architecture manifest
+        run: |
+          IMAGE_NAME="ghcr.io/${LOWERCASE_REPO_OWNER}/driver"
+          docker buildx imagetools create \
+            --tag "${IMAGE_NAME}:${COMMIT_SHORT_SHA}-${{ matrix.driver }}-${{ matrix.dist }}" \
+            "${IMAGE_NAME}:${COMMIT_SHORT_SHA}-amd64-${{ matrix.driver }}-${{ matrix.dist }}" \
+            "${IMAGE_NAME}:${COMMIT_SHORT_SHA}-arm64-${{ matrix.driver }}-${{ matrix.dist }}"
 
   pre-compiled:
     runs-on: linux-amd64-cpu4
