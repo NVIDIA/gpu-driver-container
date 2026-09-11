@@ -206,6 +206,8 @@ jobs:
           elif [[ "${{ matrix.dist }}" == "ubuntu26.04" ]]; then
             BASE_TARGET="resolute"
           fi
+          # kernel version is the same for amd64 and arm64, so base image is always built for amd64
+          export DOCKER_BUILD_PLATFORM_OPTIONS="--platform=linux/amd64"
           make DRIVER_BRANCH=${{ matrix.driver }} KERNEL_FLAVOR=${{ matrix.flavor }} LTS_KERNEL=${LTS_KERNEL} build-base-${BASE_TARGET}
 
           trap "docker rm -f base-${BASE_TARGET}-${{ matrix.flavor }}" EXIT
