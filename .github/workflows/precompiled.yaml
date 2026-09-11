@@ -498,7 +498,8 @@ jobs:
           image_path="./driver-images-${{ matrix.driver_branch }}-${{ env.KERNEL_VERSION }}.tar"
           echo "uploading  $image_path"
           if [[ "${{ github.ref == 'refs/heads/main' }}" == "true" ]]; then
-            skopeo copy --authfile "${REGISTRY_AUTH_FILE}" "oci-archive:${image_path}" docker://${PRIVATE_REGISTRY}/nvidia/driver:${{ matrix.driver_branch }}-${{ env.KERNEL_VERSION }}
+            # --all: without it skopeo copies only the instance matching the runner, dropping arm64.
+            skopeo copy --all --authfile "${REGISTRY_AUTH_FILE}" "oci-archive:${image_path}" docker://${PRIVATE_REGISTRY}/nvidia/driver:${{ matrix.driver_branch }}-${{ env.KERNEL_VERSION }}
           else
             echo "Skipping image push for non-main branch ${{ github.ref }}"
           fi
