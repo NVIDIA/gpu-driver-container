@@ -102,8 +102,9 @@ function imageExistsForAllTargetPlatforms(){
 	imageExists "$image" || return 1
 	local platform
 	for platform in $(targetPlatforms); do
-		# unlike --list, --platform fails when the manifest list carries no entry for that platform
-		regctl manifest get "$image" --platform "$platform" > /dev/null || return 1
+		# manifest get --platform only selects within a manifest list; against a
+		# single manifest it succeeds for any platform, so compare the config.
+		[ "$(regctl image config "$image" --platform "$platform" --format '{{.OS}}/{{.Architecture}}' 2>/dev/null)" = "$platform" ] || return 1
 	done
 	return 0
 }
