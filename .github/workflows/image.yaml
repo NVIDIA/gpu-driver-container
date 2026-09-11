@@ -117,9 +117,12 @@ jobs:
         dist:
           - ubuntu22.04
           - ubuntu24.04
+          - ubuntu26.04
         lts_kernel:
           - 5.15
           - 6.8
+          # Quoted because YAML reads 7.0 as a float, which renders back as "7".
+          - "7.0"
         ispr:
           - ${{github.event_name == 'pull_request'}}
         exclude:
@@ -133,6 +136,16 @@ jobs:
             flavor: oracle
           - lts_kernel: 5.15
             dist: ubuntu24.04
+          - lts_kernel: "7.0"
+            dist: ubuntu24.04
+          - lts_kernel: 5.15
+            dist: ubuntu26.04
+          - lts_kernel: 6.8
+            dist: ubuntu26.04
+          - lts_kernel: "7.0"
+            dist: ubuntu22.04
+          - driver: 580
+            dist: ubuntu26.04
           - flavor: azure-fde
             dist: ubuntu22.04
     steps:
@@ -190,6 +203,8 @@ jobs:
             BASE_TARGET="jammy"
           elif [[ "${{ matrix.dist }}" == "ubuntu24.04" ]]; then
             BASE_TARGET="noble"
+          elif [[ "${{ matrix.dist }}" == "ubuntu26.04" ]]; then
+            BASE_TARGET="resolute"
           fi
           make DRIVER_BRANCH=${{ matrix.driver }} KERNEL_FLAVOR=${{ matrix.flavor }} LTS_KERNEL=${LTS_KERNEL} build-base-${BASE_TARGET}
 
