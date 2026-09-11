@@ -26,8 +26,10 @@ $(DRIVER_PUSH_TARGETS): push-%:
 # No multi-arch support for the following distributions
 build-signed_ubuntu22.04%: DOCKER_BUILD_PLATFORM_OPTIONS = --platform=linux/amd64
 build-signed_ubuntu26.04%: DOCKER_BUILD_PLATFORM_OPTIONS = --platform=linux/amd64
-
+# nvidia-64k is arm64-only
+ifeq ($(KERNEL_FLAVOR),nvidia-64k)
+build-signed_ubuntu24.04%: DOCKER_BUILD_PLATFORM_OPTIONS = --platform=linux/arm64
 # arm64 does not support azure-fde
-ifeq ($(KERNEL_FLAVOR),azure-fde)
+else ifeq ($(KERNEL_FLAVOR),azure-fde)
 build-signed_ubuntu24.04%: DOCKER_BUILD_PLATFORM_OPTIONS = --platform=linux/amd64
 endif

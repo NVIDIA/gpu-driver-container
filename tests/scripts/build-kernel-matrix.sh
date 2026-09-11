@@ -38,7 +38,13 @@ for PLATFORM in "${PLATFORMS[@]}"; do
     done
   else
     PLATFORM_SUFFIX=""
-    FLAVORS_FOR_PLATFORM=("${KERNEL_FLAVORS[@]}")
+    # nvidia-64k is arm64-only
+    FLAVORS_FOR_PLATFORM=()
+    for flavor in "${KERNEL_FLAVORS[@]}"; do
+      if [[ "$flavor" != "nvidia-64k" ]]; then
+        FLAVORS_FOR_PLATFORM+=("$flavor")
+      fi
+    done
   fi
   KERNEL_VERSIONS=($(get_kernel_versions_to_test FLAVORS_FOR_PLATFORM[@] DRIVER_BRANCHES[@] "$DIST" "$LTS_KERNEL" "$PLATFORM_SUFFIX"))
   if [[ ${#KERNEL_VERSIONS[@]} -gt 0 ]]; then
