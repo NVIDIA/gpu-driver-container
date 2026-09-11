@@ -40,6 +40,11 @@ RUN rm -f /etc/apt/sources.list.d/cuda* && \
 
 RUN usermod -o -u 0 -g 0 _apt
 
+# pebble ships in the base image but is unused here; ENTRYPOINT is nvidia-driver, not pebble.
+# It isn't dpkg-managed (dpkg -S finds no owning package), so apt/dpkg can't remove it - rm is
+# the only option.
+RUN rm -rf /usr/bin/pebble /var/lib/pebble
+
 # Install / upgrade packages here that are required to resolve CVEs
 ARG CVE_UPDATES
 RUN if [ -n "${CVE_UPDATES}" ]; then \
