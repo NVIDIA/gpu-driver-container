@@ -329,6 +329,10 @@ _unload_driver() {
         rmmod_args+=("nvidia-peermem")
         ((++nvidia_deps))
     fi
+    if [ -f /sys/module/gdrdrv/refcnt ]; then
+        rmmod_args+=("gdrdrv")
+        ((++nvidia_deps))
+    fi
     if [ -f /sys/module/nvidia/refcnt ]; then
         nvidia_refs=$(< /sys/module/nvidia/refcnt)
         rmmod_args+=("nvidia")
