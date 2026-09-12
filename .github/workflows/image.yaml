@@ -116,9 +116,12 @@ jobs:
         dist:
           - ubuntu22.04
           - ubuntu24.04
+          - ubuntu26.04
         lts_kernel:
           - 5.15
           - 6.8
+          # Quoted because YAML reads 7.0 as a float, which renders back as "7".
+          - "7.0"
         ispr:
           - ${{github.event_name == 'pull_request'}}
         exclude:
@@ -132,6 +135,16 @@ jobs:
             flavor: oracle
           - lts_kernel: 5.15
             dist: ubuntu24.04
+          - lts_kernel: "7.0"
+            dist: ubuntu24.04
+          - lts_kernel: 5.15
+            dist: ubuntu26.04
+          - lts_kernel: 6.8
+            dist: ubuntu26.04
+          - lts_kernel: "7.0"
+            dist: ubuntu22.04
+          - driver: 580
+            dist: ubuntu26.04
           - flavor: azure-fde
             dist: ubuntu22.04
     steps:
@@ -189,7 +202,11 @@ jobs:
             BASE_TARGET="jammy"
           elif [[ "${{ matrix.dist }}" == "ubuntu24.04" ]]; then
             BASE_TARGET="noble"
+          elif [[ "${{ matrix.dist }}" == "ubuntu26.04" ]]; then
+            BASE_TARGET="resolute"
           fi
+          # kernel version is the same for amd64 and arm64, so base image is always built for amd64
+          export DOCKER_BUILD_PLATFORM_OPTIONS="--platform=linux/amd64"
           make DRIVER_BRANCH=${{ matrix.driver }} KERNEL_FLAVOR=${{ matrix.flavor }} LTS_KERNEL=${LTS_KERNEL} build-base-${BASE_TARGET}
 
           trap "docker rm -f base-${BASE_TARGET}-${{ matrix.flavor }}" EXIT
@@ -207,8 +224,9 @@ jobs:
           DIST: signed_${{ matrix.dist }}
         run: |
           source kernel_version.txt
-          # arm64 does not support azure-fde (package linux-objects-nvidia-*-azure-fde not available for arm64)
-          if [[ "${{ matrix.dist }}" == "ubuntu24.04" ]] && [[ "${{ matrix.flavor }}" != "azure-fde" ]]; then
+          # linux-objects-nvidia-*-azure-fde is published for amd64 only.
+          if [[ "${{ matrix.dist }}" == "ubuntu24.04" || "${{ matrix.dist }}" == "ubuntu26.04" ]] \
+             && [[ "${{ matrix.flavor }}" != "azure-fde" ]]; then
             export DOCKER_BUILD_PLATFORM_OPTIONS="--platform=linux/amd64,linux/arm64"
           else
             export DOCKER_BUILD_PLATFORM_OPTIONS="--platform=linux/amd64"
