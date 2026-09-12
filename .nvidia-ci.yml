@@ -204,11 +204,12 @@ image-rocky10:
     - .dist-rocky10
 
 # The .scan step forms the base of the image scan operation performed before releasing
-# images.
+# images. pulse-cli pulls from the registry directly, so DinD is not required.
 .scan-generic:
   stage: scan
   allow_failure: true
   image: "${PULSE_IMAGE}"
+  services: []
   variables:
     IMAGE_NAME: "${CI_REGISTRY_IMAGE}"
     VERSION: "${STAGING_VERSION}"
@@ -218,29 +219,47 @@ image-rocky10:
     - if: $SKIP_SCANS && $SKIP_SCANS == "yes"
       when: never
   before_script:
-    - !reference [.regctl-setup, before_script]
-    # We ensure that the DRIVER_VERSION and PLATFORM are set
-    - 'if [[ "${PRECOMPILED}" != "true" ]]; then echo DRIVER_VERSION: ${DRIVER_VERSION} ; [[ -n "${DRIVER_VERSION}" ]] || exit 1; fi'
-    - 'echo PLATFORM: ${PLATFORM} ; [[ -n "${PLATFORM}" ]] || exit 1'
-    - apk add --no-cache make bash
-    - docker login -u "${CI_REGISTRY_USER}" -p "${CI_REGISTRY_PASSWORD}" "${CI_REGISTRY}"
-    - if [[ "${PRECOMPILED}" == "true" ]]; then ./scripts/precompiled.sh pull; else make pull-${DIST}-${DRIVER_VERSION}; fi
-    - if [[ "${PRECOMPILED}" == "true" ]]; then ./scripts/precompiled.sh archive; else make archive-${DIST}-${DRIVER_VERSION}; fi
+    - mkdir -p "$HOME/.docker"
+    - chmod 700 "$HOME/.docker"
+    - >
+      REGISTRY_AUTH="$(printf "%s:%s" "${CI_REGISTRY_USER}" "${CI_REGISTRY_PASSWORD}" | base64 | tr -d '\n')"
+    - >
+      jq -n --arg registry "$CI_REGISTRY" --arg auth "$REGISTRY_AUTH"
+      '{auths: {($registry): {auth: $auth}}}' > "$HOME/.docker/config.json"
+    - export REGISTRY_AUTH_FILE="$HOME/.docker/config.json"
     - AuthHeader=$(echo -n $SSA_CLIENT_ID:$SSA_CLIENT_SECRET | base64 -w0)
     - >
       export SSA_TOKEN=$(curl --request POST --header "Authorization: Basic $AuthHeader" --header "Content-Type: application/x-www-form-urlencoded" ${SSA_ISSUER_URL} | jq ".access_token" |  tr -d '"')
     - if [ -z "$SSA_TOKEN" ]; then exit 1; else echo "SSA_TOKEN set!"; fi
+    # We ensure that the DRIVER_VERSION and PLATFORM are set
+    - 'if [[ "${PRECOMPILED}" != "true" ]]; then echo DRIVER_VERSION: ${DRIVER_VERSION} ; [[ -n "${DRIVER_VERSION}" ]] || exit 1; fi'
+    - 'echo PLATFORM: ${PLATFORM} ; [[ -n "${PLATFORM}" ]] || exit 1'
+    - |
+      if [[ "${PRECOMPILED}" == "true" ]]; then
+        export REGCTL_VERSION=v0.11.5
+        mkdir -p bin
+        curl -sSLo bin/regctl "https://github.com/regclient/regclient/releases/download/${REGCTL_VERSION}/regctl-linux-amd64"
+        chmod a+x bin/regctl
+        export PATH="$(pwd)/bin:${PATH}"
+        ./scripts/precompiled.sh version
+        source kernel_version.txt
+        export CONTAINER_IMAGE="${IMAGE_NAME}:${DRIVER_BRANCH}-${KERNEL_VERSION}-${DIST#signed_}"
+      else
+        export CONTAINER_IMAGE="${IMAGE_NAME}:${VERSION}-${DRIVER_VERSION}-${DIST}"
+      fi
   script:
-    - pulse-cli -n $NSPECT_ID --ssa $SSA_TOKEN scan -i "archive.tar" -p $CONTAINER_POLICY -o
+    - >
+      if [ -z "${NSPECT_ID}" ]; then
+        echo "NSPECT_ID is not set";
+        exit 1;
+      fi
+    - echo "Scanning image ${CONTAINER_IMAGE} for platform ${PLATFORM}"
+    - pulse-cli -n "${NSPECT_ID}" scan-image -i "${CONTAINER_IMAGE}" --platform "${PLATFORM}" -p "${CONTAINER_POLICY}" --output-dir="scan-results" -o
   artifacts:
     when: always
     expire_in: 1 week
     paths:
-      - pulse-cli.log
-      - licenses.json
-      - sbom.json
-      - vulns.json
-      - policy_evaluation.json
+      - scan-results/**/*
 
 .scan-rules-common:
   rules:
