@@ -46,15 +46,15 @@ function targetPlatforms(){
     if [[ "$DIST" == "signed_ubuntu24.04" || "$DIST" == "signed_ubuntu26.04" ]] \
        && [[ "$KERNEL_FLAVOR" != "azure-fde" ]]; then
         echo "linux/amd64 linux/arm64"
+    else
+        echo "linux/amd64"
     fi
 }
 
 function buildImage(){
     local platforms
     platforms=$(targetPlatforms)
-    if [ -n "$platforms" ]; then
-        export DOCKER_BUILD_PLATFORM_OPTIONS="--platform=${platforms// /,}"
-    fi
+    export DOCKER_BUILD_PLATFORM_OPTIONS="--platform=${platforms// /,}"
     make DRIVER_VERSIONS=${DRIVER_VERSIONS} DRIVER_BRANCH=${DRIVER_BRANCH} build-${DIST}-${DRIVER_VERSION}
 }
 
