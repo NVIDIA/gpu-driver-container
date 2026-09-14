@@ -15,6 +15,6 @@
 # DRIVER_VERSIONS contains latest version in all active datacenter branches
 DRIVER_VERSIONS ?= 580.178.04 595.91.07 615.71.09
 
-GOLANG_VERSION := 1.26.6
+GOLANG_VERSION := 1.27.1
 
 GIT_COMMIT ?= $(shell git describe --match="" --dirty --long --always --abbrev=40 2> /dev/null || echo "")
