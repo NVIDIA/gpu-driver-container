@@ -23,6 +23,14 @@ on:
       - release-*
 
 jobs:
+  test-verify-manifest-match:
+    runs-on: linux-amd64-cpu4
+    steps:
+      - uses: actions/checkout@v7
+        name: Check out code
+      - name: Run verify-manifest-match tests
+        run: ./.github/scripts/test-verify-manifest-match.sh
+
   image:
     runs-on: linux-amd64-cpu4
     strategy:
