@@ -98,7 +98,7 @@ ARG GIT_COMMIT
 # Force using provided RHSM registration
 ENV SMDEV_CONTAINER_OFF=1
 
-# Disable vGPU version compability check by default
+# Disable vGPU version compatibility check by default
 ARG DISABLE_VGPU_VERSION_CHECK=true
 ENV DISABLE_VGPU_VERSION_CHECK=${DISABLE_VGPU_VERSION_CHECK}
 

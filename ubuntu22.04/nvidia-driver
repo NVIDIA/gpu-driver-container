@@ -624,7 +624,7 @@ _find_vgpu_driver_version() {
     # check if vgpu devices are present
     count=$(vgpu-util count)
     if [ $? -ne 0 ]; then
-         echo "cannot find vgpu devices on host, pleae check /var/log/vgpu-util.log for more details..."
+         echo "cannot find vgpu devices on host, please check /var/log/vgpu-util.log for more details..."
          return 0
     fi
     NUM_VGPU_DEVICES=$(echo "$count" | awk -F= '{print $2}')
@@ -859,7 +859,7 @@ update() {
     fi
     exec 3>&-
 
-    # vgpu driver version is choosen dynamically during runtime, so pre-compile modules for
+    # vgpu driver version is chosen dynamically during runtime, so pre-compile modules for
     # only non-vgpu driver types
     if [ "${DRIVER_TYPE}" != "vgpu" ]; then
         if [ ! -e /usr/src/nvidia-${DRIVER_VERSION}/mkprecompiled ]; then
@@ -944,7 +944,7 @@ reload_nvidia_peermem() {
     exit 1
 }
 
-# probe by gpu-opertor for liveness/startup checks for nvidia-peermem module to be loaded when MOFED drivers are ready
+# probe by gpu-operator for liveness/startup checks for nvidia-peermem module to be loaded when MOFED drivers are ready
 probe_nvidia_peermem() {
     if lsmod | grep mlx5_core > /dev/null 2>&1; then
         if [ ! -f /sys/module/nvidia_peermem/refcnt ]; then
