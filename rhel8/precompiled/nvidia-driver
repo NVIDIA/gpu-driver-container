@@ -369,7 +369,7 @@ update() {
     fi
     exec 3>&-
 
-    # vgpu driver version is choosen dynamically during runtime, so pre-compile modules for
+    # vgpu driver version is chosen dynamically during runtime, so pre-compile modules for
     # only non-vgpu driver types
     if [ "${DRIVER_TYPE}" != "vgpu" ]; then
         # Install the userspace components and copy the kernel module sources.
