@@ -25,38 +25,23 @@ on:
 jobs:
   test-verify-manifest-match:
     runs-on: linux-amd64-cpu4
+    outputs:
+      build_matrix: ${{ steps.image-matrix.outputs.build_matrix }}
+      manifest_matrix: ${{ steps.image-matrix.outputs.manifest_matrix }}
     steps:
       - uses: actions/checkout@v7
         name: Check out code
       - name: Run verify-manifest-match tests
         run: ./.github/scripts/test-verify-manifest-match.sh
+      - name: Generate image matrices
+        id: image-matrix
+        run: bash .github/scripts/generate-image-matrices.sh >> "$GITHUB_OUTPUT"
 
   image:
+    needs: test-verify-manifest-match
     runs-on: linux-${{ matrix.arch }}-cpu4
     strategy:
-      matrix:
-        arch:
-          - amd64
-          - arm64
-        driver: &driver-versions
-          - 580.178.04
-          - 595.91.07
-          - 615.71.09
-        dist: &distributions
-          - ubuntu22.04
-          - ubuntu24.04
-          - ubuntu26.04
-          - rhel8
-          - rhel9
-          - rhel10
-          - rocky8
-          - rocky9
-          - rocky10
-        ispr:
-          - ${{github.event_name == 'pull_request'}}
-        exclude: &unsupported-images
-          - dist: ubuntu26.04
-            driver: 580.178.04
+      matrix: ${{ fromJSON(needs.test-verify-manifest-match.outputs.build_matrix) }}
       fail-fast: false
     steps:
       - uses: actions/checkout@v7
@@ -105,13 +90,12 @@ jobs:
 
   image-manifest:
     if: github.actor != 'dependabot[bot]'
-    needs: image
+    needs:
+      - test-verify-manifest-match
+      - image
     runs-on: linux-amd64-cpu4
     strategy:
-      matrix:
-        driver: *driver-versions
-        dist: *distributions
-        exclude: *unsupported-images
+      matrix: ${{ fromJSON(needs.test-verify-manifest-match.outputs.manifest_matrix) }}
       fail-fast: false
     steps:
       - name: Calculate manifest vars
@@ -129,12 +113,20 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
       - name: Create multi-architecture manifest
+        env:
+          DRIVER: ${{ matrix.driver }}
+          DISTRIBUTIONS: ${{ matrix.distributions }}
         run: |
+          set -euo pipefail
           IMAGE_NAME="ghcr.io/${LOWERCASE_REPO_OWNER}/driver"
-          docker buildx imagetools create \
-            --tag "${IMAGE_NAME}:${COMMIT_SHORT_SHA}-${{ matrix.driver }}-${{ matrix.dist }}" \
-            "${IMAGE_NAME}:${COMMIT_SHORT_SHA}-amd64-${{ matrix.driver }}-${{ matrix.dist }}" \
-            "${IMAGE_NAME}:${COMMIT_SHORT_SHA}-arm64-${{ matrix.driver }}-${{ matrix.dist }}"
+          read -r -a DISTRIBUTION_LIST <<< "$DISTRIBUTIONS"
+
+          for DIST in "${DISTRIBUTION_LIST[@]}"; do
+            docker buildx imagetools create \
+              --tag "${IMAGE_NAME}:${COMMIT_SHORT_SHA}-${DRIVER}-${DIST}" \
+              "${IMAGE_NAME}:${COMMIT_SHORT_SHA}-amd64-${DRIVER}-${DIST}" \
+              "${IMAGE_NAME}:${COMMIT_SHORT_SHA}-arm64-${DRIVER}-${DIST}"
+          done
 
   pre-compiled:
     runs-on: linux-amd64-cpu4
@@ -157,7 +149,7 @@ jobs:
           - 5.15
           - 6.8
         ispr:
-          - ${{github.event_name == 'pull_request'}}
+          - ${{ github.event_name == 'pull_request' || startsWith(github.ref_name, 'pull-request/') }}
         exclude:
           - ispr: true
             flavor: azure

@@ -1,0 +1,28 @@
+{
+  "architectures": [
+    "amd64",
+    "arm64"
+  ],
+  "drivers": [
+    "580.178.04",
+    "595.91.07",
+    "615.71.09"
+  ],
+  "distributions": [
+    "ubuntu22.04",
+    "ubuntu24.04",
+    "ubuntu26.04",
+    "rhel8",
+    "rhel9",
+    "rhel10",
+    "rocky8",
+    "rocky9",
+    "rocky10"
+  ],
+  "exclude": [
+    {
+      "driver": "580.178.04",
+      "dist": "ubuntu26.04"
+    }
+  ]
+}
