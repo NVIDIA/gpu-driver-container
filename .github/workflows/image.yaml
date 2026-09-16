@@ -120,6 +120,7 @@ jobs:
           - azure-fde
           - generic
           - nvidia
+          - nvidia-64k
           - oracle
         dist:
           - ubuntu22.04
@@ -137,11 +138,17 @@ jobs:
           - ispr: true
             flavor: nvidia
           - ispr: true
+            flavor: nvidia-64k
+          - ispr: true
             flavor: oracle
           - lts_kernel: 5.15
             dist: ubuntu24.04
           - flavor: azure-fde
             dist: ubuntu22.04
+          - flavor: nvidia-64k
+            dist: ubuntu22.04
+          - flavor: nvidia-64k
+            lts_kernel: 5.15
     steps:
       - uses: actions/checkout@v7
         name: Check out code
@@ -215,8 +222,10 @@ jobs:
           DIST: signed_${{ matrix.dist }}
         run: |
           source kernel_version.txt
-          # arm64 does not support azure-fde (package linux-objects-nvidia-*-azure-fde not available for arm64)
-          if [[ "${{ matrix.dist }}" == "ubuntu24.04" ]] && [[ "${{ matrix.flavor }}" != "azure-fde" ]]; then
+          # nvidia-64k is arm64-only; azure-fde is amd64-only; all other ubuntu24.04 flavors are multi-arch
+          if [[ "${{ matrix.flavor }}" == "nvidia-64k" ]]; then
+            export DOCKER_BUILD_PLATFORM_OPTIONS="--platform=linux/arm64"
+          elif [[ "${{ matrix.dist }}" == "ubuntu24.04" ]] && [[ "${{ matrix.flavor }}" != "azure-fde" ]]; then
             export DOCKER_BUILD_PLATFORM_OPTIONS="--platform=linux/amd64,linux/arm64"
           else
             export DOCKER_BUILD_PLATFORM_OPTIONS="--platform=linux/amd64"
