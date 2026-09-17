@@ -19,6 +19,10 @@ RHEL_VERSION=${RHEL_VERSION:-""}
 RHEL_MAJOR_VERSION=9
 RHEL_MINOR_VERSION=${RHEL_MINOR_VERSION:-""}
 KERNEL_MODULE_TYPE=${KERNEL_MODULE_TYPE:-auto}
+if [ "${DRIVER_BRANCH}" -ge 615 ] && [ "${KERNEL_MODULE_TYPE}" = "proprietary" ]; then
+    echo "IMPORTANT: KERNEL_MODULE_TYPE=proprietary is not supported for driver branches R615 and later; using open instead"
+    KERNEL_MODULE_TYPE=open
+fi
 MODPROBE_CONFIG_DIR="/etc/modprobe.d"
 
 DRIVER_ARCH=${TARGETARCH/amd64/x86_64} && DRIVER_ARCH=${DRIVER_ARCH/arm64/aarch64}
