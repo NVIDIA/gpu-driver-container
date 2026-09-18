@@ -50,6 +50,11 @@ _cleanup_package_cache() {
     fi
 }
 
+_set_daemons_status() {
+    mkdir -p /run/nvidia/validations
+    echo "${1}" > /run/nvidia/validations/.driver-daemons-status
+}
+
 _get_rhel_version_from_kernel() {
     local rhel_version_underscore rhel_version_arr
     rhel_version_underscore=$(echo "${KERNEL_VERSION}" | sed 's/.*el\([0-9]\+_[0-9]\+\).*/\1/g')
@@ -275,6 +280,7 @@ _load_driver() {
         echo "Starting NVIDIA fabric manager daemon..."
         nv-fabricmanager -c /usr/share/nvidia/nvswitch/fabricmanager.cfg || return 1
     fi
+    _set_daemons_status "Ready"
 }
 
 # Stop persistenced and unload the kernel modules if they are currently loaded.
@@ -412,6 +418,7 @@ _load() {
 }
 
 init() {
+    _set_daemons_status "NotReady"
     _load
 }
 

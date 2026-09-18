@@ -61,6 +61,11 @@ _update_package_cache() {
     fi
 }
 
+_set_daemons_status() {
+    mkdir -p /run/nvidia/validations
+    echo "${1}" > /run/nvidia/validations/.driver-daemons-status
+}
+
 _assert_nvswitch_system() {
     [ -d /proc/driver/nvidia-nvswitch/devices ] || return 1
     if [ -z "$(ls -A /proc/driver/nvidia-nvswitch/devices)" ]; then
@@ -256,6 +261,7 @@ _load_driver() {
         echo "Starting NVIDIA fabric manager daemon..."
         nv-fabricmanager -c /usr/share/nvidia/nvswitch/fabricmanager.cfg || return 1
     fi
+    _set_daemons_status "Ready"
 }
 
 # Stop persistenced and unload the kernel modules if they are currently loaded.
@@ -440,6 +446,8 @@ init() {
 
     trap "echo 'Caught signal'; exit 1" HUP INT QUIT PIPE TERM
     trap "_shutdown" EXIT
+
+    _set_daemons_status "NotReady"
 
     _unload_driver || exit 1
     _unmount_rootfs
