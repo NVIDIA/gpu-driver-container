@@ -41,12 +41,20 @@ function buildBaseImage(){
     make DRIVER_BRANCH=${DRIVER_BRANCH} KERNEL_FLAVOR=${KERNEL_FLAVOR} build-base-${BASE_TARGET}
 }
 
-function buildImage(){
-    # Build the image. Build multi-arch (amd64+arm64) for ubuntu24.04 except azure-fde
-    # (linux-objects-nvidia-*-azure-fde is not available for arm64).
-    if [[ "$DIST" == "signed_ubuntu24.04" ]] && [[ "$KERNEL_FLAVOR" != "azure-fde" ]]; then
-        export DOCKER_BUILD_PLATFORM_OPTIONS="--platform=linux/amd64,linux/arm64"
+function targetPlatforms(){
+    # linux-objects-nvidia-*-azure-fde is published for amd64 only.
+    if [[ "$DIST" == "signed_ubuntu24.04" || "$DIST" == "signed_ubuntu26.04" ]] \
+       && [[ "$KERNEL_FLAVOR" != "azure-fde" ]]; then
+        echo "linux/amd64 linux/arm64"
+    else
+        echo "linux/amd64"
     fi
+}
+
+function buildImage(){
+    local platforms
+    platforms=$(targetPlatforms)
+    export DOCKER_BUILD_PLATFORM_OPTIONS="--platform=${platforms// /,}"
     make DRIVER_VERSIONS=${DRIVER_VERSIONS} DRIVER_BRANCH=${DRIVER_BRANCH} build-${DIST}-${DRIVER_VERSION}
 }
 
@@ -63,7 +71,7 @@ function pushImage(){
 	# note: DIST is in the form "signed_<distribution>", so we drop the '*_' prefix
 	# to extract the distribution string.
 	local out_image=${OUT_IMAGE_NAME}:${DRIVER_BRANCH}-${KERNEL_VERSION}-${DIST##*_}
-	if imageExists "$out_image"; then
+	if imageExistsForAllTargetPlatforms "$out_image"; then
 		echo "image tag already exists in output registry - $out_image"
 		if [ "$FORCE_PUSH" != "true" ]; then
 			echo "exiting"
@@ -87,6 +95,18 @@ function archiveImage(){
 
 function imageExists(){
 	regctl manifest get $1 --list > /dev/null && return 0 || return 1
+}
+
+function imageExistsForAllTargetPlatforms(){
+	local image=$1
+	imageExists "$image" || return 1
+	local platform
+	for platform in $(targetPlatforms); do
+		# manifest get --platform only selects within a manifest list; against a
+		# single manifest it succeeds for any platform, so compare the config.
+		[ "$(regctl image config "$image" --platform "$platform" --format '{{.OS}}/{{.Architecture}}' 2>/dev/null)" = "$platform" ] || return 1
+	done
+	return 0
 }
 
 case $1 in
