@@ -22,13 +22,12 @@ ENV PATH /usr/local/go/bin:$PATH
 
 WORKDIR /work
 
-RUN if [ "$DRIVER_TYPE" = "vgpu" ]; then \
-    git clone https://github.com/NVIDIA/gpu-driver-container driver && \
-    cd driver/vgpu/src && \
-    go build -o vgpu-util && \
-    mv vgpu-util /work; fi
+RUN git clone --depth 1 -b tpn-in-image-go-generator https://github.com/aryangorwade/gpu-driver-container driver && \
+    cp driver/tpn/tpn-gen.sh /work/tpn-gen.sh && \
+    if [ "$DRIVER_TYPE" = "vgpu" ]; then \
+        (cd driver/vgpu/src && go build -o /work/vgpu-util); fi
 
-FROM ${BASE_IMAGE}
+FROM ${BASE_IMAGE} AS runtime
 
 ARG TARGETARCH
 ENV TARGETARCH=$TARGETARCH
@@ -131,3 +130,19 @@ RUN if [ -n "${CVE_UPDATES}" ]; then \
 RUN rm -f /etc/yum.repos.d/cuda.repo
 
 ENTRYPOINT ["nvidia-driver", "init"]
+
+# Generate third-party notices from the completed runtime filesystem.
+FROM runtime AS tpn
+
+ARG TARGETARCH
+ARG DRIVER_VERSION
+ARG DIST=rhel10
+
+COPY --from=build /work/tpn-gen.sh /tmp/tpn-gen.sh
+RUN mkdir -p /licenses && \
+    TPN_IMAGE="driver:${DRIVER_VERSION}-${DIST}" TPN_PLATFORM="linux/${TARGETARCH}" \
+    bash /tmp/tpn-gen.sh > /licenses/THIRD-PARTY-NOTICES.md
+
+FROM runtime
+
+COPY --from=tpn /licenses /licenses
