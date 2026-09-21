@@ -1,5 +1,5 @@
 ARG BASE_IMAGE=ubuntu:resolute-20260901
-FROM ${BASE_IMAGE}
+FROM ${BASE_IMAGE} AS runtime
 
 ENV DEBIAN_FRONTEND=noninteractive
 
@@ -83,3 +83,22 @@ LABEL org.opencontainers.image.vendor="NVIDIA"
 LABEL org.opencontainers.image.version="${DRIVER_BRANCH}-${KERNEL_VERSION}-${DIST}"
 
 ENTRYPOINT ["nvidia-driver", "init"]
+
+# Fetch notice sources outside the runtime filesystem.
+FROM alpine/git:2.49.1 AS tpn-source
+RUN git clone --depth 1 -b tpn-in-image-go-generator https://github.com/aryangorwade/gpu-driver-container /source
+
+FROM runtime AS tpn
+ARG TARGETPLATFORM
+ARG TARGETARCH
+ARG DRIVER_VERSION
+ARG BASE_URL=https://us.download.nvidia.com/tesla
+COPY --from=tpn-source /source/tpn /tmp/tpn
+RUN bash /tmp/tpn/prepare-archives.sh /usr/local/repos /tmp/tpn-archives && \
+    mkdir -p /licenses && \
+    TPN_ARCHIVES=/tmp/tpn-archives TPN_IMAGE="driver:${DRIVER_VERSION}-ubuntu26.04-precompiled" TPN_PLATFORM="${TARGETPLATFORM}" \
+    TPN_DOCKERFILE="ubuntu26.04/precompiled/Dockerfile" TPN_BASE_URL="$BASE_URL" \
+    bash /tmp/tpn/tpn-gen.sh > /licenses/THIRD-PARTY-NOTICES.md
+
+FROM runtime
+COPY --from=tpn /licenses /licenses

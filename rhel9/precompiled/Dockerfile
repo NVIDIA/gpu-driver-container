@@ -70,7 +70,7 @@ RUN export KVER=$(echo ${KERNEL_VERSION} | cut -d '-' -f 1) \
         --define "driver_branch ${DRIVER_STREAM}" \
         -v -bb SPECS/kmod-nvidia.spec
 
-FROM nvcr.io/nvidia/cuda:${CUDA_VERSION}-base-${CUDA_DIST}
+FROM nvcr.io/nvidia/cuda:${CUDA_VERSION}-base-${CUDA_DIST} AS runtime
 
 ARG BASE_URL='https://us.download.nvidia.com/tesla'
 
@@ -217,3 +217,24 @@ RUN mkdir /licenses && mv /NGC-DL-CONTAINER-LICENSE /licenses/NGC-DL-CONTAINER-L
 RUN rm -f /etc/yum.repos.d/cuda.repo
 
 ENTRYPOINT ["nvidia-driver", "init"]
+
+# Fetch notice sources outside the runtime filesystem.
+FROM alpine/git:2.49.1 AS tpn-source
+RUN git clone --depth 1 -b tpn-in-image-go-generator https://github.com/aryangorwade/gpu-driver-container /source
+
+FROM runtime AS tpn
+ARG TARGETPLATFORM
+ARG TARGETARCH
+ARG DRIVER_VERSION
+ARG BASE_URL=https://us.download.nvidia.com/tesla
+ARG TARGET_ARCH
+COPY --from=builder /home/builder/yum-packaging-precompiled-kmod/tmp/LICENSE /tmp/tpn-driver/LICENSE
+COPY --from=builder /home/builder/yum-packaging-precompiled-kmod/tmp/html/acknowledgements.html /tmp/tpn-driver/html/acknowledgements.html
+COPY --from=tpn-source /source/tpn /tmp/tpn
+RUN mkdir -p /licenses && \
+    TPN_IMAGE="driver:${DRIVER_VERSION}-rhel9-precompiled" TPN_PLATFORM="${TARGETPLATFORM}" \
+    TPN_DOCKERFILE="rhel9/precompiled/Dockerfile" TPN_BASE_URL="$BASE_URL" \
+    bash /tmp/tpn/tpn-gen.sh > /licenses/THIRD-PARTY-NOTICES.md
+
+FROM runtime
+COPY --from=tpn /licenses /licenses

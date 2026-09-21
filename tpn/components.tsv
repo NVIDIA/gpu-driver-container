@@ -1,0 +1,21 @@
+# Dockerfiles|component|version|source URL|license|installed file|notice file
+ubuntu22.04/Dockerfile|NVIDIA driver|DRIVER_VERSION|BASE_URL/DRIVER_VERSION/INSTALLER|NVIDIA Driver License Agreement|/drivers/NVIDIA-Linux-*.run|driver
+ubuntu22.04/precompiled/Dockerfile|nvidia-installer|DRIVER_VERSION|BASE_URL/DRIVER_VERSION/INSTALLER|NVIDIA Driver License Agreement|/licenses/nvidia-installer/LICENSE|retained-installer
+ubuntu22.04/Dockerfile|donkey|1.1.0|https://github.com/3XX0/donkey/releases/download/v1.1.0/donkey|ISC|/usr/local/bin/donkey|licenses/donkey-ISC.txt
+ubuntu22.04/precompiled/Dockerfile|donkey|1.1.0|https://github.com/3XX0/donkey/releases/download/v1.1.0/donkey|ISC|/usr/local/bin/donkey|licenses/donkey-ISC.txt
+ubuntu24.04/Dockerfile|NVIDIA driver|DRIVER_VERSION|BASE_URL/DRIVER_VERSION/INSTALLER|NVIDIA Driver License Agreement|/drivers/NVIDIA-Linux-*.run|driver
+ubuntu24.04/precompiled/Dockerfile|nvidia-installer|DRIVER_VERSION|BASE_URL/DRIVER_VERSION/INSTALLER|NVIDIA Driver License Agreement|/licenses/nvidia-installer/LICENSE|retained-installer
+ubuntu26.04/Dockerfile|-|-|-|-|-|none
+ubuntu26.04/precompiled/Dockerfile|nvidia-installer|DRIVER_VERSION|BASE_URL/DRIVER_VERSION/INSTALLER|NVIDIA Driver License Agreement|/licenses/nvidia-installer/LICENSE|retained-installer
+rhel8/Dockerfile|NVIDIA driver|DRIVER_VERSION|BASE_URL/DRIVER_VERSION/INSTALLER|NVIDIA Driver License Agreement|/drivers/NVIDIA-Linux-*.run|driver
+rhel8/precompiled/Dockerfile|NVIDIA driver|DRIVER_VERSION|BASE_URL/DRIVER_VERSION/INSTALLER|NVIDIA Driver License Agreement|/tmp/tpn-driver/LICENSE|extracted-driver
+rhel8/Dockerfile|donkey|1.1.0|https://github.com/3XX0/donkey/releases/download/v1.1.0/donkey|ISC|/usr/local/bin/donkey|licenses/donkey-ISC.txt
+rhel8/Dockerfile|extract-vmlinux|fe2ec83746e501645709761605c2464a44fd2929|https://raw.githubusercontent.com/torvalds/linux/fe2ec83746e501645709761605c2464a44fd2929/scripts/extract-vmlinux|GPL-2.0-only|/usr/local/bin/extract-vmlinux|header+licenses/extract-vmlinux-GPL-2.0.txt
+rhel9/Dockerfile|NVIDIA driver|DRIVER_VERSION|BASE_URL/DRIVER_VERSION/INSTALLER|NVIDIA Driver License Agreement|/drivers/NVIDIA-Linux-*.run|driver
+rhel9/precompiled/Dockerfile|NVIDIA driver|DRIVER_VERSION|BASE_URL/DRIVER_VERSION/INSTALLER|NVIDIA Driver License Agreement|/tmp/tpn-driver/LICENSE|extracted-driver
+rhel9/Dockerfile|donkey|1.1.0|https://github.com/3XX0/donkey/releases/download/v1.1.0/donkey|ISC|/usr/local/bin/donkey|licenses/donkey-ISC.txt
+rhel9/Dockerfile|extract-vmlinux|fe2ec83746e501645709761605c2464a44fd2929|https://raw.githubusercontent.com/torvalds/linux/fe2ec83746e501645709761605c2464a44fd2929/scripts/extract-vmlinux|GPL-2.0-only|/usr/local/bin/extract-vmlinux|header+licenses/extract-vmlinux-GPL-2.0.txt
+rhel10/Dockerfile|NVIDIA driver|DRIVER_VERSION|BASE_URL/DRIVER_VERSION/INSTALLER|NVIDIA Driver License Agreement|/drivers/NVIDIA-Linux-*.run|driver
+rhel10/precompiled/Dockerfile|NVIDIA driver|DRIVER_VERSION|BASE_URL/DRIVER_VERSION/INSTALLER|NVIDIA Driver License Agreement|/tmp/tpn-driver/LICENSE|extracted-driver
+rhel10/Dockerfile|donkey|1.1.0|https://github.com/3XX0/donkey/releases/download/v1.1.0/donkey|ISC|/usr/local/bin/donkey|licenses/donkey-ISC.txt
+rhel10/Dockerfile|extract-vmlinux|fe2ec83746e501645709761605c2464a44fd2929|https://raw.githubusercontent.com/torvalds/linux/fe2ec83746e501645709761605c2464a44fd2929/scripts/extract-vmlinux|GPL-2.0-only|/usr/local/bin/extract-vmlinux|header+licenses/extract-vmlinux-GPL-2.0.txt

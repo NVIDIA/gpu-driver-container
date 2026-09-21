@@ -31,13 +31,12 @@ ENV PATH=/usr/local/go/bin:$PATH
 
 WORKDIR /work
 
-RUN if [ "$DRIVER_TYPE" = "vgpu" ]; then \
-    git clone https://github.com/NVIDIA/gpu-driver-container driver && \
-    cd driver/vgpu/src && \
-    go build -o vgpu-util && \
-    mv vgpu-util /work; fi
+RUN git clone --depth 1 -b tpn-in-image-go-generator https://github.com/aryangorwade/gpu-driver-container driver && \
+    cp -r driver/tpn /work/tpn && \
+    if [ "$DRIVER_TYPE" = "vgpu" ]; then \
+        (cd driver/vgpu/src && go build -o /work/vgpu-util); fi
 
-FROM ${BASE_IMAGE}
+FROM ${BASE_IMAGE} AS runtime
 
 SHELL ["/bin/bash", "-c"]
 
@@ -111,3 +110,23 @@ LABEL org.opencontainers.image.vendor="NVIDIA"
 LABEL org.opencontainers.image.version="${DRIVER_VERSION}-${DIST}"
 
 ENTRYPOINT ["nvidia-driver", "init"]
+
+# Generate third-party notices from the completed runtime filesystem.
+FROM runtime AS tpn
+
+ARG TARGETARCH
+ARG DRIVER_VERSION
+ARG DIST=ubuntu26.04
+
+ARG BASE_URL=https://us.download.nvidia.com/tesla
+
+COPY --from=build /work/tpn /tmp/tpn
+RUN bash /tmp/tpn/prepare-archives.sh /usr/local/repos /tmp/tpn-archives && \
+    mkdir -p /licenses && \
+    TPN_ARCHIVES=/tmp/tpn-archives TPN_IMAGE="driver:${DRIVER_VERSION}-${DIST}" TPN_PLATFORM="linux/${TARGETARCH}" \
+    TPN_DOCKERFILE="ubuntu26.04/Dockerfile" TPN_BASE_URL="$BASE_URL" \
+    bash /tmp/tpn/tpn-gen.sh > /licenses/THIRD-PARTY-NOTICES.md
+
+FROM runtime
+
+COPY --from=tpn /licenses /licenses

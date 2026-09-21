@@ -109,6 +109,9 @@ fetch_nvidia_installer () {
   curl -fSsl -O $BASE_URL/$DRIVER_VERSION/$DRIVER_RUN_FILE.run
   chmod +x $DRIVER_RUN_FILE.run
   sh $DRIVER_RUN_FILE.run -x
+  mkdir -p /licenses/nvidia-installer/html
+  cp "$DRIVER_RUN_FILE/LICENSE" /licenses/nvidia-installer/
+  cp "$DRIVER_RUN_FILE/html/acknowledgements.html" /licenses/nvidia-installer/html/
   mv $DRIVER_RUN_FILE/nvidia-installer /usr/bin/
   rm -rf $DRIVER_RUN_FILE
   rm $DRIVER_RUN_FILE.run
