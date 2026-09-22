@@ -653,7 +653,7 @@ _start_daemons() {
             # We reset the GPU devices after Fabric Manager startup to clear stale FM
             # partition data after setting FABRIC_MODE=1
             echo "Resetting GPUs to clear stale fabric partition states..."
-            nvidia-smi -r
+            nvidia-smi -r || return 1
         fi
 
     # If not a NVLink5+ switch, check for the presence of NVLink4 (or below) switches

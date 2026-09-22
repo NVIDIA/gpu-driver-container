@@ -175,6 +175,63 @@ _get_module_params() {
     fi
 }
 
+_assert_nvlink5_system() (
+    for dir in /sys/class/infiniband/*/device; do
+        # Define the path to the VPD file
+        vpd_file="$dir/vpd"
+
+        # Check if the VPD file exists
+        if [ -f "$vpd_file" ]; then
+            # Search for 'SW_MNG' in the VPD file
+            if grep -q "SW_MNG" "$vpd_file"; then
+                echo "Detected NVLink5+ system"
+                return 0
+            fi
+        fi
+    done
+    return 1
+)
+
+_ensure_nvlink5_prerequisites() (
+    until  lsmod | grep mlx5_core > /dev/null 2>&1 && lsmod | grep ib_umad > /dev/null 2>&1;
+    do
+        echo "waiting for the mlx5_core and ib_umad kernel modules to be loaded"
+        sleep 10
+    done
+)
+
+_configure_fabric_manager() {
+    local fm_config_file=/usr/share/nvidia/nvswitch/fabricmanager.cfg
+
+    local nvfm_env_vars
+    nvfm_env_vars=$(env | grep '^NVFM_CONFIG_' || true)
+    [ -z "${nvfm_env_vars}" ] && return 0
+
+    if [ ! -f "${fm_config_file}" ]; then
+        echo "WARNING: ${fm_config_file} not found; cannot configure Fabric Manager"
+        return 0
+    fi
+
+    while IFS='=' read -r name value; do
+        local field="${name#NVFM_CONFIG_}"
+        if [ -z "${field}" ]; then
+            echo "WARNING: ignoring environment variable '${name}=' with an empty config field name"
+            continue
+        fi
+        echo "Setting Fabric Manager config ${field}=${value} in ${fm_config_file}"
+        if grep -q "^${field}=" "${fm_config_file}"; then
+            # Escape characters that are special in the replacement half of a sed
+            # s||| command (backslash, ampersand and the '|' delimiter) so that a
+            # value cannot corrupt the substitution or inject extra sed commands.
+            local sed_escaped_value
+            sed_escaped_value=$(printf '%s' "${value}" | sed -e 's/[\\&|]/\\&/g')
+            sed -i "s|^${field}=.*|${field}=${sed_escaped_value}|" "${fm_config_file}"
+        else
+            printf '\n%s=%s\n' "${field}" "${value}" >> "${fm_config_file}"
+        fi
+    done <<< "${nvfm_env_vars}"
+}
+
 # Load the kernel modules and start persistenced.
 _load_driver() {
     echo "Parsing kernel module parameters..."
@@ -213,7 +270,30 @@ _load_driver() {
         _start_vgpu_topology_daemon
     fi
 
-    if _assert_nvswitch_system; then
+    if _assert_nvlink5_system; then
+        _ensure_nvlink5_prerequisites || return 1
+        _configure_fabric_manager
+        echo "Starting NVIDIA fabric manager daemon for NVLink5+..."
+
+        fm_config_file=/usr/share/nvidia/nvswitch/fabricmanager.cfg
+        fm_pid_file=/var/run/nvidia-fabricmanager/nv-fabricmanager.pid
+        nvlsm_config_file=/usr/share/nvidia/nvlsm/nvlsm.conf
+        nvlsm_pid_file=/var/run/nvidia-fabricmanager/nvlsm.pid
+        /usr/bin/nvidia-fabricmanager-start.sh --mode start \
+                                               --fm-config-file $fm_config_file \
+                                               --fm-pid-file $fm_pid_file \
+                                               --nvlsm-config-file $nvlsm_config_file \
+                                               --nvlsm-pid-file $nvlsm_pid_file || return 1
+        if [ ! -z "${NVFM_CONFIG_FABRIC_MODE:-}" ] && [ "${NVFM_CONFIG_FABRIC_MODE}" == "1" ]; then
+            # We reset the GPU devices after Fabric Manager startup to clear stale FM
+            # partition data after setting FABRIC_MODE=1
+            echo "Resetting GPUs to clear stale fabric partition states..."
+            nvidia-smi -r || return 1
+        fi
+
+    # If not a NVLink5+ switch, check for the presence of NVLink4 (or below) switches
+    elif _assert_nvswitch_system; then
+        _configure_fabric_manager
         echo "Starting NVIDIA fabric manager daemon..."
         nv-fabricmanager -c /usr/share/nvidia/nvswitch/fabricmanager.cfg || return 1
     fi
@@ -270,6 +350,21 @@ _unload_driver() {
         done
         if [ $i -eq 50 ]; then
             echo "Could not stop NVIDIA fabric manager daemon" >&2
+            return 1
+        fi
+    fi
+
+    if [ -f /var/run/nvidia-fabricmanager/nvlsm.pid ]; then
+        echo "Stopping NVLink Subnet Manager daemon..."
+        local pid=$(< /var/run/nvidia-fabricmanager/nvlsm.pid)
+
+        kill -SIGTERM "${pid}"
+        for i in $(seq 1 50); do
+            kill -0 "${pid}" 2> /dev/null || break
+            sleep 0.1
+        done
+        if [ $i -eq 50 ]; then
+            echo "Could not stop NVLink Subnet Manager daemon" >&2
             return 1
         fi
     fi
