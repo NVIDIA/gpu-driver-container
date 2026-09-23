@@ -124,17 +124,15 @@ RUN --mount=type=secret,id=RHSM_ORG,target=/run/secrets/RHSM_ORG \
     && dnf clean all
 
 RUN if [ "$DRIVER_TYPE" != "vgpu" ]; then \
-        VERSION_ARRAY=(${DRIVER_VERSION//./ }) \
-        && if [ ${VERSION_ARRAY[0]} -ge 470 ] || ([ ${VERSION_ARRAY[0]} == 460 ] && [ ${VERSION_ARRAY[1]} -ge 91 ]) \
-        then \
-            FABRIC_MANAGER_VERSION=${DRIVER_VERSION}-1 ; \
-        else \
-            FABRIC_MANAGER_VERSION=${VERSION_ARRAY[0]}-${DRIVER_VERSION}-1 ; \
+        dnf install -y \
+            nvidia-fabricmanager-${DRIVER_VERSION} \
+            libnvidia-nscq-${DRIVER_VERSION} \
+            nvidia-imex-${DRIVER_VERSION} \
+            infiniband-diags \
+            nvlsm \
+        && if [ "$TARGETARCH" != "aarch64" ]; then \
+            dnf install -y libnvsdm-${DRIVER_VERSION} ; \
         fi \
-        && NSCQ_VERSION=${VERSION_ARRAY[0]}-${DRIVER_VERSION}-1 \
-        && dnf install -y \
-            nvidia-fabric-manager-${FABRIC_MANAGER_VERSION} \
-            libnvidia-nscq-${NSCQ_VERSION} \
         && dnf clean all; \
     fi
 
