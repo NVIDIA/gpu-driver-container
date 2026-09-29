@@ -49,7 +49,11 @@ _resolve_kernel_version() {
     local kernel_flavor=$(echo "${KERNEL_VERSION}" | sed 's/[^a-z]*//')
     kernel_flavor="${kernel_flavor//virtual/generic}"
 
-    KERNEL_VERSION="${version}-${kernel_flavor}"
+    # Custom kernels (e.g. 6.18.30-1) have no flavor suffix, so only append one if present.
+    KERNEL_VERSION="${version}"
+    if [ -n "${kernel_flavor}" ]; then
+        KERNEL_VERSION="${KERNEL_VERSION}-${kernel_flavor}"
+    fi
     echo "Proceeding with Linux kernel version ${KERNEL_VERSION}"
     return 0
 }
@@ -72,8 +76,14 @@ _install_prerequisites() {
     { apt-get download linux-modules-${KERNEL_VERSION} && dpkg -x linux-modules*.deb . || true; }
     # linux-modules-extra contains pci-pf-stub which is required when enabling SR-IOV on a physical GPU
     { apt-get download linux-modules-extra-${KERNEL_VERSION} && dpkg -x linux-modules-extra*.deb . || true; }
-    mv lib/modules/${KERNEL_VERSION}/modules.* /lib/modules/${KERNEL_VERSION}
-    mv lib/modules/${KERNEL_VERSION}/kernel /lib/modules/${KERNEL_VERSION}
+    # Kernel debs ship their payload under lib/modules or, with merged-/usr, under
+    # usr/lib/modules. Use whichever the downloaded package contains.
+    local modules_dir=lib/modules
+    if [ -d usr/lib/modules/${KERNEL_VERSION} ]; then
+        modules_dir=usr/lib/modules
+    fi
+    mv ${modules_dir}/${KERNEL_VERSION}/modules.* /lib/modules/${KERNEL_VERSION}
+    mv ${modules_dir}/${KERNEL_VERSION}/kernel /lib/modules/${KERNEL_VERSION}
     depmod ${KERNEL_VERSION}
 
     echo "Generating Linux kernel version string..."
