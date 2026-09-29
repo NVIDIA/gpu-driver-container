@@ -109,7 +109,14 @@ jobs:
             BASE_TARGET="resolute"
           fi
           # kernel version is the same for amd64 and arm64, so base image is always built for amd64
-          export DOCKER_BUILD_PLATFORM_OPTIONS="--platform=linux/amd64"
+          # nvidia-64k is arm64-only, so its base image must be built for arm64
+          if [[ "${{ matrix.flavor }}" == "nvidia-64k" ]]; then
+            export DOCKER_BUILD_PLATFORM_OPTIONS="--platform=linux/arm64"
+            # --load is required for cross-platform builds so docker run can find the image locally for different host architectures(amd64)
+            export DOCKER_BUILD_OPTIONS="--load --provenance=false --sbom=false"
+          else
+            export DOCKER_BUILD_PLATFORM_OPTIONS="--platform=linux/amd64"
+          fi
           make DRIVER_BRANCH=${{ matrix.driver_branch }} KERNEL_FLAVOR=${{ matrix.flavor }} LTS_KERNEL=${LTS_KERNEL} build-base-${BASE_TARGET}
 
           trap "docker rm -f base-${BASE_TARGET}-${{ matrix.flavor }}" EXIT
