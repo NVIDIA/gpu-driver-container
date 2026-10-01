@@ -70,7 +70,9 @@ touch "${TAGS_OUTFILE}"
 TAGS_URL="${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/registry/repositories/${IMAGE_ID}/tags"
 for driver_ver in ${ALL_DRIVER_VERSIONS};
 do
-  TAGS_REGEX="${TAGS_REGEX:-"$driver_ver"}"
+  # Do not assign TAGS_REGEX. An unset pattern must be this version only.
+  # The first assignment would stick and drop every later driver version.
+  version_regex="${TAGS_REGEX:-$driver_ver}"
   echo "Tags URL: ${TAGS_URL}"
-  curl -fsSL --header "${HEADER}" "${TAGS_URL}" | jq -r --arg TAGS_REGEX "$TAGS_REGEX" '.[] | select(.name|test($TAGS_REGEX)) | .location' >> "${TAGS_OUTFILE}"
+  curl -fsSL --header "${HEADER}" "${TAGS_URL}" | jq -r --arg TAGS_REGEX "$version_regex" '.[] | select(.name|test($TAGS_REGEX)) | .location' >> "${TAGS_OUTFILE}"
 done
