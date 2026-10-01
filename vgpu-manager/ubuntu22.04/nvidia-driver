@@ -49,13 +49,6 @@ _resolve_kernel_version() {
     local kernel_flavor=$(echo "${KERNEL_VERSION}" | sed 's/[^a-z]*//')
     kernel_flavor="${kernel_flavor//virtual/generic}"
 
-    if [ -z "${kernel_flavor}" ]; then
-        # Custom kernels (e.g. 6.18.30-1) have no flavor suffix. KERNEL_VERSION already
-        # names an existing linux-headers package, so keep it as is.
-        echo "Proceeding with Linux kernel version ${KERNEL_VERSION}"
-        return 0
-    fi
-
     KERNEL_VERSION="${version}-${kernel_flavor}"
     echo "Proceeding with Linux kernel version ${KERNEL_VERSION}"
     return 0
