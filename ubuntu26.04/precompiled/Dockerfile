@@ -32,9 +32,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         pkg-config && \
     rm -rf /var/lib/apt/lists/*
 
-# Fetch GPG keys for CUDA repo
-RUN rm -f /etc/apt/sources.list.d/cuda* && \
-    curl -fsSL https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2604/x86_64/cuda-keyring_1.1-1_all.deb -o cuda-keyring_1.1-1_all.deb && \
+# NVIDIA publishes the arm64 CUDA repo under "sbsa", not "arm64".
+RUN CUDA_ARCH=$([ "$TARGETARCH" = "arm64" ] && echo "sbsa" || echo "x86_64") && \
+    rm -f /etc/apt/sources.list.d/cuda* && \
+    curl -fsSL https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2604/${CUDA_ARCH}/cuda-keyring_1.1-1_all.deb -o cuda-keyring_1.1-1_all.deb && \
     dpkg -i cuda-keyring_1.1-1_all.deb && \
     rm -f cuda-keyring_1.1-1_all.deb
 
