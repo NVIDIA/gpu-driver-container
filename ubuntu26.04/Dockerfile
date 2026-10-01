@@ -74,6 +74,7 @@ RUN usermod -o -u 0 -g 0 _apt && \
 RUN /tmp/install.sh driver_pkgs_install
 
 COPY nvidia-driver /usr/local/bin
+COPY module-tree-cache.sh /usr/local/bin
 
 COPY --from=build /work/vgpu-util* /usr/local/bin
 

@@ -29,6 +29,7 @@ echo "DRIVER_ARCH is $DRIVER_ARCH"
 
 SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 source $SCRIPT_DIR/common.sh
+source $SCRIPT_DIR/module-tree-cache.sh
 
 # Requires the pod to run with hostPID: true.
 _host_selinux_enabled() {
@@ -379,7 +380,7 @@ _create_module_params_conf() {
     fi
 }
 
-# Load the kernel modules and start persistenced.
+# Load the kernel modules.
 _load_driver() {
     local nv_fw_search_path="$RUN_DIR/driver/lib/firmware"
     local set_fw_path="true"
@@ -416,7 +417,6 @@ _load_driver() {
         set +o xtrace -o nounset
     fi
 
-    _start_daemons
 }
 
 # Stop persistenced and unload the kernel modules if they are currently loaded.
@@ -795,8 +795,12 @@ _wait_for_signal() {
 _userspace_install() {
     echo "The NVIDIA driver is already loaded with the desired configuration, performing userspace-only install"
     _unmount_rootfs
-    _start_daemons
+    if ! module_tree_restore && ! _all_required_modules_loaded; then
+        echo "Could not restore the module tree required by the loaded driver" >&2
+        return 1
+    fi
     _mount_rootfs
+    _start_daemons
     _write_kernel_update_hook
     _store_driver_digest
     echo "Userspace-only install complete"
@@ -856,7 +860,9 @@ _build() {
 
 _load() {
     _load_driver
+    module_tree_save
     _mount_rootfs
+    _start_daemons
     _write_kernel_update_hook
     _store_driver_digest
     _wait_for_signal
@@ -866,7 +872,7 @@ init() {
     _set_daemons_status "NotReady"
     _prepare_exclusive
 
-    if _should_skip_kernel_module_reload; then
+    if _can_use_kernel_module_fast_path; then
         _userspace_install
         _wait_for_signal
     fi

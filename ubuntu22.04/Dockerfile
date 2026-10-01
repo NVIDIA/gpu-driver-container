@@ -76,6 +76,7 @@ RUN usermod -o -u 0 -g 0 _apt && \
     chmod +x /usr/local/bin/donkey
 
 COPY nvidia-driver /usr/local/bin
+COPY module-tree-cache.sh /usr/local/bin
 
 COPY --from=build /work/vgpu-util* /usr/local/bin
 
