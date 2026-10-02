@@ -1,4 +1,4 @@
-ARG BASE_IMAGE=ubuntu:resolute-20260912
+ARG BASE_IMAGE=ubuntu:resolute-20260927
 
 FROM ${BASE_IMAGE} AS build
 
