@@ -50,6 +50,11 @@ _gdrcopy_enabled() {
 # Compares current digest from DRIVER_CONFIG_DIGEST env var with stored digest
 _should_skip_kernel_module_reload() {
     [ -f /sys/module/nvidia/refcnt ] && [ -f /run/nvidia/nvidia-driver.state ] || return 1
+    # The userspace-only install leaves /lib/modules/${KERNEL_VERSION} empty in this pod.
+    [ -f /sys/module/nvidia_uvm/refcnt ] && [ -f /sys/module/nvidia_modeset/refcnt ] || return 1
+    if _gpu_direct_rdma_enabled; then
+        [ -f /sys/module/nvidia_peermem/refcnt ] || return 1
+    fi
     local current_digest="${DRIVER_CONFIG_DIGEST:-}"
     [ -z "${current_digest}" ] && return 1
     local stored_digest=$(cat /run/nvidia/nvidia-driver.state 2>/dev/null || echo "")
