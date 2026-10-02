@@ -7,6 +7,8 @@ RUN_DIR=/run/nvidia
 PID_FILE=${RUN_DIR}/${0##*/}.pid
 DRIVER_VERSION=${DRIVER_VERSION:?"Missing DRIVER_VERSION env"}
 KERNEL_UPDATE_HOOK=/run/kernel/postinst.d/update-nvidia-driver
+SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
+source "$SCRIPT_DIR/module-tree-cache.sh"
 NUM_VGPU_DEVICES=0
 GPU_DIRECT_RDMA_ENABLED="${GPU_DIRECT_RDMA_ENABLED:-false}"
 USE_HOST_MOFED="${USE_HOST_MOFED:-false}"
@@ -301,7 +303,7 @@ _create_module_params_conf() {
     fi
 }
 
-# Load the kernel modules and start persistenced.
+# Load the kernel modules.
 _load_driver() {
     local nv_fw_search_path="$RUN_DIR/driver/lib/firmware"
     local set_fw_path="true"
@@ -338,7 +340,6 @@ _load_driver() {
         set +o xtrace -o nounset
     fi
 
-    _start_daemons || return 1
 }
 
 # Stop persistenced and unload the kernel modules if they are currently loaded.
@@ -735,6 +736,12 @@ _should_skip_kernel_module_reload() {
     [ "${current_digest}" = "${stored_digest}" ]
 }
 
+_can_use_kernel_module_fast_path() {
+    _should_skip_kernel_module_reload || return 1
+    _core_driver_modules_loaded || return 1
+    module_tree_usable || _all_required_modules_loaded
+}
+
 _store_driver_digest() {
     local digest_file="${RUN_DIR}/nvidia-driver.state"
     local current_digest="${DRIVER_CONFIG_DIGEST:-}"
@@ -856,10 +863,14 @@ init() {
 
     _set_daemons_status "NotReady"
 
-    if _should_skip_kernel_module_reload; then
+    if _can_use_kernel_module_fast_path; then
         echo "The NVIDIA driver is already loaded with the desired configuration, performing userspace-only install"
         _unmount_rootfs
         _reinstall_userspace
+        if ! module_tree_restore && ! _all_required_modules_loaded; then
+            echo "Could not restore the module tree required by the loaded driver" >&2
+            exit 1
+        fi
         # Mount the rootfs before starting the daemons: persistenced initializes the GPUs on
         # startup, and a GPU that deinitialized across the restart needs its GSP firmware,
         # which the kernel reads through the exported rootfs (the firmware search path points
@@ -886,7 +897,9 @@ init() {
     _create_module_params_conf
     _install_driver
     _load_driver || exit 1
+    module_tree_save
     _mount_rootfs
+    _start_daemons
     _write_kernel_update_hook
     _store_driver_digest
     _wait_for_signal
