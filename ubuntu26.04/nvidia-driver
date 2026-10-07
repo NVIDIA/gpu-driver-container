@@ -132,10 +132,14 @@ _install_prerequisites() (
     echo "Installing Linux kernel module files..."
     apt-get download linux-image-${KERNEL_VERSION} && dpkg -x linux-image*.deb .
     { apt-get download linux-modules-${KERNEL_VERSION} && dpkg -x linux-modules*.deb . || true; }
-    # Ubuntu 26.04 kernel debs ship their payload under usr/lib/modules (merged-usr paths),
-    # unlike the lib/modules payload on 24.04 and earlier.
-    mv usr/lib/modules/${KERNEL_VERSION}/modules.* /lib/modules/${KERNEL_VERSION}
-    mv usr/lib/modules/${KERNEL_VERSION}/kernel /lib/modules/${KERNEL_VERSION}
+    # Kernel debs ship their payload under lib/modules or, with merged-/usr, under
+    # usr/lib/modules. Use whichever the downloaded package contains.
+    local modules_dir=lib/modules
+    if [ -d usr/lib/modules/${KERNEL_VERSION} ]; then
+        modules_dir=usr/lib/modules
+    fi
+    mv ${modules_dir}/${KERNEL_VERSION}/modules.* /lib/modules/${KERNEL_VERSION}
+    mv ${modules_dir}/${KERNEL_VERSION}/kernel /lib/modules/${KERNEL_VERSION}
     depmod ${KERNEL_VERSION}
 
     echo "Generating Linux kernel version string..."
