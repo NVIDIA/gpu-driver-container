@@ -1,0 +1,38 @@
+# Copyright 2026 NVIDIA CORPORATION
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+name: Set up regctl
+description: Install the pinned, checksum-verified regctl used by the precompiled pipeline
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      env:
+        REGCTL_VERSION: v0.11.5
+        REGCTL_LINUX_AMD64_SHA256: c93aa7638749f5aaac1a8e01787321889c78f0101809bb2880343478d0ba0467
+        REGCTL_LINUX_ARM64_SHA256: c4cf231e74cda685f1599f3d866b02b03c572e54b79ec8b062f32070b0ba4587
+      run: |
+        set -euo pipefail
+        case "$RUNNER_ARCH" in
+          X64) REGCTL_ARCH=amd64; REGCTL_SHA256=$REGCTL_LINUX_AMD64_SHA256 ;;
+          ARM64) REGCTL_ARCH=arm64; REGCTL_SHA256=$REGCTL_LINUX_ARM64_SHA256 ;;
+          *) echo "Unsupported runner architecture: $RUNNER_ARCH" >&2; exit 1 ;;
+        esac
+        TOOL_DIR="${RUNNER_TEMP}/regctl-bin"
+        mkdir -p "$TOOL_DIR"
+        curl -fsSL --retry 3 -o "$TOOL_DIR/regctl" \
+          "https://github.com/regclient/regclient/releases/download/${REGCTL_VERSION}/regctl-linux-${REGCTL_ARCH}"
+        echo "${REGCTL_SHA256}  ${TOOL_DIR}/regctl" | sha256sum -c -
+        chmod +x "$TOOL_DIR/regctl"
+        echo "$TOOL_DIR" >> "$GITHUB_PATH"
