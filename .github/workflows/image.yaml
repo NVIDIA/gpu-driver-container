@@ -30,6 +30,8 @@ jobs:
         name: Check out code
       - name: Run verify-manifest-match tests
         run: ./.github/scripts/test-verify-manifest-match.sh
+      - name: Run module-tree cache tests
+        run: ./.github/scripts/test-module-tree-cache.sh
 
   image:
     runs-on: linux-${{ matrix.arch }}-cpu4

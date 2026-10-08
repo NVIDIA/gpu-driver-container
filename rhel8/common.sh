@@ -55,3 +55,11 @@ _should_skip_kernel_module_reload() {
     local stored_digest=$(cat /run/nvidia/nvidia-driver.state 2>/dev/null || echo "")
     [ "${current_digest}" = "${stored_digest}" ]
 }
+
+# The fast path is safe when the replacement container can either restore the
+# module files or all modules required by the current configuration remain loaded.
+_can_use_kernel_module_fast_path() {
+    _should_skip_kernel_module_reload || return 1
+    _core_driver_modules_loaded || return 1
+    module_tree_usable || _all_required_modules_loaded
+}
