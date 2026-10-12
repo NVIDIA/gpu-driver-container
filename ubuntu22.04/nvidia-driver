@@ -167,6 +167,13 @@ _create_driver_package() (
     cd /usr/src/nvidia-${DRIVER_VERSION}/${KERNEL_TYPE}
 
     if _gpu_direct_rdma_enabled; then
+        # DOCA-OFED >= 3.2.1 (mlnx-ofed-kernel-dkms) stores headers under
+        # ofa_kernel-dkms and leaves absolute symlinks under ofa_kernel.
+        # Those targets resolve against the container root, so expose the
+        # dkms tree at the same absolute path the host uses.
+        if [[ -d /run/mellanox/drivers/usr/src/ofa_kernel-dkms && ! -e /usr/src/ofa_kernel-dkms ]]; then
+            ln -s /run/mellanox/drivers/usr/src/ofa_kernel-dkms /usr/src/ofa_kernel-dkms
+        fi
         ln -s /run/mellanox/drivers/usr/src/ofa_kernel /usr/src/
         # if arch directory exists(MOFED >=5.5) then create a symlink as expected by GPU driver installer
         # This is required as currently GPU driver installer doesn't expect headers in x86_64 folder, but only in either default or kernel-version folder.
