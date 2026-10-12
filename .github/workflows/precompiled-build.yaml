@@ -1,0 +1,268 @@
+# Copyright 2026 NVIDIA CORPORATION
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+name: Native precompiled build
+
+on:
+  workflow_call:
+    inputs:
+      driver-branch:
+        required: true
+        type: string
+      flavor:
+        required: true
+        type: string
+      dist:
+        required: true
+        type: string
+      lts-kernel:
+        required: true
+        type: string
+      platforms:
+        default: '["amd64", "arm64"]'
+        type: string
+      output:
+        description: 'image for CI tags, oci for artifacts tested before publication'
+        required: true
+        type: string
+      push-images:
+        default: false
+        type: boolean
+
+jobs:
+  discover-kernel:
+    runs-on: linux-amd64-cpu4
+    outputs:
+      kernel_version: ${{ steps.discover.outputs.kernel_version }}
+      driver_version: ${{ steps.discover.outputs.driver_version }}
+      architectures: ${{ steps.vars.outputs.architectures }}
+      image_name: ${{ steps.vars.outputs.image_name }}
+    steps:
+      - uses: actions/checkout@v7
+        name: Check out code
+      - name: Calculate build vars
+        id: vars
+        env:
+          DIST: ${{ inputs.dist }}
+          FLAVOR: ${{ inputs.flavor }}
+          PLATFORMS: ${{ inputs.platforms }}
+          OUTPUT_TYPE: ${{ inputs.output }}
+        run: |
+          set -euo pipefail
+          case "$DIST" in
+            ubuntu22.04) BASE_TARGET=jammy ;;
+            ubuntu24.04) BASE_TARGET=noble ;;
+            ubuntu26.04) BASE_TARGET=resolute ;;
+            *) echo "Unsupported precompiled distribution: $DIST" >&2; exit 1 ;;
+          esac
+          case "$OUTPUT_TYPE" in
+            image|oci) ;;
+            *) echo "Unsupported precompiled output: $OUTPUT_TYPE" >&2; exit 1 ;;
+          esac
+          if ! jq -e 'type == "array" and length > 0 and all(.[]; . == "amd64" or . == "arm64")' <<< "$PLATFORMS" >/dev/null; then
+            echo "Unsupported platforms: $PLATFORMS (expected a JSON array of amd64 and arm64)" >&2
+            exit 1
+          fi
+          # Jammy and azure-fde have no arm64 precompiled packages; multi-arch.mk and
+          # tests/scripts/build-kernel-matrix.sh encode the same limit.
+          ARCHITECTURES=$(jq -c --arg dist "$DIST" --arg flavor "$FLAVOR" \
+            '[.[] | select(. == "amd64" or ($dist != "ubuntu22.04" and $flavor != "azure-fde"))] | unique' <<< "$PLATFORMS")
+          if [[ "$ARCHITECTURES" == "[]" ]]; then
+            echo "No supported architecture in $PLATFORMS for $DIST/$FLAVOR" >&2
+            exit 1
+          fi
+          echo "BASE_TARGET=$BASE_TARGET" >> "$GITHUB_ENV"
+          echo "image_name=ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/driver" >> "$GITHUB_OUTPUT"
+          echo "architectures=$ARCHITECTURES" >> "$GITHUB_OUTPUT"
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+        with:
+          buildkitd-config: /etc/buildkit/buildkitd.toml
+      - name: Build base image and get kernel version
+        id: discover
+        env:
+          IMAGE_NAME: ${{ steps.vars.outputs.image_name }}
+          BUILD_MULTI_ARCH_IMAGES: 'true'
+          DRIVER_BRANCH: ${{ inputs.driver-branch }}
+          KERNEL_FLAVOR: ${{ inputs.flavor }}
+          LTS_KERNEL: ${{ inputs.lts-kernel }}
+          DIST: ${{ inputs.dist }}
+          OUTPUT_TYPE: ${{ inputs.output }}
+        run: |
+          set -euo pipefail
+          # The base image queries only the amd64 archive; arm64 is assumed to publish the
+          # same kernel/driver pair, so one discovery serves both native builds.
+          # The Makefile's build-% rule parses DRIVER_BRANCH from the target name
+          # ("noble" for build-base-noble); only a command-line value overrides it.
+          make DRIVER_BRANCH="$DRIVER_BRANCH" KERNEL_FLAVOR="$KERNEL_FLAVOR" LTS_KERNEL="$LTS_KERNEL" \
+            DOCKER_BUILD_PLATFORM_OPTIONS=--platform=linux/amd64 \
+            DOCKER_BUILD_OPTIONS="--load --provenance=false --sbom=false" "build-base-${BASE_TARGET}"
+          BASE_IMAGE="${IMAGE_NAME}:base-${BASE_TARGET}-${LTS_KERNEL}-${KERNEL_FLAVOR}-${DRIVER_BRANCH}"
+          BASE_CONTAINER_ID=$(docker create "$BASE_IMAGE")
+          trap 'docker rm -f "$BASE_CONTAINER_ID"' EXIT
+          docker cp "$BASE_CONTAINER_ID:/var/kernel_version.txt" kernel_version.txt
+          source kernel_version.txt
+          : "${KERNEL_VERSION:?Kernel discovery returned no kernel version}"
+          : "${DRIVER_VERSION:?Kernel discovery returned no driver version}"
+          echo "kernel_version=$KERNEL_VERSION" >> "$GITHUB_OUTPUT"
+          echo "driver_version=$DRIVER_VERSION" >> "$GITHUB_OUTPUT"
+          if [[ "$OUTPUT_TYPE" == "oci" ]]; then
+            tar -cf "kernel-version-${DRIVER_BRANCH}-${KERNEL_VERSION}-${DIST}.tar" kernel_version.txt
+            docker save "$BASE_IMAGE" -o "base-images-${DRIVER_BRANCH}-${KERNEL_VERSION}-${DIST}.tar"
+          fi
+      - name: Upload base image as an artifact
+        if: inputs.output == 'oci'
+        uses: actions/upload-artifact@v7
+        with:
+          name: base-images-${{ inputs.driver-branch }}-${{ steps.discover.outputs.kernel_version }}-${{ inputs.dist }}
+          path: ./base-images-${{ inputs.driver-branch }}-${{ steps.discover.outputs.kernel_version }}-${{ inputs.dist }}.tar
+          if-no-files-found: error
+          retention-days: 1
+      - name: Upload kernel version as an artifact
+        if: inputs.output == 'oci'
+        uses: actions/upload-artifact@v7
+        with:
+          name: kernel-version-${{ inputs.driver-branch }}-${{ steps.discover.outputs.kernel_version }}-${{ inputs.dist }}
+          path: ./kernel-version-${{ inputs.driver-branch }}-${{ steps.discover.outputs.kernel_version }}-${{ inputs.dist }}.tar
+          if-no-files-found: error
+          retention-days: 1
+
+  build-native:
+    needs: discover-kernel
+    runs-on: linux-${{ matrix.arch }}-cpu4
+    strategy:
+      fail-fast: false
+      matrix:
+        arch: ${{ fromJson(needs.discover-kernel.outputs.architectures) }}
+    steps:
+      - uses: actions/checkout@v7
+        name: Check out code
+      - name: Set CVE updates
+        uses: ./.github/actions/set-cve-updates
+        with:
+          dist: ${{ inputs.dist }}
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+        with:
+          buildkitd-config: /etc/buildkit/buildkitd.toml
+      - name: Login to GitHub Container Registry
+        if: inputs.output == 'image' && inputs.push-images
+        uses: docker/login-action@v4.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build image
+        env:
+          IMAGE_NAME: ${{ needs.discover-kernel.outputs.image_name }}
+          BUILD_MULTI_ARCH_IMAGES: 'true'
+          PUSH_ON_BUILD: ${{ inputs.push-images }}
+          DRIVER_BRANCH: ${{ inputs.driver-branch }}
+          DRIVER_VERSION: ${{ needs.discover-kernel.outputs.driver_version }}
+          DRIVER_VERSIONS: ${{ needs.discover-kernel.outputs.driver_version }}
+          KERNEL_VERSION: ${{ needs.discover-kernel.outputs.kernel_version }}
+          DIST: ${{ inputs.dist }}
+          OUTPUT_TYPE: ${{ inputs.output }}
+          TARGET_ARCH: ${{ matrix.arch }}
+        run: |
+          set -euo pipefail
+          if [[ "$OUTPUT_TYPE" == "oci" ]]; then
+            ARCH_ARCHIVE="./driver-images-${DRIVER_BRANCH}-${KERNEL_VERSION}-${DIST}-${TARGET_ARCH}.tar"
+            export DOCKER_BUILD_OPTIONS="--output=type=oci,dest=${ARCH_ARCHIVE} --provenance=false --sbom=false"
+          else
+            export VERSION="${GITHUB_SHA:0:8}-${TARGET_ARCH}"
+          fi
+          # On the command line so it beats multi-arch.mk's target-specific platform defaults.
+          make DOCKER_BUILD_PLATFORM_OPTIONS="--platform=linux/${TARGET_ARCH}" \
+            "build-signed_${DIST}-${DRIVER_VERSION}"
+      - name: Upload native image as an artifact
+        if: inputs.output == 'oci'
+        uses: actions/upload-artifact@v7
+        with:
+          name: driver-images-${{ inputs.driver-branch }}-${{ needs.discover-kernel.outputs.kernel_version }}-${{ inputs.dist }}-${{ matrix.arch }}
+          path: ./driver-images-${{ inputs.driver-branch }}-${{ needs.discover-kernel.outputs.kernel_version }}-${{ inputs.dist }}-${{ matrix.arch }}.tar
+          if-no-files-found: error
+          retention-days: 1
+
+  assemble:
+    needs: [discover-kernel, build-native]
+    if: inputs.output == 'oci' || inputs.push-images
+    runs-on: linux-amd64-cpu4
+    steps:
+      - uses: actions/checkout@v7
+        name: Check out code
+      - name: Set up Docker Buildx
+        if: inputs.output == 'image'
+        uses: docker/setup-buildx-action@v4
+        with:
+          buildkitd-config: /etc/buildkit/buildkitd.toml
+      - name: Login to GitHub Container Registry
+        if: inputs.output == 'image'
+        uses: docker/login-action@v4.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Create multi-arch image tag
+        if: inputs.output == 'image'
+        env:
+          IMAGE_NAME: ${{ needs.discover-kernel.outputs.image_name }}
+          ARCHITECTURES: ${{ needs.discover-kernel.outputs.architectures }}
+          DRIVER_BRANCH: ${{ inputs.driver-branch }}
+          KERNEL_VERSION: ${{ needs.discover-kernel.outputs.kernel_version }}
+          DIST: ${{ inputs.dist }}
+        run: |
+          set -euo pipefail
+          ARCHITECTURE_LIST=$(jq -r '.[]' <<< "$ARCHITECTURES")
+          mapfile -t TARGET_ARCHITECTURES <<< "$ARCHITECTURE_LIST"
+          ARCH_IMAGE_REFS=()
+          for TARGET_ARCH in "${TARGET_ARCHITECTURES[@]}"; do
+            ARCH_IMAGE_REFS+=("${IMAGE_NAME}:${GITHUB_SHA:0:8}-${TARGET_ARCH}-${DRIVER_BRANCH}-${KERNEL_VERSION}-${DIST}")
+          done
+          docker buildx imagetools create \
+            --tag "${IMAGE_NAME}:${GITHUB_SHA:0:8}-${DRIVER_BRANCH}-${KERNEL_VERSION}-${DIST}" "${ARCH_IMAGE_REFS[@]}"
+      - name: Download native image artifacts
+        if: inputs.output == 'oci'
+        uses: actions/download-artifact@v8
+        with:
+          pattern: driver-images-${{ inputs.driver-branch }}-${{ needs.discover-kernel.outputs.kernel_version }}-${{ inputs.dist }}-*
+          merge-multiple: true
+      - name: Set up regctl
+        if: inputs.output == 'oci'
+        uses: ./.github/actions/setup-regctl
+      - name: Merge native OCI archives without publishing
+        if: inputs.output == 'oci'
+        env:
+          ARCHITECTURES: ${{ needs.discover-kernel.outputs.architectures }}
+          DRIVER_BRANCH: ${{ inputs.driver-branch }}
+          KERNEL_VERSION: ${{ needs.discover-kernel.outputs.kernel_version }}
+          DIST: ${{ inputs.dist }}
+        run: |
+          set -euo pipefail
+          ARCHIVE_PREFIX="./driver-images-${DRIVER_BRANCH}-${KERNEL_VERSION}-${DIST}"
+          ARCHITECTURE_LIST=$(jq -r '.[]' <<< "$ARCHITECTURES")
+          mapfile -t TARGET_ARCHITECTURES <<< "$ARCHITECTURE_LIST"
+          ARCH_ARCHIVE_SPECS=()
+          for TARGET_ARCH in "${TARGET_ARCHITECTURES[@]}"; do
+            ARCH_ARCHIVE_SPECS+=("${TARGET_ARCH}=${ARCHIVE_PREFIX}-${TARGET_ARCH}.tar")
+          done
+          .github/scripts/merge-oci-archives.sh "${ARCHIVE_PREFIX}.tar" "${ARCH_ARCHIVE_SPECS[@]}"
+      - name: Upload combined image as an artifact
+        if: inputs.output == 'oci'
+        uses: actions/upload-artifact@v7
+        with:
+          name: driver-images-${{ inputs.driver-branch }}-${{ needs.discover-kernel.outputs.kernel_version }}-${{ inputs.dist }}
+          path: ./driver-images-${{ inputs.driver-branch }}-${{ needs.discover-kernel.outputs.kernel_version }}-${{ inputs.dist }}.tar
+          if-no-files-found: error
+          retention-days: 1
