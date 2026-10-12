@@ -34,7 +34,8 @@ jobs:
       uses: actions/checkout@v7
 
     - name: Set up Holodeck
-      uses: NVIDIA/holodeck@v0.3.7
+      # TODO: Availability zone selection is merged but not yet released; move back to a tag once it is.
+      uses: NVIDIA/holodeck@51e241be3bbd4dc6ee22939ee83829407472af07
       env:
         AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
