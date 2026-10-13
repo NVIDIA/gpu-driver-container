@@ -190,6 +190,7 @@ jobs:
           - azure-fde
           - generic
           - nvidia
+          - nvidia-64k
           - oracle
         dist:
           - ubuntu22.04
@@ -209,6 +210,13 @@ jobs:
             flavor: aws
           - ispr: true
             flavor: nvidia
+          # PRs build a single nvidia-64k combination (595, 6.8) to cover the arm64-only path
+          - ispr: true
+            flavor: nvidia-64k
+            driver: 580
+          - ispr: true
+            flavor: nvidia-64k
+            lts_kernel: "7.0"
           - ispr: true
             flavor: oracle
           - lts_kernel: 5.15
@@ -223,6 +231,12 @@ jobs:
             dist: ubuntu26.04
           - flavor: azure-fde
             dist: ubuntu22.04
+          - flavor: nvidia-64k
+            dist: ubuntu22.04
+          - flavor: nvidia-64k
+            dist: ubuntu26.04
+          - flavor: nvidia-64k
+            lts_kernel: 5.15
     uses: ./.github/workflows/precompiled-build.yaml
     with:
       driver-branch: ${{ format('{0}', matrix.driver) }}
