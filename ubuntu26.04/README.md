@@ -17,3 +17,26 @@ APT repository (`ubuntu2604`) instead of the `.run` installer:
 The vGPU driver type continues to install from a user-supplied `.run` file placed in `drivers/`.
 
 See https://github.com/NVIDIA/nvidia-docker/wiki/Driver-containers-(Beta)
+
+## Building test images from a locally stored driver
+
+To build an image from a driver version that is not published in the CUDA APT
+repository (for example a release candidate or test build):
+
+1. Copy the matching local driver repository package(s)
+   (`nvidia-driver-local-repo-ubuntu2604-<version>_*_<arch>.deb`) into
+   `drivers/`. The package provides the driver packages and the extra packages
+   (fabric manager, libnvidia-nscq, libnvsdm, nvlsm, nvidia-imex) in place of
+   the CUDA repository. Each platform image uses only the package matching its
+   architecture. The package is mounted only into the driver package install
+   step and is not stored in an image layer. No `.run` file is needed.
+2. Build with `LOCAL_DRIVER=true`:
+
+   ```sh
+   docker buildx build --platform linux/amd64,linux/arm64 \
+     --build-arg LOCAL_DRIVER=true \
+     --build-arg DRIVER_VERSION=<version> \
+     --build-arg DRIVER_BRANCH=<branch> \
+     --build-arg GOLANG_VERSION=<golang-version from versions.mk> \
+     -t <registry>/driver:<version>-ubuntu26.04 .
+   ```
