@@ -3,6 +3,8 @@
 set -eu
 
 LOCAL_REPO_DIR=/usr/local/repos
+# Package name of the local driver repo package when LOCAL_DRIVER=true; set by setup_local_driver_repo
+LOCAL_DRIVER_REPO_PKG=""
 
 dep_install () {
     if [ "$TARGETARCH" = "amd64" ]; then
@@ -40,6 +42,20 @@ setup_cuda_repo() {
     curl -fSsL "https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2604/${OS_ARCH}/cuda-keyring_1.1-1_all.deb" -o cuda-keyring_1.1-1_all.deb
     dpkg -i cuda-keyring_1.1-1_all.deb
     rm -f cuda-keyring_1.1-1_all.deb
+}
+
+# Unreleased driver versions are not in the CUDA repository; use the local driver repo package
+# bind-mounted at /tmp/local-repo instead. It installs a file: APT source and its signing key.
+setup_local_driver_repo() {
+    local repo_deb
+    repo_deb=$(ls /tmp/local-repo/nvidia-driver-local-repo-*.deb 2>/dev/null | head -1 || true)
+    if [ -z "${repo_deb}" ]; then
+        echo "LOCAL_DRIVER=true but no local driver repo package for ${DRIVER_VERSION} (${TARGETARCH}) found in drivers/" >&2
+        exit 1
+    fi
+    LOCAL_DRIVER_REPO_PKG=$(dpkg-deb -f "${repo_deb}" Package)
+    dpkg -i "${repo_deb}"
+    cp /var/${LOCAL_DRIVER_REPO_PKG}/nvidia-driver-local-*-keyring.gpg /usr/share/keyrings/
 }
 
 # Pin the driver metapackage and the extra packages to the exact DRIVER_VERSION release.
@@ -82,8 +98,9 @@ extra_pkgs_install() {
 }
 
 # Download the kernel module packages and metapackage shims into a local file: apt repo, then
-# remove the CUDA network source so NVIDIA packages resolve only from the local repo at
-# container start. Must run last: the preceding install steps need the CUDA network source.
+# remove the CUDA network source (or the local driver repo package) so NVIDIA packages resolve
+# only from the local repo at container start. Must run last: the preceding install steps need
+# that source.
 build_module_repo() {
     mkdir -p ${LOCAL_REPO_DIR}
     cd ${LOCAL_REPO_DIR}
@@ -96,6 +113,10 @@ build_module_repo() {
     dpkg-scanpackages . /dev/null | gzip -9c > Packages.gz
     echo "deb [trusted=yes] file:${LOCAL_REPO_DIR} ./" > /etc/apt/sources.list.d/local-nvidia.list
     rm -f /etc/apt/sources.list.d/cuda*
+    if [ -n "${LOCAL_DRIVER_REPO_PKG}" ]; then
+        apt-get purge -y "${LOCAL_DRIVER_REPO_PKG}"
+        rm -rf /var/${LOCAL_DRIVER_REPO_PKG}
+    fi
     rm -rf /var/lib/apt/lists/*
 }
 
@@ -106,7 +127,11 @@ driver_pkgs_install() {
         echo "Skipping driver package install for the vgpu driver type"
         return 0
     fi
-    setup_cuda_repo
+    if [ "${LOCAL_DRIVER:-false}" = "true" ]; then
+        setup_local_driver_repo
+    else
+        setup_cuda_repo
+    fi
     pin_driver_version
     userspace_install
     extra_pkgs_install
