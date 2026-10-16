@@ -9,6 +9,7 @@ echo "Running $*"
 
 SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 source $SCRIPT_DIR/common.sh
+source $SCRIPT_DIR/module-tree-cache.sh
 
 # Requires the pod to run with hostPID: true.
 _host_selinux_enabled() {
@@ -19,15 +20,21 @@ _host_selinux_enabled() {
 
 nv-ctr-run-with-dtk() {
     set -x
+    local force_module_build=false
 
     if [[ "${RHCOS_IMAGE_MISSING:-}" == "true" ]]; then
         echo "WARNING: RHCOS '${RHCOS_VERSION:-}' imagetag missing, using entitlement-based fallback"
         exec bash -x nvidia-driver init
     fi
 
-    if _should_skip_kernel_module_reload; then
+    if _can_use_kernel_module_fast_path; then
         echo "The NVIDIA driver is already loaded with the desired configuration, skipping kernel module build and proceeding with userspace-only install"
         exec bash -x nvidia-driver init
+    fi
+
+    if _should_skip_kernel_module_reload; then
+        echo "The loaded driver cannot use the fast path without rebuilding the module tree"
+        force_module_build=true
     fi
 
     echo "Fast path not detected: building driver and modules"
@@ -38,6 +45,7 @@ nv-ctr-run-with-dtk() {
            /usr/local/bin/ocp_dtk_entrypoint \
            /usr/local/bin/nvidia-driver \
            /usr/local/bin/common.sh \
+           /usr/local/bin/module-tree-cache.sh \
            /usr/local/bin/extract-vmlinux \
            /usr/bin/unzboot \
            /drivers \
@@ -49,7 +57,16 @@ nv-ctr-run-with-dtk() {
 
         env | sed 's/=/="/' | sed 's/$/"/' > "$DRIVER_TOOLKIT_SHARED_DIR/env"
 
+        if [[ "${force_module_build}" == "true" ]]; then
+            touch "$DRIVER_TOOLKIT_SHARED_DIR/force_module_build"
+        else
+            rm -f "$DRIVER_TOOLKIT_SHARED_DIR/force_module_build"
+        fi
         touch "$DRIVER_TOOLKIT_SHARED_DIR/dir_prepared"
+    elif [[ "${force_module_build}" == "true" ]]; then
+        touch "$DRIVER_TOOLKIT_SHARED_DIR/force_module_build"
+    else
+        rm -f "$DRIVER_TOOLKIT_SHARED_DIR/force_module_build"
     fi
 
     set +x
@@ -103,7 +120,7 @@ dtk-build-driver() {
     fi
 
     # Check if fast path is being used - if so, skip building and signal completion
-    if _should_skip_kernel_module_reload; then
+    if _should_skip_kernel_module_reload && [[ ! -f "$DRIVER_TOOLKIT_SHARED_DIR/force_module_build" ]]; then
         echo "The NVIDIA driver is already loaded with the desired configuration, skipping build"
         echo "Signaling driver_built to the main container and sleeping forever..."
         touch "$DRIVER_TOOLKIT_SHARED_DIR/driver_build_started"
@@ -171,6 +188,7 @@ dtk-build-driver() {
     cp -v \
        "$DRIVER_TOOLKIT_SHARED_DIR/nvidia-driver" \
        "$DRIVER_TOOLKIT_SHARED_DIR/common.sh" \
+       "$DRIVER_TOOLKIT_SHARED_DIR/module-tree-cache.sh" \
        "$DRIVER_TOOLKIT_SHARED_DIR/extract-vmlinux" \
        "$DRIVER_TOOLKIT_SHARED_DIR/unzboot" \
        "${DRIVER_TOOLKIT_SHARED_DIR}/bin"

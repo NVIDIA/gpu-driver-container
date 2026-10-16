@@ -76,6 +76,7 @@ RUN usermod -o -u 0 -g 0 _apt && \
     /tmp/install.sh depinstall && /tmp/install.sh setup_cuda_repo
 
 COPY nvidia-driver /usr/local/bin
+COPY module-tree-cache.sh /usr/local/bin
 
 COPY --from=build /work/vgpu-util* /usr/local/bin
 

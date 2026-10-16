@@ -84,6 +84,7 @@ RUN if [ "$DRIVER_TYPE" != "vgpu" ]; then \
 RUN sh /tmp/install.sh extrapkgsinstall
 
 COPY nvidia-driver /usr/local/bin
+COPY module-tree-cache.sh /usr/local/bin
 COPY ocp_dtk_entrypoint /usr/local/bin
 COPY common.sh /usr/local/bin
 
