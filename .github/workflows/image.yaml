@@ -40,7 +40,7 @@ jobs:
           - arm64
         driver: &driver-versions
           - 580.196.07
-          - 595.91.07
+          - 595.112.07
           - 615.71.10
         dist:
           - ubuntu22.04
