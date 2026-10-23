@@ -447,6 +447,10 @@ _mount_rootfs() {
         echo "Host SELinux is enabled"
         echo "Change device files security context for selinux compatibility"
         chcon -R -t container_file_t ${RUN_DIR}/driver/dev
+        if [ -d ${RUN_DIR}/driver/lib/firmware ]; then
+            echo "Change firmware files security context for selinux compatibility"
+            chcon -R -t container_file_t ${RUN_DIR}/driver/lib/firmware
+        fi
     else
         echo "Host SELinux is disabled, skipping..."
     fi
