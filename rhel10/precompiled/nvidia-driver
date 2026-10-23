@@ -449,9 +449,18 @@ _shutdown() {
     return 1
 }
 
+_store_driver_digest() {
+    local digest_file="${RUN_DIR}/nvidia-driver.state"
+    local current_digest="${DRIVER_CONFIG_DIGEST:-}"
+    echo "Storing driver configuration digest..."
+    echo "${current_digest}" > "$digest_file"
+    echo "Driver configuration digest stored at $digest_file"
+}
+
 _load() {
     _load_driver
     _mount_rootfs
+    _store_driver_digest
 
     echo "Done, now waiting for signal"
     sleep infinity &
