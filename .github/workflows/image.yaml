@@ -91,7 +91,7 @@ jobs:
         with:
           buildkitd-config: /etc/buildkit/buildkitd.toml
       - name: Login to GitHub Container Registry
-        uses: docker/login-action@v4.6.0
+        uses: docker/login-action@v4.7.0
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -145,7 +145,7 @@ jobs:
         with:
           buildkitd-config: /etc/buildkit/buildkitd.toml
       - name: Login to GitHub Container Registry
-        uses: docker/login-action@v4.6.0
+        uses: docker/login-action@v4.7.0
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
