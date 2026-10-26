@@ -593,6 +593,14 @@ _start_vgpu_topology_daemon() {
 _configure_fabric_manager() {
     local fm_config_file=/usr/share/nvidia/nvswitch/fabricmanager.cfg
 
+    if _should_skip_kernel_module_reload; then
+      if grep -q "^FABRIC_MODE_RESTART=" "${fm_config_file}"; then
+        sed -i "s|^FABRIC_MODE_RESTART=.*|FABRIC_MODE_RESTART=1|" "${fm_config_file}"
+      else
+        printf '\nFABRIC_MODE_RESTART=1\n' >> "${fm_config_file}"
+      fi
+    fi
+
     local nvfm_env_vars
     nvfm_env_vars=$(env | grep '^NVFM_CONFIG_' || true)
     [ -z "${nvfm_env_vars}" ] && return 0
