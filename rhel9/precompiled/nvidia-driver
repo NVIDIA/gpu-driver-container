@@ -274,11 +274,14 @@ _load_driver() {
         echo "         Retaining the current configuration"
     else
         echo -n "$nv_fw_search_path" > $fw_path_config_file || echo "WARNING: Failed to configure the firmware search path"
-        if [ -d "/opt/lib/firmware/nvidia/${DRIVER_VERSION}" ]; then
-            rm -rf $nv_fw_search_path/nvidia/${DRIVER_VERSION}
-            mkdir -p $nv_fw_search_path/nvidia/${DRIVER_VERSION}
-            cp /opt/lib/firmware/nvidia/${DRIVER_VERSION}/gsp_*.bin $nv_fw_search_path/nvidia/${DRIVER_VERSION}
-        fi
+    fi
+
+    # A configured search path may outlive the firmware from a previous container.
+    # Stage this driver's firmware on every startup before loading modules.
+    if [ -d "/opt/lib/firmware/nvidia/${DRIVER_VERSION}" ]; then
+        mkdir -p "$nv_fw_search_path/nvidia/${DRIVER_VERSION}"
+        cp /opt/lib/firmware/nvidia/"${DRIVER_VERSION}"/gsp_*.bin \
+            "$nv_fw_search_path/nvidia/${DRIVER_VERSION}/"
     fi
 
     if [[ "$RHEL_MINOR_VERSION" -ge "3" ]]; then
