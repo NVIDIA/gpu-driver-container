@@ -426,7 +426,17 @@ _load_driver() {
     fi
 
     echo "Loading ipmi and i2c_core kernel modules..."
-    modprobe -a i2c_core ipmi_msghandler ipmi_devintf
+    # When running on OpenShift, the Driver Toolkit sidecar container records
+    # which modules need to be loaded in /lib/modules/$(uname -r)/insmod_nvidia.
+    # This file also indicates which modules are built in, and thus, don't
+    # need to be loaded. Skip the built-in modules.
+    for mod in i2c_core ipmi_msghandler ipmi_devintf; do
+        if grep -q "^builtin ${mod}\$" "/lib/modules/$(uname -r)/insmod_nvidia" 2>/dev/null; then
+            echo "Module ${mod} is built into the kernel, skipping"
+            continue
+        fi
+        modprobe "${mod}"
+    done
 
     if [[ "$RHEL_MINOR_VERSION" -ge "3" ]]; then
         echo "Loading the video kernel module..."
