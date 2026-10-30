@@ -1,4 +1,4 @@
-ARG BASE_IMAGE=ubuntu:jammy-20260930
+ARG BASE_IMAGE=ubuntu:jammy-20261020
 
 FROM ${BASE_IMAGE}
 
