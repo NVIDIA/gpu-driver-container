@@ -74,7 +74,26 @@ _assert_nvswitch_system() {
     return 0
 }
 
+# NVLINK5_SYSTEM controls how NVLink5+ (e.g. HGX B200) systems are detected:
+#   auto  (default) detect via the SW_MNG tag in InfiniBand VPD
+#   true  treat this node as NVLink5+ even if detection fails
+#   false never use the NVLink5+ Fabric Manager path
 _assert_nvlink5_system() (
+    case "${NVLINK5_SYSTEM:-auto}" in
+        true|TRUE|True)
+            echo "NVLINK5_SYSTEM=true: treating this node as an NVLink5+ system"
+            return 0
+            ;;
+        false|FALSE|False)
+            return 1
+            ;;
+        auto|AUTO|Auto|"")
+            ;;
+        *)
+            echo "WARNING: invalid NVLINK5_SYSTEM='${NVLINK5_SYSTEM}', expected auto|true|false; using auto"
+            ;;
+    esac
+
     for dir in /sys/class/infiniband/*/device; do
         # Define the path to the VPD file
         vpd_file="$dir/vpd"
@@ -88,14 +107,44 @@ _assert_nvlink5_system() (
             fi
         fi
     done
+
+    # Detection reads /sys/class/infiniband, which is only populated once
+    # mlx5_ib is loaded. If Mellanox (0x15b3) PCI functions exist but no mlx5
+    # InfiniBand devices do, NVLink5+ hardware may be present but undetected.
+    if ! ls -d /sys/class/infiniband/mlx5_* > /dev/null 2>&1 && \
+       grep -qsx "0x15b3" /sys/bus/pci/devices/*/vendor; then
+        echo "WARNING: Mellanox PCI devices found but no mlx5 InfiniBand devices are registered."
+        echo "WARNING: On NVLink5+ systems (e.g. HGX B200) load the mlx5_ib and ib_umad kernel modules on the host,"
+        echo "WARNING: or set NVLINK5_SYSTEM=true, otherwise Fabric Manager is not started and CUDA fails with error 802."
+    fi
     return 1
 )
 
 _ensure_nvlink5_prerequisites() (
-    until  lsmod | grep mlx5_core > /dev/null 2>&1 && lsmod | grep ib_umad > /dev/null 2>&1;
-    do
-        echo "waiting for the mlx5_core and ib_umad kernel modules to be loaded"
+    timeout="${NVLINK5_PREREQ_TIMEOUT_SECONDS:-300}"
+    case "$timeout" in
+        ''|*[!0-9]*)
+            echo "WARNING: invalid NVLINK5_PREREQ_TIMEOUT_SECONDS='${timeout}', using 300"
+            timeout=300
+            ;;
+    esac
+    elapsed=0
+    while true; do
+        missing=""
+        for module in mlx5_core mlx5_ib ib_umad; do
+            [ -d "/sys/module/${module}" ] || missing="${missing} ${module}"
+        done
+        if [ -z "$missing" ]; then
+            return 0
+        fi
+        if [ "$elapsed" -ge "$timeout" ]; then
+            echo "ERROR: NVLink5+ prerequisites missing after ${timeout}s, kernel module(s) not loaded:${missing}"
+            echo "ERROR: Load them on the host (e.g. 'modprobe mlx5_ib ib_umad'; on Ubuntu install linux-modules-extra-\$(uname -r))."
+            return 1
+        fi
+        echo "waiting for kernel module(s) to be loaded:${missing}"
         sleep 10
+        elapsed=$((elapsed + 10))
     done
 )
 
