@@ -331,11 +331,17 @@ _load_driver() {
         fm_pid_file=/var/run/nvidia-fabricmanager/nv-fabricmanager.pid
         nvlsm_config_file=/usr/share/nvidia/nvlsm/nvlsm.conf
         nvlsm_pid_file=/var/run/nvidia-fabricmanager/nvlsm.pid
-        /usr/bin/nvidia-fabricmanager-start.sh --mode start \
+        # Use 'if !' so errexit ('set -eu') does not abort init when the
+        # service manager fails to start: the NVIDIA kernel modules are
+        # already loaded and CUDA-functional at this point, and a transient
+        # fabric-manager failure should not CrashLoopBackOff the driver pod.
+        if ! /usr/bin/nvidia-fabricmanager-start.sh --mode start \
                                                --fm-config-file $fm_config_file \
                                                --fm-pid-file $fm_pid_file \
                                                --nvlsm-config-file $nvlsm_config_file \
-                                               --nvlsm-pid-file $nvlsm_pid_file || return 1
+                                               --nvlsm-pid-file $nvlsm_pid_file; then
+            echo "WARNING: nvidia-fabricmanager-start.sh failed to start; continuing without fabric manager (see logs above)"
+        fi
         if [ ! -z "${NVFM_CONFIG_FABRIC_MODE:-}" ] && [ "${NVFM_CONFIG_FABRIC_MODE}" == "1" ]; then
             # We reset the GPU devices after Fabric Manager startup to clear stale FM
             # partition data after setting FABRIC_MODE=1
@@ -347,7 +353,11 @@ _load_driver() {
     elif _assert_nvswitch_system; then
         _configure_fabric_manager
         echo "Starting NVIDIA fabric manager daemon..."
-        nv-fabricmanager -c /usr/share/nvidia/nvswitch/fabricmanager.cfg || return 1
+        # 'if !' keeps a fabric-manager startup failure non-fatal for the same
+        # reason as the NVLink5 path above.
+        if ! nv-fabricmanager -c /usr/share/nvidia/nvswitch/fabricmanager.cfg; then
+            echo "WARNING: nv-fabricmanager failed to start; continuing without fabric manager (see logs above)"
+        fi
     fi
     _set_daemons_status "Ready"
 }
