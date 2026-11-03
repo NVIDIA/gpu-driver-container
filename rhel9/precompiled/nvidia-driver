@@ -285,15 +285,22 @@ _load_driver() {
     fi
 
     if [[ "$RHEL_MINOR_VERSION" -ge "3" ]]; then
-        echo "Loading the video kernel module..."
-        modprobe video
+        if modinfo video &>/dev/null; then
+            echo "Loading the video kernel module..."
+            modprobe video || echo "WARNING: Could not load video module, continuing..."
+        else
+            echo "video module not available on this kernel, skipping (RHCOS does not include the ACPI video driver as it targets server/compute workloads)"
+        fi
     fi
 
     echo "Loading NVIDIA driver kernel modules..."
     set -o xtrace +o nounset
     modprobe nvidia
     modprobe nvidia-uvm
-    modprobe nvidia-modeset
+    # nvidia-modeset does not depend on the ACPI video module; always attempt
+    # to load it so graphics workloads keep mode-setting, but do not abort
+    # init if the module is unavailable on this kernel.
+    modprobe nvidia-modeset || echo "WARNING: Could not load nvidia-modeset, continuing..."
     set +o xtrace -o nounset
 
     if _gpu_direct_rdma_enabled; then
