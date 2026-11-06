@@ -93,6 +93,11 @@ nvidia_installer () {
 }
 
 fabricmanager_install() {
+  if [ "${DRIVER_BRANCH}" -ge "620" ]; then
+    dnf install -y "nvidia-fabricmanager-direct-2.0.0*" "nvidia-fabricmanager-direct-devel-2.0.0*" "libnvidia-fmdrv-${DRIVER_VERSION}"
+    dnf versionlock add nvidia-fabricmanager-direct nvidia-fabricmanager-direct-devel libnvidia-fmdrv
+    return 0
+  fi
   dnf install -y nvidia-fabricmanager-${DRIVER_VERSION} nvidia-fabric-manager-devel-${DRIVER_VERSION}
   dnf versionlock add nvidia-fabricmanager nvidia-fabric-manager-devel
 }
@@ -114,6 +119,11 @@ nvlink5_pkgs_install() {
 }
 
 imex_install() {
+  if [ "${DRIVER_BRANCH}" -ge "620" ]; then
+    dnf install -y "nvidia-imex-direct-2.0.0*" "libnvidia-imex-${DRIVER_VERSION}"
+    dnf versionlock add nvidia-imex-direct libnvidia-imex
+    return 0
+  fi
   dnf install -y nvidia-imex-${DRIVER_VERSION}
   dnf versionlock add nvidia-imex
 }

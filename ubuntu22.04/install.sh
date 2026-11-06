@@ -45,6 +45,11 @@ setup_cuda_repo() {
 }
 
 fabricmanager_install() {
+  if [ "${DRIVER_BRANCH}" -ge "620" ]; then
+    apt-get install -y --no-install-recommends nvidia-fabricmanager-direct nvidia-fabricmanager-direct-dev
+    apt-mark hold nvidia-fabricmanager-direct nvidia-fabricmanager-direct-dev libnvidia-fmdrv1
+    return 0
+  fi
   apt-get install -y --no-install-recommends \
       nvidia-fabricmanager=${DRIVER_VERSION}* \
       nvidia-fabricmanager-dev=${DRIVER_VERSION}*
@@ -69,6 +74,11 @@ nvlink5_pkgs_install() {
 }
 
 imex_install() {
+  if [ "${DRIVER_BRANCH}" -ge "620" ]; then
+    apt-get install -y --no-install-recommends nvidia-imex-direct
+    apt-mark hold nvidia-modprobe nvidia-imex-direct libnvidia-imex1
+    return 0
+  fi
   apt-get install -y --no-install-recommends nvidia-modprobe=${DRIVER_VERSION}* nvidia-imex=${DRIVER_VERSION}*
   apt-mark hold nvidia-modprobe nvidia-imex
 }
@@ -76,6 +86,10 @@ imex_install() {
 extra_pkgs_install() {
   if [ "$DRIVER_TYPE" != "vgpu" ]; then
       apt-get update
+
+      if [ "${DRIVER_BRANCH}" -ge "620" ]; then
+        apt-get install -y --no-install-recommends "nvidia-driver-pinning-${DRIVER_VERSION}"
+      fi
 
       fabricmanager_install
       nscq_install
