@@ -41,7 +41,7 @@ jobs:
         driver: &driver-versions
           - 580.196.07
           - 595.112.07
-          - 615.71.10
+          - 620.70.06
         dist:
           - ubuntu22.04
           - ubuntu24.04
