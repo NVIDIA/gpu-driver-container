@@ -23,6 +23,11 @@ MODPROBE_CONFIG_DIR="/etc/modprobe.d"
 
 
 fabricmanager_install() {
+  if [ "$DRIVER_BRANCH" -ge "620" ]; then
+    apt-get install -y --no-install-recommends nvidia-fabricmanager-direct
+    apt-mark hold nvidia-fabricmanager-direct libnvidia-fmdrv1
+    return 0
+  fi
   local fabricmanager_package_name
   if [ "$DRIVER_BRANCH" -ge "580" ]; then
     fabricmanager_package_name=nvidia-fabricmanager
@@ -45,6 +50,11 @@ nscq_install() {
 }
 
 imex_install() {
+  if [ "$DRIVER_BRANCH" -ge "620" ]; then
+    apt-get install -y --no-install-recommends nvidia-imex-direct
+    apt-mark hold nvidia-modprobe nvidia-imex-direct libnvidia-imex1
+    return 0
+  fi
   local imex_package_name
   if [ "$DRIVER_BRANCH" -ge "580" ]; then
     imex_package_name=nvidia-imex

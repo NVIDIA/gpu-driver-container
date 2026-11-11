@@ -68,6 +68,12 @@ download_driver_package_deps () {
   apt-get update
   pushd ${LOCAL_REPO_DIR}
 
+  # From R620, fabric manager and IMEX ship as -direct packages versioned independently of the
+  # driver. nvidia-driver-pinning pins them and their libraries to the versions matching the driver.
+  if [ "$DRIVER_BRANCH" -ge "620" ]; then
+    apt-get install -y --no-install-recommends "nvidia-driver-pinning-${DRIVER_VERSION}"
+  fi
+
   download_apt_with_dep linux-objects-nvidia-${DRIVER_BRANCH}-server-${KERNEL_VERSION}
   download_apt_with_dep linux-signatures-nvidia-${KERNEL_VERSION}
   download_apt_with_dep linux-modules-nvidia-${DRIVER_BRANCH}-server-${KERNEL_VERSION}
