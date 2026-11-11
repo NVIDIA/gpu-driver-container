@@ -41,7 +41,9 @@ nvsdm_download() {
 }
 
 fabricmanager_download() {
-  if [ "$DRIVER_BRANCH" -ge "580" ]; then
+  if [ "$DRIVER_BRANCH" -ge "620" ]; then
+    download_apt_with_dep nvidia-fabricmanager-direct
+  elif [ "$DRIVER_BRANCH" -ge "580" ]; then
     download_apt_with_dep nvidia-fabricmanager ${DRIVER_VERSION}*
   else
     download_apt_with_dep nvidia-fabricmanager-${DRIVER_BRANCH} ${DRIVER_VERSION}*
@@ -57,7 +59,9 @@ nscq_download() {
 }
 
 imex_download() {
-  if [ "$DRIVER_BRANCH" -ge "580" ]; then
+  if [ "$DRIVER_BRANCH" -ge "620" ]; then
+    download_apt_with_dep nvidia-imex-direct
+  elif [ "$DRIVER_BRANCH" -ge "580" ]; then
     download_apt_with_dep nvidia-imex ${DRIVER_VERSION}*
   elif [ "$DRIVER_BRANCH" -ge "550" ]; then
     download_apt_with_dep nvidia-imex-${DRIVER_BRANCH} ${DRIVER_VERSION}*
