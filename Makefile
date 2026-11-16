@@ -193,10 +193,10 @@ build-rocky8%: SUBDIR = rhel8
 build-rocky8%: DOCKER_BUILD_ARGS = --build-arg BASE_IMAGE=rockylinux/rockylinux:8.10-ubi
 
 build-rocky9%: SUBDIR = rhel9
-build-rocky9%: DOCKER_BUILD_ARGS = --build-arg BASE_IMAGE=rockylinux/rockylinux:9.8-ubi
+build-rocky9%: DOCKER_BUILD_ARGS = --build-arg BASE_IMAGE=rockylinux/rockylinux:9.9-ubi
 
 build-rocky10%: SUBDIR = rhel10
-build-rocky10%: DOCKER_BUILD_ARGS = --build-arg BASE_IMAGE=rockylinux/rockylinux:10.2-ubi
+build-rocky10%: DOCKER_BUILD_ARGS = --build-arg BASE_IMAGE=rockylinux/rockylinux:10.3-ubi
 
 # ubuntu22.04 Precompiled Driver
 build-signed_ubuntu22.04%: DIST = ubuntu22.04
