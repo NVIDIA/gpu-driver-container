@@ -406,8 +406,47 @@ jobs:
             echo "Skipping image push for non-main branch ${{ github.ref }}"
           fi
 
-      - name: Slack notification
+      - name: Record published image
         if: ${{ steps.set_image_vars.outputs.run_publish == 'true' && github.ref == 'refs/heads/main' }}
+        run: |
+          echo "${PRIVATE_REGISTRY}/nvidia/driver:${{ matrix.driver_branch }}-${{ env.KERNEL_VERSION }}" > ./published-image.txt
+
+      - name: Upload published image record
+        if: ${{ steps.set_image_vars.outputs.run_publish == 'true' && github.ref == 'refs/heads/main' }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: published-image-${{ matrix.driver_branch }}-${{ env.KERNEL_VERSION }}
+          path: ./published-image.txt
+          retention-days: 1
+
+  notify-published-images:
+    runs-on: linux-amd64-cpu4
+    needs:
+      - publish-precompiled-image
+    if: ${{ github.ref == 'refs/heads/main' }}
+    steps:
+      - name: Download published image records
+        uses: actions/download-artifact@v8
+        with:
+          pattern: published-image-*
+          path: ${{ runner.temp }}/published-images
+
+      - name: Collect published images
+        id: collect_published_images
+        run: |
+          published_images=$(find "${RUNNER_TEMP}/published-images" -name published-image.txt -exec cat {} + 2>/dev/null | sort -u)
+          if [[ -z "${published_images}" ]]; then
+            echo "No precompiled images were published in this run"
+            echo "has_published_images=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "${published_images}"
+          echo "has_published_images=true" >> "$GITHUB_OUTPUT"
+          image_list=$(echo "${published_images}" | awk '{ printf "%s• %s", (NR > 1 ? "\\n" : ""), $0 }')
+          echo "image_list=${image_list}" >> "$GITHUB_OUTPUT"
+
+      - name: Slack notification
+        if: ${{ steps.collect_published_images.outputs.has_published_images == 'true' }}
         uses: slackapi/slack-github-action@v4.0.0
         with:
           token: ${{ secrets.SLACK_BOT_TOKEN }}
@@ -415,5 +454,5 @@ jobs:
           payload: |
             {
               "channel": "${{ secrets.SLACK_CHANNEL_ID }}",
-              "text": "${{ secrets.PUBLISHED_PRECOMPILED_IMAGE_MESSAGE }} ${{ env.PRIVATE_REGISTRY }}/nvidia/driver:${{ matrix.driver_branch }}-${{ env.KERNEL_VERSION }}"
+              "text": "${{ secrets.PUBLISHED_PRECOMPILED_IMAGE_MESSAGE }}\n${{ steps.collect_published_images.outputs.image_list }}\nDetails: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
             }
