@@ -38,7 +38,7 @@ jobs:
       platforms: ${{ steps.generate_matrix_config.outputs.platforms }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       - name: Read driver versions
         id: generate_matrix_config
         run: |
@@ -84,16 +84,16 @@ jobs:
       - set-driver-version-matrix
     steps:
       - name: Check out code
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       - name: Login to GitHub Container Registry
-        uses: docker/login-action@v4.8.0
+        uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4.8.0
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Download all kernel-version artifacts
-        uses: actions/download-artifact@v8
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
         with:
           pattern: kernel-version*${{ matrix.lts_kernel }}*${{ matrix.dist }}
           path: ./kernel-version-artifacts
@@ -109,7 +109,7 @@ jobs:
         run: ./tests/scripts/build-kernel-matrix.sh "${{ matrix.dist }}" "${{ matrix.lts_kernel }}"
 
       - name: Upload kernel matrix values as artifacts
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: matrix-values-${{ matrix.dist }}-${{ matrix.lts_kernel }}
           path: ./matrix_values_${{ matrix.dist }}_${{ matrix.lts_kernel }}*.json
@@ -127,9 +127,9 @@ jobs:
       publish_matrix_values: ${{ steps.set_kernel_version.outputs.publish_matrix_values }}
     steps:
       - name: Check out code
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       - name: Download all matrix artifacts
-        uses: actions/download-artifact@v8
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
         with:
           pattern: matrix-values-*
           path: ./matrix-values-artifacts
@@ -174,7 +174,7 @@ jobs:
       # as e2e tests may fail for new kernel release
       - name: Slack notification
         if: ${{ steps.set_kernel_version.outputs.matrix_values_not_empty == '1' && github.ref == 'refs/heads/main' }}
-        uses: slackapi/slack-github-action@v4.0.0
+        uses: slackapi/slack-github-action@dcb1066f776dd043e64d0e8ba94ca15cc7e1875d # v4.0.0
         with:
           token: ${{ secrets.SLACK_BOT_TOKEN }}
           method: chat.postMessage
@@ -198,9 +198,9 @@ jobs:
       max-parallel: 5
     steps:
       - name: Check out code
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       - name: Login to GitHub Container Registry
-        uses: docker/login-action@v4.8.0
+        uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4.8.0
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -223,7 +223,7 @@ jobs:
           KERNEL_VERSION=${KERNEL_VERSION%-*}
           echo "KERNEL_VERSION=$KERNEL_VERSION" >> $GITHUB_ENV
       - name: Download driver image artifacts
-        uses: actions/download-artifact@v8
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
         with:
           pattern: driver-images-*-${{ env.KERNEL_VERSION }}-${{ env.DIST }}
           path: ./tests/
@@ -247,7 +247,7 @@ jobs:
           fi
 
       - name: Set up Holodeck
-        uses: NVIDIA/holodeck@v0.5.1
+        uses: NVIDIA/holodeck@5e5ff28774f54664c56ca43040aa4e738a333feb # v0.5.1
         env:
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
@@ -259,7 +259,7 @@ jobs:
           holodeck_config: "tests/holodeck_ubuntu.yaml"
       - name: Get public dns name
         id: get_public_dns_name
-        uses: mikefarah/yq@master
+        uses: mikefarah/yq@f2944b823f84906a127dbd29e4c2a3e60c4e550e # master
         with:
           cmd: yq '.status.properties[] | select(.name == "public-dns-name") | .value' /github/workspace/.cache/holodeck.yaml
       - name:  Calculate holodeck instance hostname
@@ -306,7 +306,7 @@ jobs:
 
       - name: Archive test logs
         if: ${{ failure() }}
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: nvidiadriver-Precompiled-e2e-test-logs
           path: ./logs/
@@ -327,9 +327,9 @@ jobs:
         kernel_version: ${{ fromJson(needs.collect-e2e-test-matrix.outputs.publish_matrix_values) }}
     steps:
       - name: Check out code
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
       - name: Login to GitHub Container Registry
-        uses: docker/login-action@v4.8.0
+        uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4.8.0
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -357,7 +357,7 @@ jobs:
 
       - name: Download base image artifact
         if: steps.set_image_vars.outputs.run_publish == 'true'
-        uses: actions/download-artifact@v8
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
         with:
           name: base-images-${{ matrix.driver_branch }}-${{ env.KERNEL_VERSION }}
           path: ./
@@ -385,7 +385,7 @@ jobs:
 
       - name: Download built image artifact
         if: steps.set_image_vars.outputs.run_publish == 'true'
-        uses: actions/download-artifact@v8
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
         with:
            name: driver-images-${{ matrix.driver_branch }}-${{ env.KERNEL_VERSION }}
            path: ./
@@ -408,7 +408,7 @@ jobs:
 
       - name: Slack notification
         if: ${{ steps.set_image_vars.outputs.run_publish == 'true' && github.ref == 'refs/heads/main' }}
-        uses: slackapi/slack-github-action@v4.0.0
+        uses: slackapi/slack-github-action@dcb1066f776dd043e64d0e8ba94ca15cc7e1875d # v4.0.0
         with:
           token: ${{ secrets.SLACK_BOT_TOKEN }}
           method: chat.postMessage

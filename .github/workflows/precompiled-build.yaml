@@ -51,7 +51,7 @@ jobs:
       architectures: ${{ steps.vars.outputs.architectures }}
       image_name: ${{ steps.vars.outputs.image_name }}
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         name: Check out code
       - name: Calculate build vars
         id: vars
@@ -91,7 +91,7 @@ jobs:
           echo "image_name=ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/driver" >> "$GITHUB_OUTPUT"
           echo "architectures=$ARCHITECTURES" >> "$GITHUB_OUTPUT"
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v4
+        uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4
         with:
           buildkitd-config: /etc/buildkit/buildkitd.toml
       - name: Build base image and get kernel version
@@ -130,7 +130,7 @@ jobs:
           fi
       - name: Upload base image as an artifact
         if: inputs.output == 'oci'
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: base-images-${{ inputs.driver-branch }}-${{ steps.discover.outputs.kernel_version }}-${{ inputs.dist }}
           path: ./base-images-${{ inputs.driver-branch }}-${{ steps.discover.outputs.kernel_version }}-${{ inputs.dist }}.tar
@@ -138,7 +138,7 @@ jobs:
           retention-days: 1
       - name: Upload kernel version as an artifact
         if: inputs.output == 'oci'
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: kernel-version-${{ inputs.driver-branch }}-${{ steps.discover.outputs.kernel_version }}-${{ inputs.dist }}
           path: ./kernel-version-${{ inputs.driver-branch }}-${{ steps.discover.outputs.kernel_version }}-${{ inputs.dist }}.tar
@@ -153,19 +153,19 @@ jobs:
       matrix:
         arch: ${{ fromJson(needs.discover-kernel.outputs.architectures) }}
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         name: Check out code
       - name: Set CVE updates
         uses: ./.github/actions/set-cve-updates
         with:
           dist: ${{ inputs.dist }}
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v4
+        uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4
         with:
           buildkitd-config: /etc/buildkit/buildkitd.toml
       - name: Login to GitHub Container Registry
         if: inputs.output == 'image' && inputs.push-images
-        uses: docker/login-action@v4.8.0
+        uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4.8.0
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -195,7 +195,7 @@ jobs:
             "build-signed_${DIST}-${DRIVER_VERSION}"
       - name: Upload native image as an artifact
         if: inputs.output == 'oci'
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: driver-images-${{ inputs.driver-branch }}-${{ needs.discover-kernel.outputs.kernel_version }}-${{ inputs.dist }}-${{ matrix.arch }}
           path: ./driver-images-${{ inputs.driver-branch }}-${{ needs.discover-kernel.outputs.kernel_version }}-${{ inputs.dist }}-${{ matrix.arch }}.tar
@@ -207,16 +207,16 @@ jobs:
     if: inputs.output == 'oci' || inputs.push-images
     runs-on: linux-amd64-cpu4
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         name: Check out code
       - name: Set up Docker Buildx
         if: inputs.output == 'image'
-        uses: docker/setup-buildx-action@v4
+        uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4
         with:
           buildkitd-config: /etc/buildkit/buildkitd.toml
       - name: Login to GitHub Container Registry
         if: inputs.output == 'image'
-        uses: docker/login-action@v4.8.0
+        uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4.8.0
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -241,7 +241,7 @@ jobs:
             --tag "${IMAGE_NAME}:${GITHUB_SHA:0:8}-${DRIVER_BRANCH}-${KERNEL_VERSION}-${DIST}" "${ARCH_IMAGE_REFS[@]}"
       - name: Download native image artifacts
         if: inputs.output == 'oci'
-        uses: actions/download-artifact@v8
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
         with:
           pattern: driver-images-${{ inputs.driver-branch }}-${{ needs.discover-kernel.outputs.kernel_version }}-${{ inputs.dist }}-*
           merge-multiple: true
@@ -267,7 +267,7 @@ jobs:
           .github/scripts/merge-oci-archives.sh "${ARCHIVE_PREFIX}.tar" "${ARCH_ARCHIVE_SPECS[@]}"
       - name: Upload combined image as an artifact
         if: inputs.output == 'oci'
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: driver-images-${{ inputs.driver-branch }}-${{ needs.discover-kernel.outputs.kernel_version }}-${{ inputs.dist }}
           path: ./driver-images-${{ inputs.driver-branch }}-${{ needs.discover-kernel.outputs.kernel_version }}-${{ inputs.dist }}.tar
