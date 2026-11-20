@@ -8,9 +8,7 @@ ARG GOLANG_VERSION
 ARG DRIVER_TYPE=passthrough
 ENV DRIVER_TYPE=$DRIVER_TYPE
 
-# Args needed when using a local driver
 ARG DRIVER_VERSION
-ARG DRIVER_TYPE=passthrough
 ARG LOCAL_DRIVER=false
 
 SHELL ["/bin/bash", "-c"]
@@ -34,14 +32,21 @@ RUN if [ "$DRIVER_TYPE" = "vgpu" ]; then \
 
 ADD drivers local-driver/
 
-RUN if [ "$DRIVER_TYPE" != "vgpu" ] && [ "$LOCAL_DRIVER" == "false" ]; then \
-        rm local-driver/*; \
-    elif [ "$TARGETARCH" == "amd64" ]; then \
-        chmod +x local-driver/NVIDIA-Linux-x86_64-${DRIVER_VERSION}.run; \
-        rm local-driver/NVIDIA-Linux-aarch64-${DRIVER_VERSION}.run || true; \
-    else \
-        chmod +x local-driver/NVIDIA-Linux-x86_64-${DRIVER_VERSION}.run; \
-        rm local-driver/NVIDIA-Linux-aarch64-${DRIVER_VERSION}.run || true; fi
+RUN mkdir -p local-repo && \
+    if [ "$DRIVER_TYPE" != "vgpu" ] && [ "$LOCAL_DRIVER" = "true" ]; then \
+        install_run_file=NVIDIA-Linux-x86_64-${DRIVER_VERSION}.run; \
+        remove_run_file=NVIDIA-Linux-aarch64-${DRIVER_VERSION}.run; \
+        repo_rpm_arch=x86_64; \
+        if [ "$TARGETARCH" != "amd64" ]; then \
+            install_run_file=NVIDIA-Linux-aarch64-${DRIVER_VERSION}.run; \
+            remove_run_file=NVIDIA-Linux-x86_64-${DRIVER_VERSION}.run; \
+            repo_rpm_arch=aarch64; \
+        fi; \
+        chmod +x "local-driver/${install_run_file}" && \
+        rm -f "local-driver/${remove_run_file}" && \
+        { mv local-driver/nvidia-driver-local-repo-rhel9-${DRIVER_VERSION}-*.${repo_rpm_arch}.rpm local-repo/ 2>/dev/null || true; } && \
+        rm -f local-driver/nvidia-driver-local-repo-*; \
+    fi
 
 FROM ${BASE_IMAGE}
 
@@ -72,8 +77,6 @@ ARG DISABLE_VGPU_VERSION_CHECK=true
 ENV DISABLE_VGPU_VERSION_CHECK=$DISABLE_VGPU_VERSION_CHECK
 # Avoid dependency of container-toolkit for driver container
 ENV NVIDIA_VISIBLE_DEVICES=void
-
-# Args needed when using a local driver
 ARG LOCAL_DRIVER=false
 
 ADD install.sh /tmp/
@@ -92,15 +95,16 @@ RUN sh /tmp/install.sh depinstall && \
 
 COPY --from=build /work/local-driver drivers/
 
-# Fetch the installer, fabricmanager and libnvidia-nscq automatically for passthrough/baremetal types
-RUN if [ "$DRIVER_TYPE" != "vgpu" ] && [ "$LOCAL_DRIVER" == "false" ]; then \
+# Fetch the installer, fabricmanager and libnvidia-nscq automatically for passthrough/baremetal types unless LOCAL_DRIVER=true
+RUN if [ "$DRIVER_TYPE" != "vgpu" ] && [ "$LOCAL_DRIVER" != "true" ]; then \
     cd drivers && \
     DRIVER_ARCH=${TARGETARCH/amd64/x86_64} && DRIVER_ARCH=${DRIVER_ARCH/arm64/aarch64} && \
     curl -fSsl -O $BASE_URL/$DRIVER_VERSION/NVIDIA-Linux-$DRIVER_ARCH-$DRIVER_VERSION.run && \
     chmod +x  NVIDIA-Linux-$DRIVER_ARCH-$DRIVER_VERSION.run; fi
 
 # Fetch the installer, fabricmanager, libnvidia-nscq, libnvsdm, imex packages
-RUN sh /tmp/install.sh extrapkgsinstall
+RUN --mount=type=bind,from=build,source=/work/local-repo,target=/tmp/local-repo \
+    sh /tmp/install.sh extrapkgsinstall
 
 COPY nvidia-driver /usr/local/bin
 COPY ocp_dtk_entrypoint /usr/local/bin
