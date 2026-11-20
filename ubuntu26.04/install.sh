@@ -3,8 +3,8 @@
 set -eu
 
 LOCAL_REPO_DIR=/usr/local/repos
-# Package name of the local driver repo package when LOCAL_DRIVER=true; set by setup_local_driver_repo
 LOCAL_DRIVER_REPO_PKG=""
+LOCAL_DRIVER_KEYRING=""
 
 dep_install () {
     if [ "$TARGETARCH" = "amd64" ]; then
@@ -44,18 +44,18 @@ setup_cuda_repo() {
     rm -f cuda-keyring_1.1-1_all.deb
 }
 
-# Unreleased driver versions are not in the CUDA repository; use the local driver repo package
-# bind-mounted at /tmp/local-repo instead. It installs a file: APT source and its signing key.
 setup_local_driver_repo() {
-    local repo_deb
-    repo_deb=$(ls /tmp/local-repo/nvidia-driver-local-repo-*.deb 2>/dev/null | head -1 || true)
-    if [ -z "${repo_deb}" ]; then
-        echo "LOCAL_DRIVER=true but no local driver repo package for ${DRIVER_VERSION} (${TARGETARCH}) found in drivers/" >&2
+    local repo_debs repo_keyring_paths
+    repo_debs=(/tmp/local-repo/nvidia-driver-local-repo-ubuntu2604-"${DRIVER_VERSION}"_*_"${TARGETARCH}".deb)
+    if [ "${#repo_debs[@]}" -ne 1 ] || [ ! -f "${repo_debs[0]}" ]; then
+        echo "LOCAL_DRIVER=true but expected exactly one local driver repo package for ${DRIVER_VERSION} (${TARGETARCH}) in drivers/" >&2
         exit 1
     fi
-    LOCAL_DRIVER_REPO_PKG=$(dpkg-deb -f "${repo_deb}" Package)
-    dpkg -i "${repo_deb}"
-    cp /var/${LOCAL_DRIVER_REPO_PKG}/nvidia-driver-local-*-keyring.gpg /usr/share/keyrings/
+    LOCAL_DRIVER_REPO_PKG=$(dpkg-deb -f "${repo_debs[0]}" Package)
+    dpkg -i "${repo_debs[0]}"
+    repo_keyring_paths=(/var/"${LOCAL_DRIVER_REPO_PKG}"/nvidia-driver-local-*-keyring.gpg)
+    LOCAL_DRIVER_KEYRING=/usr/share/keyrings/${repo_keyring_paths[0]##*/}
+    cp "${repo_keyring_paths[0]}" "${LOCAL_DRIVER_KEYRING}"
 }
 
 # Pin the driver metapackage and the extra packages to the exact DRIVER_VERSION release.
@@ -115,7 +115,8 @@ build_module_repo() {
     rm -f /etc/apt/sources.list.d/cuda*
     if [ -n "${LOCAL_DRIVER_REPO_PKG}" ]; then
         apt-get purge -y "${LOCAL_DRIVER_REPO_PKG}"
-        rm -rf /var/${LOCAL_DRIVER_REPO_PKG}
+        rm -rf "/var/${LOCAL_DRIVER_REPO_PKG:?}"
+        rm -f "${LOCAL_DRIVER_KEYRING}"
     fi
     rm -rf /var/lib/apt/lists/*
 }
