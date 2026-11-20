@@ -2,6 +2,9 @@
 
 set -eu
 
+LOCAL_DRIVER_REPO_PKG=""
+LOCAL_DRIVER_KEYRING=""
+
 download_installer () {
     DRIVER_ARCH=${TARGETARCH/amd64/x86_64} && DRIVER_ARCH=${DRIVER_ARCH/arm64/aarch64} && curl -fSsl -O $BASE_URL/$DRIVER_VERSION/NVIDIA-Linux-$DRIVER_ARCH-$DRIVER_VERSION.run && \
     chmod +x  NVIDIA-Linux-$DRIVER_ARCH-$DRIVER_VERSION.run;
@@ -38,10 +41,27 @@ dep_install () {
 }
 
 setup_cuda_repo() {
+    if [ "${LOCAL_DRIVER:-false}" = "true" ]; then
+        return 0
+    fi
     # Fetch public CUDA GPG key and configure apt to only use this key when downloading CUDA packages
     OS_ARCH=${TARGETARCH/amd64/x86_64} && OS_ARCH=${OS_ARCH/arm64/sbsa};
     curl -fSsL "https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2404/${OS_ARCH}/cuda-keyring_1.1-1_all.deb" -o cuda-keyring_1.1-1_all.deb
     dpkg -i cuda-keyring_1.1-1_all.deb
+}
+
+setup_local_driver_repo() {
+    local repo_debs repo_keyring_paths
+    repo_debs=(/tmp/local-repo/nvidia-driver-local-repo-ubuntu2404-"${DRIVER_VERSION}"_*_"${TARGETARCH}".deb)
+    if [ "${#repo_debs[@]}" -ne 1 ] || [ ! -f "${repo_debs[0]}" ]; then
+        echo "LOCAL_DRIVER=true but expected exactly one local driver repo package for ${DRIVER_VERSION} (${TARGETARCH}) in drivers/" >&2
+        exit 1
+    fi
+    LOCAL_DRIVER_REPO_PKG=$(dpkg-deb -f "${repo_debs[0]}" Package)
+    dpkg -i "${repo_debs[0]}"
+    repo_keyring_paths=(/var/"${LOCAL_DRIVER_REPO_PKG}"/nvidia-driver-local-*-keyring.gpg)
+    LOCAL_DRIVER_KEYRING=/usr/share/keyrings/${repo_keyring_paths[0]##*/}
+    cp "${repo_keyring_paths[0]}" "${LOCAL_DRIVER_KEYRING}"
 }
 
 fabricmanager_install() {
@@ -85,6 +105,10 @@ imex_install() {
 
 extra_pkgs_install() {
   if [ "$DRIVER_TYPE" != "vgpu" ]; then
+      if [ "${LOCAL_DRIVER:-false}" = "true" ]; then
+        setup_local_driver_repo
+      fi
+
       apt-get update
 
       if [ "${DRIVER_BRANCH}" -ge "620" ]; then
@@ -101,6 +125,11 @@ extra_pkgs_install() {
       nvlink5_pkgs_install
       imex_install
 
+      if [ -n "${LOCAL_DRIVER_REPO_PKG}" ]; then
+        apt-get purge -y "${LOCAL_DRIVER_REPO_PKG}"
+        rm -rf "/var/${LOCAL_DRIVER_REPO_PKG:?}"
+        rm -f "${LOCAL_DRIVER_KEYRING}"
+      fi
       rm -rf /var/lib/apt/lists/*
   fi
 }
