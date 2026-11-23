@@ -39,9 +39,9 @@ jobs:
           - amd64
           - arm64
         driver: &driver-versions
-          - 580.196.07
-          - 595.112.07
-          - 620.70.06
+          - 580.196.11
+          - 595.112.13
+          - 620.70.10
         dist:
           - ubuntu22.04
           - ubuntu24.04
@@ -56,7 +56,7 @@ jobs:
           - ${{ github.event_name == 'pull_request' || startsWith(github.ref_name, 'pull-request/') }}
         exclude:
           - dist: ubuntu26.04
-            driver: 580.196.07
+            driver: 580.196.11
       fail-fast: false
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
