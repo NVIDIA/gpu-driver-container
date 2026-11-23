@@ -1,4 +1,4 @@
-ARG BASE_IMAGE=ubuntu:noble-20261110
+ARG BASE_IMAGE=ubuntu:noble-20261110.1
 
 FROM ${BASE_IMAGE} AS build
 
