@@ -174,7 +174,7 @@ jobs:
       # as e2e tests may fail for new kernel release
       - name: Slack notification
         if: ${{ steps.set_kernel_version.outputs.matrix_values_not_empty == '1' && github.ref == 'refs/heads/main' }}
-        uses: slackapi/slack-github-action@dcb1066f776dd043e64d0e8ba94ca15cc7e1875d # v4.0.0
+        uses: slackapi/slack-github-action@0bc3581177d9a0f8d555e07689384b376528e8fa # v4.1.0
         with:
           token: ${{ secrets.SLACK_BOT_TOKEN }}
           method: chat.postMessage
@@ -408,7 +408,7 @@ jobs:
 
       - name: Slack notification
         if: ${{ steps.set_image_vars.outputs.run_publish == 'true' && github.ref == 'refs/heads/main' }}
-        uses: slackapi/slack-github-action@dcb1066f776dd043e64d0e8ba94ca15cc7e1875d # v4.0.0
+        uses: slackapi/slack-github-action@0bc3581177d9a0f8d555e07689384b376528e8fa # v4.1.0
         with:
           token: ${{ secrets.SLACK_BOT_TOKEN }}
           method: chat.postMessage
