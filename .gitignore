@@ -1,6 +1,6 @@
 *.tar
 *.swp
 *.swo
-/*/drivers/*.run
-/*/drivers/*.deb
-/*/drivers/*.rpm
+*.run
+*.deb
+*.rpm
