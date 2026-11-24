@@ -9,6 +9,9 @@ ARG GOLANG_VERSION
 ARG DRIVER_TYPE=passthrough
 ENV DRIVER_TYPE=$DRIVER_TYPE
 
+ARG DRIVER_VERSION
+ARG LOCAL_DRIVER=false
+
 SHELL ["/bin/bash", "-c"]
 
 RUN echo 'debconf debconf/frontend select Noninteractive' | debconf-set-selections
@@ -37,6 +40,14 @@ RUN if [ "$DRIVER_TYPE" = "vgpu" ]; then \
     go build -o vgpu-util && \
     mv vgpu-util /work; fi
 
+ADD drivers local-driver/
+
+RUN mkdir -p local-repo && \
+    if [ "$DRIVER_TYPE" != "vgpu" ] && [ "$LOCAL_DRIVER" = "true" ]; then \
+        { mv local-driver/nvidia-driver-local-repo-ubuntu2604-${DRIVER_VERSION}_*_${TARGETARCH}.deb local-repo/ 2>/dev/null || true; } && \
+        rm -f local-driver/nvidia-driver-local-repo-*.deb; \
+    fi
+
 FROM ${BASE_IMAGE}
 
 SHELL ["/bin/bash", "-c"]
@@ -59,6 +70,7 @@ ENV VGPU_LICENSE_SERVER_TYPE=$VGPU_LICENSE_SERVER_TYPE
 ARG DISABLE_VGPU_VERSION_CHECK=true
 ENV DISABLE_VGPU_VERSION_CHECK=$DISABLE_VGPU_VERSION_CHECK
 ENV NVIDIA_VISIBLE_DEVICES=void
+ARG LOCAL_DRIVER=false
 
 RUN echo 'debconf debconf/frontend select Noninteractive' | debconf-set-selections
 
@@ -71,13 +83,14 @@ RUN usermod -o -u 0 -g 0 _apt && \
 
 # Install the driver payload for passthrough/baremetal types; the vgpu type installs from a
 # .run file at container start
-RUN /tmp/install.sh driver_pkgs_install
+RUN --mount=type=bind,from=build,source=/work/local-repo,target=/tmp/local-repo \
+    /tmp/install.sh driver_pkgs_install
 
 COPY nvidia-driver /usr/local/bin
 
 COPY --from=build /work/vgpu-util* /usr/local/bin
 
-ADD drivers drivers/
+COPY --from=build /work/local-driver drivers/
 
 WORKDIR  /drivers
 
