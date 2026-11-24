@@ -13,8 +13,8 @@
 # limitations under the License.
 
 # DRIVER_VERSIONS contains latest version in all active datacenter branches
-DRIVER_VERSIONS ?= 580.196.07 595.112.07 620.70.06
+DRIVER_VERSIONS ?= 580.196.11 595.112.13 620.70.10
 
-GOLANG_VERSION := 1.27.3
+GOLANG_VERSION := 1.27.4
 
 GIT_COMMIT ?= $(shell git describe --match="" --dirty --long --always --abbrev=40 2> /dev/null || echo "")
