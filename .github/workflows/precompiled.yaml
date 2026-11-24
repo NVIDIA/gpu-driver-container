@@ -247,7 +247,7 @@ jobs:
           fi
 
       - name: Set up Holodeck
-        uses: NVIDIA/holodeck@5e5ff28774f54664c56ca43040aa4e738a333feb # v0.5.1
+        uses: NVIDIA/holodeck@8cd286c867a2be37c73a905123e6a689c084243c # v0.6.0
         env:
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
