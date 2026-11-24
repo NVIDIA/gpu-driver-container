@@ -138,20 +138,20 @@ imex_install() {
 }
 
 setup_local_driver_repo() {
-  local repo_rpms repo_gpg_key repo_gpg_key_pkg
-  repo_rpms=(/tmp/local-repo/nvidia-driver-local-repo-rhel9-"${DRIVER_VERSION}"-*."${DRIVER_ARCH}".rpm)
-  if [ "${#repo_rpms[@]}" -ne 1 ] || [ ! -f "${repo_rpms[0]}" ]; then
+  local rpms gpg_key gpg_key_pkg
+  rpms=(/tmp/local-repo/nvidia-driver-local-repo-rhel9-"${DRIVER_VERSION}"-*."${DRIVER_ARCH}".rpm)
+  if [ "${#rpms[@]}" -ne 1 ] || [ ! -f "${rpms[0]}" ]; then
     echo "LOCAL_DRIVER=true but expected exactly one local driver repo package for ${DRIVER_VERSION} (${TARGETARCH}) in drivers/" >&2
     exit 1
   fi
-  LOCAL_DRIVER_REPO_PKG=$(rpm -qp --queryformat '%{NAME}' "${repo_rpms[0]}")
-  rpm -i "${repo_rpms[0]}"
-  repo_gpg_key=$(ls "/var/${LOCAL_DRIVER_REPO_PKG}"/*.pub)
-  repo_gpg_key_pkg=gpg-pubkey-$(basename "${repo_gpg_key}" .pub | tr '[:upper:]' '[:lower:]')
+  LOCAL_DRIVER_REPO_PKG=$(rpm -qp --queryformat '%{NAME}' "${rpms[0]}")
+  rpm -i "${rpms[0]}"
+  gpg_key=$(ls "/var/${LOCAL_DRIVER_REPO_PKG}"/*.pub)
+  gpg_key_pkg=gpg-pubkey-$(basename "${gpg_key}" .pub | tr '[:upper:]' '[:lower:]')
   LOCAL_DRIVER_REPO_GPG_KEY_PKG=""
-  if ! rpm -q "${repo_gpg_key_pkg}" >/dev/null; then
-    rpm --import "${repo_gpg_key}"
-    LOCAL_DRIVER_REPO_GPG_KEY_PKG=${repo_gpg_key_pkg}
+  if ! rpm -q "${gpg_key_pkg}" >/dev/null; then
+    rpm --import "${gpg_key}"
+    LOCAL_DRIVER_REPO_GPG_KEY_PKG=${gpg_key_pkg}
   fi
 }
 
