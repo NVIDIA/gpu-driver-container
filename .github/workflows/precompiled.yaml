@@ -406,8 +406,79 @@ jobs:
             echo "Skipping image push for non-main branch ${{ github.ref }}"
           fi
 
-      - name: Slack notification
+      - name: Record published image
         if: ${{ steps.set_image_vars.outputs.run_publish == 'true' && github.ref == 'refs/heads/main' }}
+        run: |
+          echo "${PRIVATE_REGISTRY}/nvidia/driver:${{ matrix.driver_branch }}-${{ env.KERNEL_VERSION }}" > ./published-image.txt
+
+      - name: Upload published image record
+        if: ${{ steps.set_image_vars.outputs.run_publish == 'true' && github.ref == 'refs/heads/main' }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: published-image-${{ matrix.driver_branch }}-${{ env.KERNEL_VERSION }}
+          path: ./published-image.txt
+          retention-days: 1
+
+  notify-published-images:
+    runs-on: linux-amd64-cpu4
+    needs:
+      - publish-precompiled-image
+    if: ${{ !cancelled() && github.ref == 'refs/heads/main' && needs.publish-precompiled-image.result != 'skipped' }}
+    steps:
+      - name: Download published image records
+        uses: actions/download-artifact@v8
+        with:
+          pattern: published-image-*
+          path: ${{ runner.temp }}/published-images
+
+      - name: Collect published images
+        id: collect_published_images
+        run: |
+          published_images=$(find "${RUNNER_TEMP}/published-images" -name published-image.txt -exec cat {} + 2>/dev/null | sort -u)
+          if [[ -z "${published_images}" ]]; then
+            echo "No precompiled images were published in this run"
+            echo "has_published_images=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "${published_images}"
+          echo "has_published_images=true" >> "$GITHUB_OUTPUT"
+          image_list=$(echo "${published_images}" | awk '{ printf "%s• %s", (NR > 1 ? "\\n" : ""), $0 }')
+          echo "image_list=${image_list}" >> "$GITHUB_OUTPUT"
+
+      - name: Collect unpublished images
+        id: collect_unpublished_images
+        if: ${{ steps.collect_published_images.outputs.has_published_images == 'true' && needs.publish-precompiled-image.result != 'success' }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # The jobs API returns 502 for pages of 100 jobs on this workflow.
+          jobs_url="${GITHUB_API_URL}/repos/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}/jobs?filter=latest&per_page=50"
+          unpublished_jobs=""
+          page=1
+          while true; do
+            if ! jobs_page=$(curl -fsSL --retry 5 --retry-all-errors \
+                -H "Authorization: Bearer ${GH_TOKEN}" -H "Accept: application/vnd.github+json" \
+                "${jobs_url}&page=${page}"); then
+              unpublished_jobs=""
+              break
+            fi
+            unpublished_jobs+="$(jq -r '.jobs[]
+              | select(.conclusion == "failure" or .conclusion == "cancelled")
+              | (.name | capture("^publish-precompiled-image \\((?<driver_branch>[^,]+), (?<kernel_version>[^)]+)\\)$")?) as $matrix
+              | select($matrix != null)
+              | "\($matrix.driver_branch)-\($matrix.kernel_version)\t\(if .conclusion == "failure" then "failed" else "cancelled" end)\t\(.html_url)"' <<< "${jobs_page}")"$'\n'
+            [[ $(jq '.jobs | length' <<< "${jobs_page}") -lt 50 ]] && break
+            page=$((page + 1))
+          done
+          unpublished_list=$(printf '%s' "${unpublished_jobs}" | sort -u | awk -F'\t' 'NF == 3 { printf "%s• %s (%s)\\n  Job: %s", (count++ ? "\\n" : ""), $1, $2, $3 }')
+          if [[ -z "${unpublished_list}" ]]; then
+            echo "unpublished_section=\n\nSome publish jobs failed, see Details for which ones.\n" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "unpublished_section=\n\nNot published:\n${unpublished_list}\n" >> "$GITHUB_OUTPUT"
+
+      - name: Slack notification
+        if: ${{ steps.collect_published_images.outputs.has_published_images == 'true' }}
         uses: slackapi/slack-github-action@v4.0.0
         with:
           token: ${{ secrets.SLACK_BOT_TOKEN }}
@@ -415,5 +486,5 @@ jobs:
           payload: |
             {
               "channel": "${{ secrets.SLACK_CHANNEL_ID }}",
-              "text": "${{ secrets.PUBLISHED_PRECOMPILED_IMAGE_MESSAGE }} ${{ env.PRIVATE_REGISTRY }}/nvidia/driver:${{ matrix.driver_branch }}-${{ env.KERNEL_VERSION }}"
+              "text": "${{ secrets.PUBLISHED_PRECOMPILED_IMAGE_MESSAGE }}\n${{ steps.collect_published_images.outputs.image_list }}${{ steps.collect_unpublished_images.outputs.unpublished_section }}\nDetails: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
             }
